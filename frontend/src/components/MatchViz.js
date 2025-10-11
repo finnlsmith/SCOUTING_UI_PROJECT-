@@ -56,7 +56,7 @@ export default function MatchViz() {
           setFigData(mockData);
         });
     }
-  }, [selectedMatch]);
+  }, [selectedMatch, BACKEND_URL]);
 
   // Handle CSV upload
   const handleUpload = async () => {
