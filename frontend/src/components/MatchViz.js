@@ -53,6 +53,7 @@ export default function MatchViz() {
   const [uploadError, setUploadError] = useState(""); // NEW: Error state for upload
   const [uploadSuccess, setUploadSuccess] = useState(false); // NEW: Success after CSV upload
   const [plotLoading, setPlotLoading] = useState(false); // NEW: Plot data loading indicator
+  const [flipSides, setFlipSides] = useState(false); // State for flipping plot
 
   // Fetch available matches (MOCKED, swap for backend later)
   useEffect(() => {
@@ -128,6 +129,15 @@ export default function MatchViz() {
     }
   }, [selectedMatch, BACKEND_URL]);
 
+  // If you want to auto-flip certain matches by default, uncomment this logic:
+  /*
+  useEffect(() => {
+    // example: default checked for 'Turkey vs Italy'
+    if (selectedMatch === "match_3788741_Turkey_shotmap.json") setFlipSides(true);
+    else setFlipSides(false);
+  }, [selectedMatch]);
+  */
+
   // Handle CSV upload
   const handleUpload = async () => {
     setUploadError("");
@@ -173,6 +183,27 @@ export default function MatchViz() {
     setMatchesError("");
     setUploadError("");
     setGlobalError("");
+  }
+
+  const PITCH_LENGTH = 120; // Set based on your pitch
+  const PITCH_WIDTH = 80; // Set based on your pitch
+
+  let plotData = figData ? { ...figData } : null;
+  if (plotData && flipSides) {
+    plotData = {
+      ...figData,
+      data: figData.data.map(trace => {
+        // Only flip if this is a shot/scatter trace with x and y arrays
+        if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
+          return {
+            ...trace,
+            x: trace.x.map(val => PITCH_LENGTH - val),
+            y: trace.y.map(val => PITCH_WIDTH - val)
+          };
+        }
+        return trace;
+      })
+    };
   }
 
   return (
@@ -230,7 +261,20 @@ export default function MatchViz() {
                 </option>
               ))}
             </select>
-            {/* Reset button shows only if a selection or plot is active, or after upload */}
+
+            {/* Flip sides checkbox (shows only if a match is selected) */}
+            {selectedMatch && (
+              <label style={{ marginLeft: 18, userSelect: "none", fontWeight: 400 }}>
+                <input
+                  type="checkbox"
+                  checked={flipSides}
+                  onChange={(e) => setFlipSides(e.target.checked)}
+                  style={{ marginRight: 7 }}
+                />
+                Flip Sides
+              </label>
+            )}
+            {/* Reset button stays as before */}
             {(selectedMatch || figData || uploadSuccess) && (
               <button
                 style={{
@@ -251,6 +295,7 @@ export default function MatchViz() {
                   setUploadError("");
                   setMatchesError("");
                   setGlobalError("");
+                  setFlipSides(false);
                 }}
                 aria-label="Reset selection and view"
               >
@@ -266,8 +311,8 @@ export default function MatchViz() {
         <p style={{ color: "#007bff" }}>Loading visualization...</p>
       ) : figData ? (
         <Plot
-          data={figData.data}
-          layout={figData.layout}
+          data={plotData.data}
+          layout={plotData.layout}
           style={{ margin: "auto", width: "90%", height: "90%" }}
         />
       ) : (
