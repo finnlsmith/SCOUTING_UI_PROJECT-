@@ -13,13 +13,16 @@ export default function MatchViz() {
     { id: 2, name: "Turkey vs Italy", file: "match_3788741_Turkey_shotmap.json" },
   ];
 
+  // Use environment variable for backend URL
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+
   // Fetch JSON when a match is selected
   useEffect(() => {
     if (selectedMatch) {  
       console.log("Fetching match:", selectedMatch); // Debug log
       
       // Try to fetch from backend first, fall back to mock data if it fails
-      fetch(`http://localhost:8000/api/match/${selectedMatch}/viz`)
+      fetch(`${BACKEND_URL}/api/match/${selectedMatch}/viz`)
         .then((res) => {
           console.log("Response status:", res.status); // Debug log
           if (!res.ok) {
@@ -67,7 +70,7 @@ export default function MatchViz() {
     formData.append("file", file);
 
     try {
-      const res = await fetch("http://localhost:8000/api/upload", {
+      const res = await fetch(`${BACKEND_URL}/api/upload`, {
         method: "POST",
         body: formData,
       });
