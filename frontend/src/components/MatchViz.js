@@ -15,11 +15,43 @@ export default function MatchViz() {
 
   // Fetch JSON when a match is selected
   useEffect(() => {
-    if (selectedMatch) {
+    if (selectedMatch) {  
+      console.log("Fetching match:", selectedMatch); // Debug log
+      
+      // Try to fetch from backend first, fall back to mock data if it fails
       fetch(`http://localhost:8000/api/match/${selectedMatch}/viz`)
-        .then((res) => res.json())
-        .then((data) => setFigData(data))
-        .catch((err) => console.error("Error loading JSON:", err));
+        .then((res) => {
+          console.log("Response status:", res.status); // Debug log
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+          return res.json();
+        })
+        .then((data) => {
+          console.log("Received data from backend:", data); // Debug log
+          setFigData(data);
+        })
+        .catch((err) => {
+          console.error("Backend fetch failed, using mock data:", err);
+          // Mock data for testing
+          const mockData = {
+            data: [{
+              x: [1, 2, 3, 4],
+              y: [10, 11, 12, 13],
+              type: 'scatter',
+              mode: 'lines+markers',
+              marker: {color: 'red'},
+              name: `Mock data for ${selectedMatch}`
+            }],
+            layout: {
+              title: `Mock Visualization - ${selectedMatch}`,
+              xaxis: { title: 'X Axis' },
+              yaxis: { title: 'Y Axis' }
+            }
+          };
+          console.log("Using mock data:", mockData);
+          setFigData(mockData);
+        });
     }
   }, [selectedMatch]);
 
@@ -40,10 +72,12 @@ export default function MatchViz() {
         body: formData,
       });
       const data = await res.json();
+      console.log("Upload successful, received data:", data); // Debug log
       setFigData(data);
-      setSelectedMatch(""); // clear dropdown
+      setSelectedMatch(""); // clear dropdown since we're showing uploaded data
     } catch (err) {
       console.error("Upload failed:", err);
+      alert("Upload failed. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -84,7 +118,10 @@ export default function MatchViz() {
         <select
           style={{ padding: "10px", fontSize: "16px", marginBottom: "20px" }}
           value={selectedMatch}
-          onChange={(e) => setSelectedMatch(e.target.value)}
+          onChange={(e) => {
+            console.log("Dropdown changed to:", e.target.value); // Debug log
+            setSelectedMatch(e.target.value);
+          }}
         >
           <option value="">-- Choose a match --</option>
           {matches.map((m) => (
