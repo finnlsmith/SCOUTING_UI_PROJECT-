@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Plot from "react-plotly.js";
 
 // Use environment variable for backend URL
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const BACKEND_URL = "http://127.0.0.1:8000" || "http://localhost:8000";
 
 // Error banner component
 function ErrorBanner({ error, onClose }) {
@@ -61,25 +61,39 @@ export default function MatchViz() {
       setMatchesLoading(true);
       setMatchesError("");
       try {
-        // TODO: Replace this with a backend fetch later
-        // const res = await fetch(`${BACKEND_URL}/api/matches`);
-        // if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        // const data = await res.json();
-        // setMatches(data);
-
-        // Artificial delay for demo/loading indicator
-        await new Promise(r => setTimeout(r, 500));
-        setMatches([
-          { id: 1, name: "Italy vs Turkey", file: "match_3788741_Italy_shotmap.json" },
-          { id: 2, name: "Turkey vs Italy", file: "match_3788741_Turkey_shotmap.json" },
-        ]);
+        const endpoint = `${BACKEND_URL}/api/matches`;
+        console.log("🎯 Fetching matches from:", endpoint);
+  
+        const res = await fetch(endpoint);
+        const text = await res.text(); // 👈 Read raw text for debug
+  
+        console.log("🧾 Raw response:", text);
+  
+        if (!res.ok) throw new Error(`HTTP ${res.status} - ${text}`);
+  
+        const data = JSON.parse(text); // 👈 Manually parse, ensures we catch format issues
+  
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid data format (expected an array)");
+        }
+  
+        const formatted = data.map((filename, i) => ({
+          id: i,
+          name: filename.replace(".csv", ""),
+          file: filename
+        }));
+  
+        setMatches(formatted);
+        console.log("✅ Matches loaded:", formatted);
       } catch (error) {
+        console.error("❌ Fetch error:", error);
         setMatchesError("Failed to load matches. Please try again later.");
         setMatches([]);
       } finally {
         setMatchesLoading(false);
       }
     }
+  
     fetchMatches();
   }, []);
 
@@ -127,7 +141,7 @@ export default function MatchViz() {
         })
         .finally(() => setPlotLoading(false));
     }
-  }, [selectedMatch, BACKEND_URL]);
+  }, [selectedMatch]);
 
   // If you want to auto-flip certain matches by default, uncomment this logic:
   /*
