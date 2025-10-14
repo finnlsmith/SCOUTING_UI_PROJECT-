@@ -272,8 +272,8 @@ export default function MatchViz() {
             >
               <option value="">-- Choose a match --</option>
               {matches.map((m) => (
-                <option key={m.id} value={m.file}>
-                  {m.name}
+                <option key={m.file} value={m.file}>
+                  {m.label || m.name}
                 </option>
               ))}
             </select>
