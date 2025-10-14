@@ -79,11 +79,12 @@ export default function MatchViz() {
           throw new Error("Invalid data format (expected an array)");
         }
   
-        const formatted = data.map((filename, i) => ({
+        const formatted = data.map((m, i) => ({
           id: i,
-          name: filename.replace(".csv", ""),
-          file: filename
-        }));
+          name: m.file.replace(".csv", ""),
+          label: m.label,
+          file: m.file
+        }));        
   
         setMatches(formatted);
         console.log("✅ Matches loaded:", formatted);
