@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import Plot from "react-plotly.js";
 
 // Use environment variable for backend URL
-const BACKEND_URL = "http://127.0.0.1:8000" || "http://localhost:8000";
+// const BACKEND_URL = "http://127.0.0.1:8000" || "http://localhost:8000";
+const BACKEND_URL = "https://columbia-msds-f25-soccer.onrender.com";
 
 // Error banner component
 function ErrorBanner({ error, onClose }) {
