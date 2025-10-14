@@ -29,16 +29,64 @@ s3_client = boto3.client(
     aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
     aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
 )
+# @app.get('/api/matches')
+# def list_matches():
+#     try:
+#         response = s3_client.list_objects_v2(Bucket=S3_BUCKET)
+#         if 'Contents' not in response:
+#             return []
+#         files = [obj['Key'] for obj in response['Contents'] if obj['Key'].endswith('.csv')]
+#         return sorted(files)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 @app.get('/api/matches')
 def list_matches():
     try:
+        # 1️⃣ Get all CSV files in S3 bucket
         response = s3_client.list_objects_v2(Bucket=S3_BUCKET)
         if 'Contents' not in response:
             return []
         files = [obj['Key'] for obj in response['Contents'] if obj['Key'].endswith('.csv')]
-        return sorted(files)
+
+        # 2️⃣ Load matches_df.csv from S3 directly
+        obj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
+        matches_df = pd.read_csv(obj['Body'])
+
+        # 3️⃣ Build a lookup: match_id → "YYYY-MM-DD - Home vs Away"
+        label_lookup = {}
+        for _, row in matches_df.iterrows():
+            match_id = str(row['match_id'])
+            label_lookup[match_id] = f"{row['match_date']} - {row['home_team']} vs {row['away_team']}"
+
+        # 4️⃣ Map files to readable labels
+        formatted = []
+        for f in files:
+            # Extract numeric ID (e.g., 3788741)
+            match_id = ''.join([c for c in f if c.isdigit()])
+            label = label_lookup.get(match_id)
+            if not label:
+                continue
+
+            if f.startswith("events_"):
+                tag = "Events"
+            elif f.startswith("frames_360_"):
+                tag = "Frames 360"
+            else:
+                tag = "Other"
+
+            formatted.append({
+                "file": f,
+                "label": f"{label} – {tag}"
+            })
+
+        # 5️⃣ Sort matches by date descending (for better UX)
+        formatted = sorted(formatted, key=lambda x: x['label'], reverse=True)
+
+        return formatted
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/upload")
 async def upload_csv(file: UploadFile = File(...)):
