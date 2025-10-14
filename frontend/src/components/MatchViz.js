@@ -5,6 +5,7 @@ import Plot from "react-plotly.js";
 // const BACKEND_URL = "http://127.0.0.1:8000" || "http://localhost:8000";
 const BACKEND_URL = "https://columbia-msds-f25-soccer.onrender.com";
 
+
 // Error banner component
 function ErrorBanner({ error, onClose }) {
   if (!error) return null;
@@ -55,6 +56,9 @@ export default function MatchViz() {
   const [uploadSuccess, setUploadSuccess] = useState(false); // NEW: Success after CSV upload
   const [plotLoading, setPlotLoading] = useState(false); // NEW: Plot data loading indicator
   const [flipSides, setFlipSides] = useState(false); // State for flipping plot
+  const [homeTeam, setHomeTeam] = useState(null);
+  const [awayTeam, setAwayTeam] = useState(null);
+
 
   // Fetch available matches (MOCKED, swap for backend later)
   useEffect(() => {
@@ -102,48 +106,33 @@ export default function MatchViz() {
 
   // Fetch JSON when a match is selected
   useEffect(() => {
-    if (selectedMatch) {
-      setPlotLoading(true);
-      setFigData(null);
-      // clear upload indicators when loading new match
-      setUploadSuccess(false);
-      setUploadError("");
-      console.log("Fetching match:", selectedMatch); // Debug log
-
-      fetch(`${BACKEND_URL}/api/match/${selectedMatch}/viz`)
-        .then((res) => {
-          console.log("Response status:", res.status); // Debug log
-          if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-          }
-          return res.json();
-        })
-        .then((data) => {
-          console.log("Received data from backend:", data); // Debug log
-          setFigData(data);
-        })
-        .catch((err) => {
-          console.error("Backend fetch failed, using mock data:", err);
-          // Mock data for testing
-          const mockData = {
-            data: [{
-              x: [1, 2, 3, 4],
-              y: [10, 11, 12, 13],
-              type: 'scatter',
-              mode: 'lines+markers',
-              marker: {color: 'red'},
-              name: `Mock data for ${selectedMatch}`
-            }],
-            layout: {
-              title: `Mock Visualization - ${selectedMatch}`,
-              xaxis: { title: 'X Axis' },
-              yaxis: { title: 'Y Axis' }
-            }
-          };
-          setFigData(mockData);
-        })
-        .finally(() => setPlotLoading(false));
-    }
+    if (!selectedMatch) return;
+  
+    setPlotLoading(true);
+    setFigData(null);
+    setUploadSuccess(false);
+    setUploadError("");
+  
+    // First: fetch combined view (also contains team info)
+    fetch(`${BACKEND_URL}/api/match/${selectedMatch}/viz`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        setFigData(data);
+  
+        // Try to extract teams from title (since backend returns "Home vs Away")
+        if (data.layout?.title?.text?.includes("vs")) {
+          const parts = data.layout.title.text.split("vs");
+          setHomeTeam(parts[0].replace("Shot Map —", "").trim());
+          setAwayTeam(parts[1].replace(/<br>.*/, "").trim());
+        }
+      })
+      .catch((err) => {
+        console.error("Backend fetch failed:", err);
+      })
+      .finally(() => setPlotLoading(false));
   }, [selectedMatch]);
 
   // If you want to auto-flip certain matches by default, uncomment this logic:
@@ -201,6 +190,19 @@ export default function MatchViz() {
     setUploadError("");
     setGlobalError("");
   }
+  async function fetchTeamShotmap(team) {
+    try {
+      setPlotLoading(true);
+      const res = await fetch(`${BACKEND_URL}/api/match/${selectedMatch}/viz?team=${encodeURIComponent(team)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setFigData(data);
+    } catch (err) {
+      console.error("Team shotmap error:", err);
+    } finally {
+      setPlotLoading(false);
+    }
+  }  
 
   const PITCH_LENGTH = 120; // Set based on your pitch
   const PITCH_WIDTH = 80; // Set based on your pitch
@@ -318,6 +320,22 @@ export default function MatchViz() {
               >
                 Reset
               </button>
+            )}
+            {homeTeam && awayTeam && (
+              <div style={{ marginTop: 20 }}>
+                <button
+                  onClick={() => fetchTeamShotmap(homeTeam)}
+                  style={{ marginRight: 12, padding: "8px 14px" }}
+                >
+                  Shot Map – {homeTeam}
+                </button>
+                <button
+                  onClick={() => fetchTeamShotmap(awayTeam)}
+                  style={{ padding: "8px 14px" }}
+                >
+                  Shot Map – {awayTeam}
+                </button>
+              </div>
             )}
           </>
         )}
