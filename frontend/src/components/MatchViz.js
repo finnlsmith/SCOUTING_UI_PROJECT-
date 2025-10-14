@@ -62,7 +62,8 @@ export default function MatchViz() {
       setMatchesLoading(true);
       setMatchesError("");
       try {
-        const endpoint = `${BACKEND_URL}/api/matches`;
+        // const endpoint = `${BACKEND_URL}/api/matches`;
+        const endpoint = `${BACKEND_URL}/api/matches`.trim();
         console.log("🎯 Fetching matches from:", endpoint);
   
         const res = await fetch(endpoint);
