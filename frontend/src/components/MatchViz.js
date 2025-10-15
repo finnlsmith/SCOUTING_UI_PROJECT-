@@ -133,7 +133,7 @@ export default function MatchViz() {
         console.error("Backend fetch failed:", err);
       })
       .finally(() => setPlotLoading(false));
-  }, [selectedMatch]);
+  }, [selectedMatch, figData]);
 
   // If you want to auto-flip certain matches by default, uncomment this logic:
   /*
