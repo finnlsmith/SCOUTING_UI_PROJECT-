@@ -212,60 +212,31 @@ export default function MatchViz() {
   const PITCH_LENGTH = 120;
   const PITCH_WIDTH = 80;
 
-  // This is the figure that will actually be displayed
-  const [displayFig, setDisplayFig] = useState(null);
-
-  // Update displayed figure whenever figData or flipSides changes
-  useEffect(() => {
-    if (!figData) return;
-
-    if (flipSides) {
-      const flipped = {
-        ...figData,
-        data: figData.data.map(trace => {
-          if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
-            return {
-              ...trace,
-              x: trace.x.map(x => PITCH_LENGTH - x),
-              y: trace.y.map(y => PITCH_WIDTH - y),
-            };
-          }
-          return trace;
-        }),
-      };
-      setDisplayFig(flipped);
-    } else {
-      // Reset to original figure
-      setDisplayFig(figData);
-    }
+  const displayFig = React.useMemo(() => {
+    if (!figData) return null;
+    if (!flipSides) return figData;
+    console.log("✅ Flipping coordinates now...");
+    const flipped = {
+      ...figData,
+      data: figData.data.map(trace => {
+        if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
+          const flippedTrace = {
+            ...trace,
+            x: trace.x.map(x => PITCH_LENGTH - x),
+            y: trace.y.map(y => PITCH_WIDTH - y),
+          };
+          console.log(
+            "Flipped trace sample:",
+            flippedTrace.x?.slice(0, 3),
+            flippedTrace.y?.slice(0, 3)
+          );
+          return flippedTrace;
+        }
+        return trace;
+      }),
+    };
+    return flipped;
   }, [figData, flipSides]);
-
-  // For debug — check that flips are happening
-  useEffect(() => {
-    console.log("Flip sides changed:", flipSides, "FigData:", figData);
-  }, [flipSides, figData]);
-  
-
-  // const PITCH_LENGTH = 120; // Set based on your pitch
-  // const PITCH_WIDTH = 80; // Set based on your pitch
- 
-  // function getFlippedFigData(fig) {
-  //   if (!fig || !flipSides) return fig;
-  //   return {
-  //     ...fig,
-  //     data: fig.data.map(trace => {
-  //       if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
-  //         return {
-  //           ...trace,
-  //           x: trace.x.map(x => PITCH_LENGTH - x),
-  //           y: trace.y.map(y => PITCH_WIDTH - y)
-  //         };
-  //       }
-  //       return trace;
-  //     })
-  //   };
-  // }
-  
   
 
   return (
@@ -389,9 +360,9 @@ export default function MatchViz() {
         <p style={{ color: "#007bff" }}>Loading visualization...</p>
       ) : displayFig ? (
         <Plot
-          key={`${selectedMatch}-${flipSides}-${homeTeam}-${awayTeam}`}   // 👈 forces re-render
-          data={displayFig.data}
-          layout={displayFig.layout}
+          key={`${selectedMatch}-${flipSides}-${homeTeam}-${awayTeam}`}
+          data={displayFig?.data || []}
+          layout={displayFig?.layout || {}}
           style={{ margin: "auto", width: "90%", height: "90%" }}
         />
       ) : (
