@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 app = FastAPI()
 
 def make_pitch(fig, linecolor="black", lw=2):
-    """Add soccer pitch lines to a Plotly figure."""
+    """Add soccer pitch with goal mouths and posts."""
     pitch_shapes = [
         # Outline
         dict(type="rect", x0=0, y0=0, x1=120, y1=80, line=dict(color=linecolor, width=lw)),
@@ -24,6 +24,9 @@ def make_pitch(fig, linecolor="black", lw=2):
         # Six-yard boxes
         dict(type="rect", x0=0, y0=30, x1=6, y1=50, line=dict(color=linecolor, width=lw)),
         dict(type="rect", x0=114, y0=30, x1=120, y1=50, line=dict(color=linecolor, width=lw)),
+        # Goals (extend beyond pitch)
+        dict(type="rect", x0=-2, y0=36, x1=0, y1=44, line=dict(color="black", width=3)),
+        dict(type="rect", x0=120, y0=36, x1=122, y1=44, line=dict(color="black", width=3)),
         # Center circle
         dict(type="circle", x0=50, y0=30, x1=70, y1=50, line=dict(color=linecolor, width=lw)),
         # Penalty spots
@@ -32,6 +35,7 @@ def make_pitch(fig, linecolor="black", lw=2):
     ]
     fig.update_layout(shapes=pitch_shapes)
     return fig
+
 
 
 # Allow React frontend (port 3000 or 5173)
