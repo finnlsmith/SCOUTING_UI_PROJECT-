@@ -375,8 +375,8 @@ export default function MatchViz() {
         <p style={{ color: "#007bff" }}>Loading visualization...</p>
       ) : figData ? (
         <Plot
-          data={plotData.data}
-          layout={plotData.layout}
+          data={figData.data}
+          layout={figData.layout}
           style={{ margin: "auto", width: "90%", height: "90%" }}
         />
       ) : (
