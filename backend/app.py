@@ -11,6 +11,29 @@ import plotly.graph_objects as go
 #test
 app = FastAPI()
 
+def make_pitch(fig, linecolor="black", lw=2):
+    """Add soccer pitch lines to a Plotly figure."""
+    pitch_shapes = [
+        # Outline
+        dict(type="rect", x0=0, y0=0, x1=120, y1=80, line=dict(color=linecolor, width=lw)),
+        # Halfway line
+        dict(type="line", x0=60, y0=0, x1=60, y1=80, line=dict(color=linecolor, width=lw)),
+        # Penalty boxes
+        dict(type="rect", x0=0, y0=18, x1=18, y1=62, line=dict(color=linecolor, width=lw)),
+        dict(type="rect", x0=102, y0=18, x1=120, y1=62, line=dict(color=linecolor, width=lw)),
+        # Six-yard boxes
+        dict(type="rect", x0=0, y0=30, x1=6, y1=50, line=dict(color=linecolor, width=lw)),
+        dict(type="rect", x0=114, y0=30, x1=120, y1=50, line=dict(color=linecolor, width=lw)),
+        # Center circle
+        dict(type="circle", x0=50, y0=30, x1=70, y1=50, line=dict(color=linecolor, width=lw)),
+        # Penalty spots
+        dict(type="circle", x0=11, y0=39, x1=13, y1=41, line=dict(color=linecolor, width=lw)),
+        dict(type="circle", x0=107, y0=39, x1=109, y1=41, line=dict(color=linecolor, width=lw)),
+    ]
+    fig.update_layout(shapes=pitch_shapes)
+    return fig
+
+
 # Allow React frontend (port 3000 or 5173)
 app.add_middleware(
     CORSMiddleware,
@@ -160,48 +183,78 @@ def get_match_viz(filename: str, team: str | None = None):
             if shots.empty:
                 raise HTTPException(status_code=404, detail=f"No shots found for team '{team}'")
 
-        # --- Build shot map figure ---
+        # --- Build shot map figure (new version) ---
         fig = go.Figure()
+        subset = shots.copy()
+        is_goal = subset["shot_outcome"].fillna("").str.lower() == "goal"
 
-        # Pitch outline
-        pitch_shapes = [
-            dict(type="rect", x0=0, y0=0, x1=120, y1=80, line=dict(color="black", width=2)),
-            dict(type="line", x0=60, y0=0, x1=60, y1=80, line=dict(color="black", width=2)),
-            dict(type="circle", x0=52, y0=32, x1=68, y1=48, line=dict(color="black", width=2)),
-            dict(type="circle", x0=59, y0=39, x1=61, y1=41, line=dict(color="black", width=2)),
-        ]
-        fig.update_layout(shapes=pitch_shapes)
-
-        # Plot points (filtered if team is provided)
-        colors = {"home": "royalblue", "away": "orange"}
-        color = colors.get("home") if not team or team == home else colors.get("away")
-
+        # All shots
         fig.add_trace(go.Scatter(
-            x=shots["sx"], y=shots["sy"],
+            x=subset["sx"],
+            y=subset["sy"],
             mode="markers",
             marker=dict(
-                size=8 + 30 * shots["xg"].fillna(0),
-                color=color,
-                opacity=0.7,
+                size=10 + 60 * subset["xg"].fillna(0),
+                color=subset["xg"],
+                colorscale="Reds",
+                cmin=0,
+                cmax=subset["xg"].max(),
+                showscale=True,
+                colorbar=dict(title="xG"),
                 line=dict(width=0)
             ),
             text=[
-                f"<b>{row['player']}</b><br>xG: {row['xg']:.2f}<br>Outcome: {row['shot_outcome']}"
-                for _, row in shots.iterrows()
+                f"<b>{row['player']}</b><br>"
+                f"Minute: {row.get('minute', '')}<br>"
+                f"Second: {row.get('second', '')}<br>"
+                f"xG: {row['xg']:.3f}<br>"
+                f"Outcome: {row['shot_outcome']}"
+                for _, row in subset.iterrows()
             ],
             hoverinfo="text",
-            name=team if team else f"{home} / {away}"
+            name="Shot"
         ))
+
+        # Goals outlined in black
+        if is_goal.any():
+            fig.add_trace(go.Scatter(
+                x=subset.loc[is_goal, "sx"],
+                y=subset.loc[is_goal, "sy"],
+                mode="markers",
+                marker=dict(
+                    size=10 + 60 * subset.loc[is_goal, "xg"].fillna(0),
+                    color=subset.loc[is_goal, "xg"],
+                    colorscale="Reds",
+                    cmin=0,
+                    cmax=subset["xg"].max(),
+                    showscale=False,
+                    line=dict(width=3, color="black")
+                ),
+                text=[
+                    f"<b>{row['player']}</b><br>"
+                    f"Minute: {row.get('minute', '')}<br>"
+                    f"Second: {row.get('second', '')}<br>"
+                    f"xG: {row['xg']:.3f}<br>"
+                    f"Outcome: {row['shot_outcome']}"
+                    for _, row in subset[is_goal].iterrows()
+                ],
+                hoverinfo="text",
+                name="Goal"
+            ))
+
+        # Add pitch
+        fig = make_pitch(fig)
 
         fig.update_layout(
             title=f"Shot Map — {team or (home + ' vs ' + away)}",
-            xaxis=dict(range=[0, 120], showgrid=False, zeroline=False, visible=False),
-            yaxis=dict(range=[0, 80], showgrid=False, zeroline=False, visible=False),
+            xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
+            yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
             plot_bgcolor="white",
-            height=600
+            height=600,
+            width=900
         )
-
         fig.update_yaxes(autorange="reversed")
+
         return fig.to_dict()
 
     except Exception as e:
