@@ -355,12 +355,14 @@ export default function MatchViz() {
         )}
       </div>
 
+      console.log("🔁 Rendering Plot, flipSides =", flipSides);
+
       {/* Plot Section */}
       {plotLoading ? (
         <p style={{ color: "#007bff" }}>Loading visualization...</p>
       ) : displayFig ? (
         <Plot
-          key={`${selectedMatch}-${flipSides}-${homeTeam}-${awayTeam}-${Math.random()}`} // 👈 forces a full remount
+          key={`${selectedMatch}-${flipSides}-${homeTeam}-${awayTeam}`} // 👈 re-renders only when flip toggles or teams change
           data={displayFig?.data || []}
           layout={{
             ...displayFig?.layout,
