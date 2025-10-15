@@ -389,6 +389,7 @@ export default function MatchViz() {
         <p style={{ color: "#007bff" }}>Loading visualization...</p>
       ) : displayFig ? (
         <Plot
+          key={`${selectedMatch}-${flipSides}-${homeTeam}-${awayTeam}`}   // 👈 forces re-render
           data={displayFig.data}
           layout={displayFig.layout}
           style={{ margin: "auto", width: "90%", height: "90%" }}
