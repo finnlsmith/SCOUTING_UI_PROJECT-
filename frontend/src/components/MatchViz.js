@@ -360,9 +360,15 @@ export default function MatchViz() {
         <p style={{ color: "#007bff" }}>Loading visualization...</p>
       ) : displayFig ? (
         <Plot
-          key={`${selectedMatch}-${flipSides}-${homeTeam}-${awayTeam}`}
+          key={`${selectedMatch}-${flipSides}-${homeTeam}-${awayTeam}-${Math.random()}`} // 👈 forces a full remount
           data={displayFig?.data || []}
-          layout={displayFig?.layout || {}}
+          layout={{
+            ...displayFig?.layout,
+            title: {
+              ...displayFig?.layout?.title,
+              text: flipSides ? "Shot Map (Flipped)" : "Shot Map",
+            },
+          }}
           style={{ margin: "auto", width: "90%", height: "90%" }}
         />
       ) : (
