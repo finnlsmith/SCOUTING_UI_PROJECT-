@@ -215,6 +215,7 @@ export default function MatchViz() {
   const displayFig = React.useMemo(() => {
     if (!figData) return null;
     if (!flipSides) return figData;
+  
     console.log("✅ Flipping coordinates now...");
     const flipped = {
       ...figData,
@@ -225,16 +226,17 @@ export default function MatchViz() {
             x: trace.x.map(x => PITCH_LENGTH - x),
             y: trace.y.map(y => PITCH_WIDTH - y),
           };
-          console.log(
-            "Flipped trace sample:",
-            flippedTrace.x?.slice(0, 3),
-            flippedTrace.y?.slice(0, 3)
-          );
           return flippedTrace;
         }
         return trace;
       }),
     };
+  
+    console.log(
+      "Flipped first shot before/after:",
+      figData.data?.[0]?.x?.[0], "→", flipped?.data?.[0]?.x?.[0]
+    );
+  
     return flipped;
   }, [figData, flipSides]);
   
@@ -355,21 +357,21 @@ export default function MatchViz() {
         )}
       </div>
 
-      console.log("🔁 Rendering Plot, flipSides =", flipSides);
-
       {/* Plot Section */}
       {plotLoading ? (
         <p style={{ color: "#007bff" }}>Loading visualization...</p>
       ) : displayFig ? (
         <Plot
-          key={`${selectedMatch}-${flipSides}-${homeTeam}-${awayTeam}`} // 👈 re-renders only when flip toggles or teams change
-          data={displayFig?.data || []}
+          key={`${selectedMatch}-${homeTeam}-${awayTeam}-${flipSides ? "flipped" : "normal"}`} // forces full rerender
+          data={[...(displayFig?.data || [])]}
           layout={{
-            ...displayFig?.layout,
+            ...(displayFig?.layout || {}),
             title: {
-              ...displayFig?.layout?.title,
+              ...(displayFig?.layout?.title || {}),
               text: flipSides ? "Shot Map (Flipped)" : "Shot Map",
             },
+            xaxis: { ...(displayFig?.layout?.xaxis || {}), autorange: true },
+            yaxis: { ...(displayFig?.layout?.yaxis || {}), autorange: true },
           }}
           style={{ margin: "auto", width: "90%", height: "90%" }}
         />
