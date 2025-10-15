@@ -351,11 +351,12 @@ export default function MatchViz() {
         <p style={{ color: "#007bff" }}>Loading visualization...</p>
       ) : figData ? (
         // <Plot
-        //   data={figData.data}
-        //   layout={figData.layout}
+        //   data={plotData.data}
+        //   layout={plotData.layout}
         //   style={{ margin: "auto", width: "90%", height: "90%" }}
         // />
         <Plot
+          key={`${selectedMatch}-${flipSides}-${homeTeam}-${awayTeam}`}
           data={plotData.data}
           layout={plotData.layout}
           style={{ margin: "auto", width: "90%", height: "90%" }}
