@@ -208,26 +208,65 @@ export default function MatchViz() {
       setPlotLoading(false);
     }
   }  
+  // --- Plotly Flip Logic ---
+  const PITCH_LENGTH = 120;
+  const PITCH_WIDTH = 80;
 
-  const PITCH_LENGTH = 120; // Set based on your pitch
-  const PITCH_WIDTH = 80; // Set based on your pitch
+  // This is the figure that will actually be displayed
+  const [displayFig, setDisplayFig] = useState(null);
+
+  // Update displayed figure whenever figData or flipSides changes
+  useEffect(() => {
+    if (!figData) return;
+
+    if (flipSides) {
+      const flipped = {
+        ...figData,
+        data: figData.data.map(trace => {
+          if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
+            return {
+              ...trace,
+              x: trace.x.map(x => PITCH_LENGTH - x),
+              y: trace.y.map(y => PITCH_WIDTH - y),
+            };
+          }
+          return trace;
+        }),
+      };
+      setDisplayFig(flipped);
+    } else {
+      // Reset to original figure
+      setDisplayFig(figData);
+    }
+  }, [figData, flipSides]);
+
+  // For debug — check that flips are happening
+  useEffect(() => {
+    console.log("Flip sides changed:", flipSides, "FigData:", figData);
+  }, [flipSides, figData]);
+  
+
+  // const PITCH_LENGTH = 120; // Set based on your pitch
+  // const PITCH_WIDTH = 80; // Set based on your pitch
  
-  function getFlippedFigData(fig) {
-    if (!fig || !flipSides) return fig;
-    return {
-      ...fig,
-      data: fig.data.map(trace => {
-        if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
-          return {
-            ...trace,
-            x: trace.x.map(x => PITCH_LENGTH - x),
-            y: trace.y.map(y => PITCH_WIDTH - y)
-          };
-        }
-        return trace;
-      })
-    };
-  }
+  // function getFlippedFigData(fig) {
+  //   if (!fig || !flipSides) return fig;
+  //   return {
+  //     ...fig,
+  //     data: fig.data.map(trace => {
+  //       if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
+  //         return {
+  //           ...trace,
+  //           x: trace.x.map(x => PITCH_LENGTH - x),
+  //           y: trace.y.map(y => PITCH_WIDTH - y)
+  //         };
+  //       }
+  //       return trace;
+  //     })
+  //   };
+  // }
+  
+  
 
   return (
     <div style={{ textAlign: "center", padding: "20px" }}>
