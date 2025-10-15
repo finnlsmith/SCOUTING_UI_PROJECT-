@@ -104,36 +104,41 @@ export default function MatchViz() {
     fetchMatches();
   }, []);
 
-  // Fetch JSON when a match is selected
+  // Fetch minimal info and show blank pitch when a match is selected
   useEffect(() => {
     if (!selectedMatch) return;
-  
+
     setPlotLoading(true);
     setFigData(null);
     setUploadSuccess(false);
     setUploadError("");
-  
-    // First: fetch combined view (also contains team info)
+
     fetch(`${BACKEND_URL}/api/match/${selectedMatch}/viz`)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
       .then((data) => {
-        setFigData(data);
-  
-        // Try to extract teams from title (since backend returns "Home vs Away")
+        // Extract team names
         if (data.layout?.title?.text?.includes("vs")) {
           const parts = data.layout.title.text.split("vs");
           setHomeTeam(parts[0].replace("Shot Map —", "").trim());
           setAwayTeam(parts[1].replace(/<br>.*/, "").trim());
         }
+
+        // Render blank pitch with shapes only
+        setFigData({
+          data: [],
+          layout: {
+            ...data.layout,
+            title: "Select a team to view their shot map",
+          },
+        });
       })
-      .catch((err) => {
-        console.error("Backend fetch failed:", err);
-      })
+      .catch((err) => console.error("Backend fetch failed:", err))
       .finally(() => setPlotLoading(false));
-  }, [selectedMatch, figData]);
+  }, [selectedMatch]);
+
 
   // If you want to auto-flip certain matches by default, uncomment this logic:
   /*
