@@ -384,20 +384,13 @@ export default function MatchViz() {
         )}
       </div>
 
-      {/* Plot Section - covers loading state and no data state! */}
+      {/* Plot Section */}
       {plotLoading ? (
         <p style={{ color: "#007bff" }}>Loading visualization...</p>
-      ) : figData ? (
-
-        // <Plot
-        //   key={`${selectedMatch}-${flipSides}-${homeTeam}-${awayTeam}`}
-        //   data={plotData.data}
-        //   layout={plotData.layout}
-        //   style={{ margin: "auto", width: "90%", height: "90%" }}
-        // />
+      ) : displayFig ? (
         <Plot
-          data={getFlippedFigData(figData)?.data || []}
-          layout={getFlippedFigData(figData)?.layout || {}}
+          data={displayFig.data}
+          layout={displayFig.layout}
           style={{ margin: "auto", width: "90%", height: "90%" }}
         />
       ) : (
