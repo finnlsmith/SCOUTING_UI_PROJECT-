@@ -213,22 +213,61 @@ export default function MatchViz() {
   const PITCH_WIDTH = 80; // Set based on your pitch
  
   // Create a flipped copy of figData without mutating state
-  let plotData = figData;
-  if (figData && flipSides) {
-    plotData = {
-      ...figData,
-      data: figData.data.map(trace => {
-        if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
-          return {
-            ...trace,
-            x: trace.x.map(x => PITCH_LENGTH - x),
-            y: trace.y.map(y => PITCH_WIDTH - y)
-          };
-        }
-        return trace;
-      })
-    };
-  }
+  // let plotData = figData;
+  // if (figData && flipSides) {
+  //   plotData = {
+  //     ...figData,
+  //     data: figData.data.map(trace => {
+  //       if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
+  //         return {
+  //           ...trace,
+  //           x: trace.x.map(x => PITCH_LENGTH - x),
+  //           y: trace.y.map(y => PITCH_WIDTH - y)
+  //         };
+  //       }
+  //       return trace;
+  //     })
+  //   };
+  // }
+  useEffect(() => {
+    if (!figData) return;
+  
+    // If Flip Sides is ON
+    if (flipSides) {
+      const flipped = {
+        ...figData,
+        data: figData.data.map(trace => {
+          if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
+            return {
+              ...trace,
+              x: trace.x.map(x => PITCH_LENGTH - x),
+              y: trace.y.map(y => PITCH_WIDTH - y)
+            };
+          }
+          return trace;
+        })
+      };
+      setFigData(flipped);
+    } else {
+      // If Flip Sides is OFF, re-fetch original data from backend
+      if (selectedMatch && (homeTeam || awayTeam)) {
+        // Fetch the currently visible team’s data again
+        const currentTeam =
+          figData.layout?.title?.text?.includes(homeTeam)
+            ? homeTeam
+            : awayTeam;
+        fetch(
+          `${BACKEND_URL}/api/match/${selectedMatch}/viz?team=${encodeURIComponent(
+            currentTeam
+          )}`
+        )
+          .then(res => res.json())
+          .then(data => setFigData(data))
+          .catch(err => console.error("Refetch error:", err));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flipSides]);  
 
   return (
     <div style={{ textAlign: "center", padding: "20px" }}>
@@ -350,15 +389,16 @@ export default function MatchViz() {
       {plotLoading ? (
         <p style={{ color: "#007bff" }}>Loading visualization...</p>
       ) : figData ? (
+
         // <Plot
+        //   key={`${selectedMatch}-${flipSides}-${homeTeam}-${awayTeam}`}
         //   data={plotData.data}
         //   layout={plotData.layout}
         //   style={{ margin: "auto", width: "90%", height: "90%" }}
         // />
         <Plot
-          key={`${selectedMatch}-${flipSides}-${homeTeam}-${awayTeam}`}
-          data={plotData.data}
-          layout={plotData.layout}
+          data={figData?.data || []}
+          layout={figData?.layout || {}}
           style={{ margin: "auto", width: "90%", height: "90%" }}
         />
       ) : (
