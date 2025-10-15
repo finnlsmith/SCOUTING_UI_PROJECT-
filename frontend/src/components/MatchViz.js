@@ -207,23 +207,52 @@ export default function MatchViz() {
   const PITCH_LENGTH = 120; // Set based on your pitch
   const PITCH_WIDTH = 80; // Set based on your pitch
 
-  let plotData = figData ? { ...figData } : null;
-  if (plotData && flipSides) {
-    plotData = {
-      ...figData,
-      data: figData.data.map(trace => {
-        // Only flip if this is a shot/scatter trace with x and y arrays
-        if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
-          return {
-            ...trace,
-            x: trace.x.map(val => PITCH_LENGTH - val),
-            y: trace.y.map(val => PITCH_WIDTH - val)
-          };
-        }
-        return trace;
-      })
-    };
-  }
+  // let plotData = figData ? { ...figData } : null;
+  // if (plotData && flipSides) {
+  //   plotData = {
+  //     ...figData,
+  //     data: figData.data.map(trace => {
+  //       // Only flip if this is a shot/scatter trace with x and y arrays
+  //       if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
+  //         return {
+  //           ...trace,
+  //           x: trace.x.map(val => PITCH_LENGTH - val),
+  //           y: trace.y.map(val => PITCH_WIDTH - val)
+  //         };
+  //       }
+  //       return trace;
+  //     })
+  //   };
+  // }
+  // Auto-flip the current figure whenever flipSides changes
+  useEffect(() => {
+    if (!figData) return;
+
+    if (flipSides) {
+      const flipped = {
+        ...figData,
+        data: figData.data.map(trace => {
+          if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
+            return {
+              ...trace,
+              x: trace.x.map(x => PITCH_LENGTH - x),
+              y: trace.y.map(y => PITCH_WIDTH - y)
+            };
+          }
+          return trace;
+        })
+      };
+      setFigData(flipped);
+    } else {
+      // Re-fetch the original unflipped data
+      if (selectedMatch) {
+        fetch(`${BACKEND_URL}/api/match/${selectedMatch}/viz`)
+          .then(res => res.json())
+          .then(data => setFigData(data))
+          .catch(err => console.error("Refetch error:", err));
+      }
+    }
+  }, [flipSides]);
 
   return (
     <div style={{ textAlign: "center", padding: "20px" }}>
