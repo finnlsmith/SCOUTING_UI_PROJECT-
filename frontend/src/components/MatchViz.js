@@ -211,52 +211,24 @@ export default function MatchViz() {
 
   const PITCH_LENGTH = 120; // Set based on your pitch
   const PITCH_WIDTH = 80; // Set based on your pitch
-
-  // let plotData = figData ? { ...figData } : null;
-  // if (plotData && flipSides) {
-  //   plotData = {
-  //     ...figData,
-  //     data: figData.data.map(trace => {
-  //       // Only flip if this is a shot/scatter trace with x and y arrays
-  //       if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
-  //         return {
-  //           ...trace,
-  //           x: trace.x.map(val => PITCH_LENGTH - val),
-  //           y: trace.y.map(val => PITCH_WIDTH - val)
-  //         };
-  //       }
-  //       return trace;
-  //     })
-  //   };
-  // }
-  // Auto-flip the current figure whenever flipSides changes
-  useEffect(() => {
-    if (!figData) return;
-
-    if (flipSides) {
-      const flipped = {
-        ...figData,
-        data: figData.data.map(trace => {
-          if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
-            return {
-              ...trace,
-              x: trace.x.map(x => PITCH_LENGTH - x),
-              y: trace.y.map(y => PITCH_WIDTH - y)
-            };
-          }
-          return trace;
-        })
-      };
-      setFigData(flipped);
-    } else if (selectedMatch) {
-      // Re-fetch the original unflipped data
-      fetch(`${BACKEND_URL}/api/match/${selectedMatch}/viz`)
-        .then(res => res.json())
-        .then(data => setFigData(data))
-        .catch(err => console.error("Refetch error:", err));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flipSides]);
+ 
+  // Create a flipped copy of figData without mutating state
+  let plotData = figData;
+  if (figData && flipSides) {
+    plotData = {
+      ...figData,
+      data: figData.data.map(trace => {
+        if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
+          return {
+            ...trace,
+            x: trace.x.map(x => PITCH_LENGTH - x),
+            y: trace.y.map(y => PITCH_WIDTH - y)
+          };
+        }
+        return trace;
+      })
+    };
+  }
 
   return (
     <div style={{ textAlign: "center", padding: "20px" }}>
@@ -378,9 +350,14 @@ export default function MatchViz() {
       {plotLoading ? (
         <p style={{ color: "#007bff" }}>Loading visualization...</p>
       ) : figData ? (
+        // <Plot
+        //   data={figData.data}
+        //   layout={figData.layout}
+        //   style={{ margin: "auto", width: "90%", height: "90%" }}
+        // />
         <Plot
-          data={figData.data}
-          layout={figData.layout}
+          data={plotData.data}
+          layout={plotData.layout}
           style={{ margin: "auto", width: "90%", height: "90%" }}
         />
       ) : (
