@@ -248,15 +248,14 @@ export default function MatchViz() {
         })
       };
       setFigData(flipped);
-    } else {
+    } else if (selectedMatch) {
       // Re-fetch the original unflipped data
-      if (selectedMatch) {
-        fetch(`${BACKEND_URL}/api/match/${selectedMatch}/viz`)
-          .then(res => res.json())
-          .then(data => setFigData(data))
-          .catch(err => console.error("Refetch error:", err));
-      }
+      fetch(`${BACKEND_URL}/api/match/${selectedMatch}/viz`)
+        .then(res => res.json())
+        .then(data => setFigData(data))
+        .catch(err => console.error("Refetch error:", err));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flipSides]);
 
   return (
