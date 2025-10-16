@@ -202,6 +202,7 @@ export default function MatchViz() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setFigData(data);
+      console.log("🧠 FigData sample:", data);
     } catch (err) {
       console.error("Team shotmap error:", err);
     } finally {
@@ -220,25 +221,29 @@ export default function MatchViz() {
     const flipped = {
       ...figData,
       data: figData.data.map(trace => {
-        if (Array.isArray(trace.x) && Array.isArray(trace.y)) {
+        // Try to safely extract numeric arrays from typed arrays
+        const xArr = trace.x?._inputArray || trace.x;
+        const yArr = trace.y?._inputArray || trace.y;
+  
+        if (Array.isArray(xArr) || xArr instanceof Float64Array) {
           const flippedTrace = {
             ...trace,
-            x: trace.x.map(x => PITCH_LENGTH - x),
-            y: trace.y.map(y => PITCH_WIDTH - y),
+            x: Array.from(xArr, x => PITCH_LENGTH - x),
+            y: Array.from(yArr, y => PITCH_WIDTH - y),
           };
+          console.log(
+            "Flipped first shot before/after:",
+            xArr[0], "→", flippedTrace.x[0]
+          );
           return flippedTrace;
         }
         return trace;
       }),
     };
   
-    console.log(
-      "Flipped first shot before/after:",
-      figData.data?.[0]?.x?.[0], "→", flipped?.data?.[0]?.x?.[0]
-    );
-  
     return flipped;
   }, [figData, flipSides]);
+  
   
 
   return (
