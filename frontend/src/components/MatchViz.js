@@ -97,10 +97,10 @@ export default function MatchViz() {
   const [flipSides, setFlipSides] = useState(false); // State for flipping plot
   const [homeTeam, setHomeTeam] = useState(null);
   const [awayTeam, setAwayTeam] = useState(null);
-  const [homeScore, setHomeScore] = useState(null);
-  const [awayScore, setAwayScore] = useState(null);
   const [score, setScore] = useState(null); // 🆕 combined formatted score
   const [isScoreVisible, setIsScoreVisible] = useState(false); // 🆕 for display toggle
+  const [competitionStage, setCompetitionStage] = useState(null);
+
 
 
   // Fetch available matches (MOCKED, swap for backend later)
@@ -162,6 +162,7 @@ export default function MatchViz() {
         return res.json();
       })
       .then((data) => {
+        console.log("📦 Backend raw data:", data);
         // Use backend-provided team and score info
         if (data.home_team && data.away_team) {
           setHomeTeam(data.home_team);
@@ -174,6 +175,11 @@ export default function MatchViz() {
           setAwayTeam(parts[1].replace(/<br>.*/, "").trim());
           setIsScoreVisible(true);
         }
+        if (data.competition_stage !== undefined && data.competition_stage !== null) {
+          setCompetitionStage(data.competition_stage);
+        } else {
+          setCompetitionStage(null);
+        }        
         
         // Normalize scores (accept numbers or numeric strings)
         const hs = data.home_score;
@@ -181,20 +187,10 @@ export default function MatchViz() {
         const hsNum = typeof hs === "string" ? Number(hs) : hs;
         const asNum = typeof as === "string" ? Number(as) : as;
         if (!Number.isNaN(hsNum) && hsNum !== null && !Number.isNaN(asNum) && asNum !== null) {
-          setHomeScore(hsNum);
-          setAwayScore(asNum);
           setScore(`${hsNum} - ${asNum}`);
         } else {
-          setHomeScore(null);
-          setAwayScore(null);
           setScore(null);
         }
-
-        // Extract scores if available 
-        //if (data.score) {
-        //  setHomeScore(data.score.home || 0)
-        //  setAwayScore(data.scores.away || 0)
-        //}
 
         // Render blank pitch with shapes only
         setFigData({
@@ -548,9 +544,7 @@ export default function MatchViz() {
               onChange={(e) => {
                 setSelectedMatch(e.target.value);
                 setScore(null);
-                setHomeScore(null);
-                setAwayScore(null);
-                setIsScoreVisible(false)
+                setIsScoreVisible(false);
               }}
             >
               <option value="">-- Choose a match --</option>
@@ -632,22 +626,96 @@ export default function MatchViz() {
       </div>
       
       {/* Scoreboard Section (above visualization) */}
-      {selectedMatch && ((homeTeam || derivedTeams.home) || (awayTeam || derivedTeams.away)) && (
+      
+      
+      {isScoreVisible && (
         <div
           style={{
             marginTop: 30,
-            marginBottom: 10,
-            textAlign: "center",
-            fontFamily: "Inter, system-ui, sans-serif",
-            fontSize: "1.8rem",
-            fontWeight: 700,
-            color: "#111827",
-            textTransform: "capitalize",
+            marginBottom: 30,
+            display: "flex",
+            justifyContent: "center",
           }}
         >
-          {(homeTeam || derivedTeams.home) || "Home"} {(homeScore !== null && awayScore !== null) ? `${homeScore} - ${awayScore}` : "vs"} {(awayTeam || derivedTeams.away) || "Away"}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "10px 40px",
+              border: "1px solid #e5e7eb",
+              borderRadius: "10px",
+              padding: "20px 30px",
+              backgroundColor: "#f9fafb",
+              width: "360px",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+              fontFamily: "Inter, system-ui, sans-serif",
+            }}
+          >
+            {/* 🏆 Competition Stage */}
+            {competitionStage && (
+              <div
+                style={{
+                  gridColumn: "1 / span 2",
+                  textAlign: "center",
+                  fontSize: "1rem",
+                  fontWeight: 600,
+                  color: "#6b7280",
+                  marginBottom: "8px",
+                }}
+              >
+                {competitionStage}
+              </div>
+            )}
+
+            {/* Header row: team names */}
+            <div
+              style={{
+                gridColumn: "1 / span 2",
+                display: "flex",
+                justifyContent: "space-between",
+                fontWeight: 700,
+                fontSize: "1.2rem",
+                color: "#111827",
+                marginBottom: "6px",
+              }}
+            >
+              <span>{homeTeam || derivedTeams.home || "Home"}</span>
+              <span>{awayTeam || derivedTeams.away || "Away"}</span>
+            </div>
+
+            {/* Label row */}
+            <div
+              style={{
+                gridColumn: "1 / span 2",
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: "1rem",
+                color: "#4b5563",
+                fontWeight: 500,
+                marginBottom: "2px",
+              }}
+            >
+              <span>Goals</span>
+            </div>
+
+            {/* Score row */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gridColumn: "1 / span 2",
+                fontSize: "1.1rem",
+                fontWeight: 600,
+                color: "#111827",
+              }}
+            >
+              <span>{score ? score.split(" - ")[0] : "-"}</span>
+              <span>{score ? score.split(" - ")[1] : "-"}</span>
+            </div>
+          </div>
         </div>
       )}
+
 
       {/* Plot Section */}
       {plotLoading ? (
