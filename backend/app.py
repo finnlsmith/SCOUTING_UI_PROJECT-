@@ -288,6 +288,23 @@ def get_match_viz(filename: str, team: str | None = None):
             home_team = away_team = None
             home_score = away_score = None
 
+        # --- Compute shot counts from events CSV ---
+        home_shots = away_shots = None
+        try:
+            events_key = f"events_{match_id}.csv"
+            print(f"🎯 Loading events CSV for shots: {events_key}")
+            ev_obj = s3_client.get_object(Bucket=S3_BUCKET, Key=events_key)
+            ev_df = pd.read_csv(io.BytesIO(ev_obj["Body"].read()))
+
+            if "type" in ev_df.columns and "team" in ev_df.columns:
+                home_shots = int(ev_df[(ev_df["team"] == home_team) & (ev_df["type"] == "Shot")].shape[0])
+                away_shots = int(ev_df[(ev_df["team"] == away_team) & (ev_df["type"] == "Shot")].shape[0])
+            print(f"📊 Shot counts — {home_team}: {home_shots}, {away_team}: {away_shots}")
+
+        except Exception as e:
+            print("⚠️ Could not compute shot counts:", e)
+            home_shots = away_shots = None
+
         # --- Combine figure + score info ---
         fig_dict = fig.to_dict()
         fig_dict.update({
@@ -295,9 +312,10 @@ def get_match_viz(filename: str, team: str | None = None):
             "away_team": away_team,
             "home_score": home_score,
             "away_score": away_score,
-            "competition_stage": competition_stage  # 🆕 add this line
+            "competition_stage": competition_stage,
+            "home_shots": home_shots,
+            "away_shots": away_shots,  # 🆕 add this
         })
-        print("✅ Returning competition_stage:", competition_stage)  # 👈 add this line
         print("🚀 Sending keys:", list(fig_dict.keys()))
         return JSONResponse(content=jsonable_encoder(fig_dict))
 
