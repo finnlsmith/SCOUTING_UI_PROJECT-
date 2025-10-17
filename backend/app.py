@@ -8,6 +8,8 @@ import os
 import io
 import numpy as np
 import plotly.graph_objects as go
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 #test
 app = FastAPI()
 
@@ -276,9 +278,11 @@ def get_match_viz(filename: str, team: str | None = None):
                 away_team = row["away_team"]
                 home_score = int(row["home_score"])
                 away_score = int(row["away_score"])
+                competition_stage = row.get("competition_stage", None)
             else:
                 home_team = away_team = None
                 home_score = away_score = None
+                competition_stage = None
         except Exception as e:
             print("⚠️ Could not fetch score info:", e)
             home_team = away_team = None
@@ -290,9 +294,12 @@ def get_match_viz(filename: str, team: str | None = None):
             "home_team": home_team,
             "away_team": away_team,
             "home_score": home_score,
-            "away_score": away_score
+            "away_score": away_score,
+            "competition_stage": competition_stage  # 🆕 add this line
         })
-        return fig_dict
+        print("✅ Returning competition_stage:", competition_stage)  # 👈 add this line
+        print("🚀 Sending keys:", list(fig_dict.keys()))
+        return JSONResponse(content=jsonable_encoder(fig_dict))
 
 
     except Exception as e:
