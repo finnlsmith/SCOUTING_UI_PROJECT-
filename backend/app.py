@@ -259,7 +259,41 @@ def get_match_viz(filename: str, team: str | None = None):
         )
         fig.update_yaxes(autorange="reversed")
 
-        return fig.to_dict()
+        # --- Fetch score info from matches_df.csv on S3 ---
+        try:
+            obj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
+            matches_df = pd.read_csv(obj["Body"])
+
+            # Extract match_id digits from filename (e.g., 'events_3788769.csv' → 3788769)
+            import re
+            match_id_match = re.search(r"\d+", filename)
+            match_id = int(match_id_match.group()) if match_id_match else None
+
+            row = matches_df[matches_df["match_id"] == match_id]
+            if not row.empty:
+                row = row.iloc[0]
+                home_team = row["home_team"]
+                away_team = row["away_team"]
+                home_score = int(row["home_score"])
+                away_score = int(row["away_score"])
+            else:
+                home_team = away_team = None
+                home_score = away_score = None
+        except Exception as e:
+            print("⚠️ Could not fetch score info:", e)
+            home_team = away_team = None
+            home_score = away_score = None
+
+        # --- Combine figure + score info ---
+        fig_dict = fig.to_dict()
+        fig_dict.update({
+            "home_team": home_team,
+            "away_team": away_team,
+            "home_score": home_score,
+            "away_score": away_score
+        })
+        return fig_dict
+
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

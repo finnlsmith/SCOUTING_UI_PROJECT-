@@ -58,6 +58,10 @@ export default function MatchViz() {
   const [flipSides, setFlipSides] = useState(false); // State for flipping plot
   const [homeTeam, setHomeTeam] = useState(null);
   const [awayTeam, setAwayTeam] = useState(null);
+  const [homeScore, setHomeScore] = useState(null);
+  const [awayScore, setAwayScore] = useState(null);
+  const [score, setScore] = useState(null); // 🆕 combined formatted score
+  const [isScoreVisible, setIsScoreVisible] = useState(false); // 🆕 for display toggle
 
 
   // Fetch available matches (MOCKED, swap for backend later)
@@ -119,12 +123,39 @@ export default function MatchViz() {
         return res.json();
       })
       .then((data) => {
-        // Extract team names
-        if (data.layout?.title?.text?.includes("vs")) {
+        // Use backend-provided team and score info
+        if (data.home_team && data.away_team) {
+          setHomeTeam(data.home_team);
+          setAwayTeam(data.away_team);
+          setIsScoreVisible(true);
+        } else if (data.layout?.title?.text?.includes("vs")) {
+          // fallback if backend didn’t send metadata
           const parts = data.layout.title.text.split("vs");
           setHomeTeam(parts[0].replace("Shot Map —", "").trim());
           setAwayTeam(parts[1].replace(/<br>.*/, "").trim());
+          setIsScoreVisible(true);
         }
+        
+        // Normalize scores (accept numbers or numeric strings)
+        const hs = data.home_score;
+        const as = data.away_score;
+        const hsNum = typeof hs === "string" ? Number(hs) : hs;
+        const asNum = typeof as === "string" ? Number(as) : as;
+        if (!Number.isNaN(hsNum) && hsNum !== null && !Number.isNaN(asNum) && asNum !== null) {
+          setHomeScore(hsNum);
+          setAwayScore(asNum);
+          setScore(`${hsNum} - ${asNum}`);
+        } else {
+          setHomeScore(null);
+          setAwayScore(null);
+          setScore(null);
+        }
+
+        // Extract scores if available 
+        //if (data.score) {
+        //  setHomeScore(data.score.home || 0)
+        //  setAwayScore(data.scores.away || 0)
+        //}
 
         // Render blank pitch with shapes only
         setFigData({
@@ -138,6 +169,32 @@ export default function MatchViz() {
       .catch((err) => console.error("Backend fetch failed:", err))
       .finally(() => setPlotLoading(false));
   }, [selectedMatch]);
+
+  // Fallback: derive team names from the selected option label if not provided by backend
+  useEffect(() => {
+    if (!selectedMatch || (homeTeam && awayTeam)) return;
+    const m = matches.find((mm) => mm.file === selectedMatch);
+    if (!m || !m.label) return;
+    // Expected label format: "YYYY-MM-DD - Home vs Away – Tag"
+    const match = m.label.match(/-\s*(.*?)\s+vs\s+(.*?)\s+–/);
+    if (match && match[1] && match[2]) {
+      setHomeTeam(match[1]);
+      setAwayTeam(match[2]);
+      setIsScoreVisible(true);
+    }
+  }, [selectedMatch, matches, homeTeam, awayTeam]);
+
+  // Memoized derived team names from dropdown label as a final fallback
+  const derivedTeams = React.useMemo(() => {
+    if (!selectedMatch) return { home: null, away: null };
+    const m = matches.find((mm) => mm.file === selectedMatch);
+    if (!m || !m.label) return { home: null, away: null };
+    const match = m.label.match(/-\s*(.*?)\s+vs\s+(.*?)\s+–/);
+    if (match && match[1] && match[2]) {
+      return { home: match[1], away: match[2] };
+    }
+    return { home: null, away: null };
+  }, [matches, selectedMatch]);
 
 
   // If you want to auto-flip certain matches by default, uncomment this logic:
@@ -292,6 +349,10 @@ export default function MatchViz() {
               value={selectedMatch}
               onChange={(e) => {
                 setSelectedMatch(e.target.value);
+                setScore(null);
+                setHomeScore(null);
+                setAwayScore(null);
+                setIsScoreVisible(false)
               }}
             >
               <option value="">-- Choose a match --</option>
@@ -361,6 +422,24 @@ export default function MatchViz() {
           </>
         )}
       </div>
+      
+      {/* Scoreboard Section (above visualization) */}
+      {selectedMatch && ((homeTeam || derivedTeams.home) || (awayTeam || derivedTeams.away)) && (
+        <div
+          style={{
+            marginTop: 30,
+            marginBottom: 10,
+            textAlign: "center",
+            fontFamily: "Inter, system-ui, sans-serif",
+            fontSize: "1.8rem",
+            fontWeight: 700,
+            color: "#111827",
+            textTransform: "capitalize",
+          }}
+        >
+          {(homeTeam || derivedTeams.home) || "Home"} {(homeScore !== null && awayScore !== null) ? `${homeScore} - ${awayScore}` : "vs"} {(awayTeam || derivedTeams.away) || "Away"}
+        </div>
+      )}
 
       {/* Plot Section */}
       {plotLoading ? (
