@@ -288,22 +288,50 @@ def get_match_viz(filename: str, team: str | None = None):
             home_team = away_team = None
             home_score = away_score = None
 
-        # --- Compute shot counts from events CSV ---
+        # --- Compute shot counts, shots on target, and total xG ---
         home_shots = away_shots = None
+        home_shots_on_target = away_shots_on_target = None
+        home_xg_sum = away_xg_sum = None
+
         try:
             events_key = f"events_{match_id}.csv"
-            print(f"🎯 Loading events CSV for shots: {events_key}")
+            print(f"🎯 Loading events CSV for shots/xG: {events_key}")
             ev_obj = s3_client.get_object(Bucket=S3_BUCKET, Key=events_key)
             ev_df = pd.read_csv(io.BytesIO(ev_obj["Body"].read()))
 
-            if "type" in ev_df.columns and "team" in ev_df.columns:
+            if {"type", "team", "shot_outcome", "shot_statsbomb_xg"} <= set(ev_df.columns):
+                # All shots
                 home_shots = int(ev_df[(ev_df["team"] == home_team) & (ev_df["type"] == "Shot")].shape[0])
                 away_shots = int(ev_df[(ev_df["team"] == away_team) & (ev_df["type"] == "Shot")].shape[0])
-            print(f"📊 Shot counts — {home_team}: {home_shots}, {away_team}: {away_shots}")
+
+                # Shots on target (Saved or Goal)
+                on_target = ["Saved", "Goal"]
+                home_shots_on_target = int(ev_df[
+                    (ev_df["team"] == home_team) & 
+                    (ev_df["type"] == "Shot") &
+                    (ev_df["shot_outcome"].isin(on_target))
+                ].shape[0])
+                away_shots_on_target = int(ev_df[
+                    (ev_df["team"] == away_team) &
+                    (ev_df["type"] == "Shot") &
+                    (ev_df["shot_outcome"].isin(on_target))
+                ].shape[0])
+
+                # Total xG
+                home_xg_sum = float(ev_df[
+                    (ev_df["team"] == home_team) &
+                    (ev_df["type"] == "Shot")
+                ]["shot_statsbomb_xg"].sum())
+                away_xg_sum = float(ev_df[
+                    (ev_df["team"] == away_team) &
+                    (ev_df["type"] == "Shot")
+                ]["shot_statsbomb_xg"].sum())
+
+                print(f"📊 {home_team}: Shots={home_shots}, On Target={home_shots_on_target}, xG={home_xg_sum:.2f}")
+                print(f"📊 {away_team}: Shots={away_shots}, On Target={away_shots_on_target}, xG={away_xg_sum:.2f}")
 
         except Exception as e:
-            print("⚠️ Could not compute shot counts:", e)
-            home_shots = away_shots = None
+            print("⚠️ Could not compute shots/xG stats:", e)
 
         # --- Combine figure + score info ---
         fig_dict = fig.to_dict()
@@ -315,6 +343,10 @@ def get_match_viz(filename: str, team: str | None = None):
             "competition_stage": competition_stage,
             "home_shots": home_shots,
             "away_shots": away_shots,  # 🆕 add this
+            "home_shots_on_target": home_shots_on_target,
+            "away_shots_on_target": away_shots_on_target,
+            "home_xg_sum": home_xg_sum,
+            "away_xg_sum": away_xg_sum,
         })
         print("🚀 Sending keys:", list(fig_dict.keys()))
         return JSONResponse(content=jsonable_encoder(fig_dict))
