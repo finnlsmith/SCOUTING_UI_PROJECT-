@@ -1,6 +1,45 @@
 import React, { useState, useEffect } from "react";
 import Plot from "react-plotly.js";
 
+const TEAM_COLORS = {
+  "Albania": "#E41F26",
+  "Andorra": "#0033A0",
+  "Armenia": "#D90012",
+  "Austria": "#ED2939",
+  "Azerbaijan": "#007FFF",
+  "Belarus": "#E31A1C",
+  "Belgium": "#FF0000",
+  "Bosnia and Herzegovina": "#0066CC",
+  "Bulgaria": "#FFD700",
+  "Croatia": "#0057B8",
+  "Cyprus": "#006A4E",
+  "Czech Republic": "#0039A6",
+  "Denmark": "#C60C30",
+  "England": "#CF142B",
+  "Estonia": "#0072CE",
+  "Finland": "#003580",
+  "France": "#1F14DE",
+  "Germany": "#000000",
+  "Greece": "#0000FF",
+  "Hungary": "#CE1126",
+  "Iceland": "#003897",
+  "Ireland": "#009A49",
+  "Italy": "#007FFF",
+  "Netherlands": "#FF6600",
+  "Poland": "#0057B8",
+  "Portugal": "#006600",
+  "Romania": "#0033A0",
+  "Russia": "#0057B8",
+  "Scotland": "#0033A0",
+  "Spain": "#C60B1E",
+  "Sweden": "#FFEC00",
+  "Switzerland": "#FF0000",
+  "Turkey": "#E30A17",
+  "Ukraine": "#FFE000",
+  "Wales": "#D80000",
+};
+
+
 // Use environment variable for backend URL
 // const BACKEND_URL = "http://127.0.0.1:8000" || "http://localhost:8000";
 const BACKEND_URL = "https://columbia-msds-f25-soccer.onrender.com";
@@ -252,20 +291,179 @@ export default function MatchViz() {
     setUploadError("");
     setGlobalError("");
   }
+
   async function fetchTeamShotmap(team) {
     try {
+      setFlipSides(false);
       setPlotLoading(true);
-      const res = await fetch(`${BACKEND_URL}/api/match/${selectedMatch}/viz?team=${encodeURIComponent(team)}`);
+      const res = await fetch(
+        `${BACKEND_URL}/api/match/${selectedMatch}/viz?team=${encodeURIComponent(team)}`
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setFigData(data);
-      console.log("🧠 FigData sample:", data);
+  
+      // 🎨 Apply team color
+      const teamColor = TEAM_COLORS[team] || "#1f77b4"; // fallback blue if not found
+      const recoloredData = {
+        ...data,
+        data: data.data.map(trace => {
+          if (trace.marker?.color?.array || trace.marker?.colorbar) {
+            // Keep xG scaling but overlay base color
+            return {
+              ...trace,
+              marker: {
+                ...trace.marker,
+                colorscale: [
+                  [0, "white"],
+                  [1, teamColor],
+                ],
+                colorbar: undefined, // optional: hide the xG bar if you want
+              },
+            };
+          }
+          return trace;
+        }),
+      };
+  
+      setFigData(recoloredData);
+      console.log(`🎨 Applied color for ${team}: ${teamColor}`);
     } catch (err) {
       console.error("Team shotmap error:", err);
     } finally {
       setPlotLoading(false);
     }
-  }  
+  }
+  async function fetchBothShotmaps() {
+    try {
+      setFlipSides(false);
+      setPlotLoading(true);
+  
+      // Fetch both teams' shot maps concurrently
+      const [homeRes, awayRes] = await Promise.all([
+        fetch(`${BACKEND_URL}/api/match/${selectedMatch}/viz?team=${encodeURIComponent(homeTeam)}`),
+        fetch(`${BACKEND_URL}/api/match/${selectedMatch}/viz?team=${encodeURIComponent(awayTeam)}`)
+      ]);
+  
+      if (!homeRes.ok || !awayRes.ok) throw new Error("Error fetching team data");
+  
+      const [homeData, awayData] = await Promise.all([homeRes.json(), awayRes.json()]);
+
+      console.log("📊 Raw homeData:", homeData);
+      console.log("📊 Raw awayData:", awayData);
+
+  
+      // 🎨 Team colors
+      const homeColor = TEAM_COLORS[homeTeam] || "#1f77b4";
+      const awayColor = TEAM_COLORS[awayTeam] || "#ff7f0e";
+  
+      const PITCH_LENGTH = 120;
+      const PITCH_WIDTH = 80;
+  
+      // 🧭 Flip the away team’s coordinates properly
+      const flippedAwayData = {
+        ...awayData,
+        data: awayData.data.map(trace => {
+          // Extract x and y robustly — works with typed arrays or encoded objects
+          let xArr =
+            trace.x?._inputArray ||
+            trace.x?.bdata ||
+            trace.x?.data ||
+            trace.x;
+          let yArr =
+            trace.y?._inputArray ||
+            trace.y?.bdata ||
+            trace.y?.data ||
+            trace.y;
+      
+          // Decode base64 if necessary (some responses use bdata with Float64 encoding)
+          if (typeof xArr === "string") {
+            try {
+              const buffer = Uint8Array.from(atob(xArr), c => c.charCodeAt(0)).buffer;
+              xArr = new Float64Array(buffer);
+            } catch (e) {
+              console.warn("Could not decode xArr from base64", e);
+              xArr = [];
+            }
+          }
+          if (typeof yArr === "string") {
+            try {
+              const buffer = Uint8Array.from(atob(yArr), c => c.charCodeAt(0)).buffer;
+              yArr = new Float64Array(buffer);
+            } catch (e) {
+              console.warn("Could not decode yArr from base64", e);
+              yArr = [];
+            }
+          }
+      
+          // Flip if we have numeric arrays
+          if (xArr && yArr && xArr.length && yArr.length) {
+            return {
+              ...trace,
+              x: Array.from(xArr, x => PITCH_LENGTH - x),
+              y: Array.from(yArr, y => PITCH_WIDTH - y),
+            };
+          }
+      
+          console.log("⚠️ Skipped trace — could not extract coords:", trace);
+          return trace;
+        }),
+      };      
+  
+      // 🎨 Apply team colors
+      const recoloredHome = homeData.data.map(trace => ({
+        ...trace,
+        marker: {
+          ...trace.marker,
+          colorscale: [
+            [0, "white"],
+            [1, homeColor],
+          ],
+          showscale: false,
+          opacity: 0.9,
+        },
+        // 👇 Label includes team and shot type (e.g. "Poland – Goal")
+        name: `${homeTeam} – ${trace.name}`,
+      }));
+      
+      const recoloredAway = flippedAwayData.data.map(trace => ({
+        ...trace,
+        marker: {
+          ...trace.marker,
+          colorscale: [
+            [0, "white"],
+            [1, awayColor],
+          ],
+          showscale: false,
+          opacity: 0.7,
+        },
+        name: `${awayTeam} – ${trace.name}`,
+      }));      
+  
+      // 🧩 Combine both into one figure
+      const mergedFig = {
+        data: [...recoloredHome, ...recoloredAway],
+        layout: {
+          ...(homeData.layout || {}),
+          title: `Shot Map — ${homeTeam} (left) vs ${awayTeam} (right)`,
+        },
+      };
+  
+      console.log("✅ Both teams shot map rendered (away team flipped)");
+      console.log("🏠 Home traces:", homeData.data.length);
+      console.log("✈️ Away traces (before flip):", awayData.data.length);
+      console.log("🔁 Flipped away traces (after flip):", flippedAwayData.data.map(t => ({
+        name: t.name,
+        xCount: t.x?.length,
+        yCount: t.y?.length,
+      })));
+      setFigData(mergedFig);
+    } catch (err) {
+      console.error("Both teams shot map error:", err);
+    } finally {
+      setPlotLoading(false);
+    }
+  }
+  
   // --- Plotly Flip Logic ---
   const PITCH_LENGTH = 120;
   const PITCH_WIDTH = 80;
@@ -413,9 +611,19 @@ export default function MatchViz() {
                 </button>
                 <button
                   onClick={() => fetchTeamShotmap(awayTeam)}
-                  style={{ padding: "8px 14px" }}
+                  style={{ marginRight: 12, padding: "8px 14px" }}
                 >
                   Shot Map – {awayTeam}
+                </button>
+                <button
+                  onClick={() => fetchBothShotmaps()}
+                  style={{
+                    padding: "8px 14px",
+                    backgroundColor: "#f0f0f0",
+                    border: "1px solid #ccc",
+                  }}
+                >
+                  Both Teams Shot Map
                 </button>
               </div>
             )}
