@@ -263,3 +263,171 @@ def get_match_viz(filename: str, team: str | None = None):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/api/match/{filename}/passing_network")
+def get_passing_network(filename: str, team: str | None = None):
+    """
+    Generate a passing network visualization for a specific match and team.
+    """
+    try:
+        print(f"📂 Fetching file from S3 for passing network: {filename}")
+        response = s3_client.get_object(Bucket=S3_BUCKET, Key=filename)
+        df = pd.read_csv(io.BytesIO(response['Body'].read()))
+
+        # --- Required columns ---
+        needed = {"type", "team", "player", "pass_recipient", "location", "pass_end_location"}
+        missing = needed - set(df.columns)
+        if missing:
+            raise HTTPException(status_code=400, detail=f"Missing required columns: {sorted(missing)}")
+
+        # --- Filter for passes ---
+        passes = df[df["type"] == "Pass"].copy()
+        if passes.empty:
+            raise HTTPException(status_code=400, detail="No pass events found")
+
+        # Pick default team if not specified
+        if not team:
+            team = passes["team"].dropna().mode().iat[0]
+
+        passes = passes.loc[passes["team"] == team].copy()
+        if passes.empty:
+            raise HTTPException(status_code=404, detail=f"No passes found for team '{team}'")
+
+        # --- Parse coordinates ---
+        def to_xy(val):
+            try:
+                arr = json.loads(val) if isinstance(val, str) else val
+                if isinstance(arr, (list, tuple)) and len(arr) >= 2:
+                    return float(arr[0]), float(arr[1])
+            except Exception:
+                pass
+            return (np.nan, np.nan)
+
+        passes[["sx", "sy"]] = passes["location"].apply(to_xy).to_list()
+        passes[["ex", "ey"]] = passes["pass_end_location"].apply(to_xy).to_list()
+
+        # --- Compute player positions from both pass starts and ends ---
+        start_pos = (
+            passes.dropna(subset=["player"])
+                  .groupby("player", as_index=False)[["sx", "sy"]]
+                  .mean()
+                  .rename(columns={"sx": "x", "sy": "y"})
+        )
+
+        recv_pos = (
+            passes.dropna(subset=["pass_recipient"])
+                  .groupby("pass_recipient", as_index=False)[["ex", "ey"]]
+                  .mean()
+                  .rename(columns={"pass_recipient": "player", "ex": "x2", "ey": "y2"})
+        )
+
+        avg_pos = start_pos.merge(recv_pos, on="player", how="outer")
+        avg_pos["x"] = avg_pos[["x", "x2"]].mean(axis=1)
+        avg_pos["y"] = avg_pos[["y", "y2"]].mean(axis=1)
+        avg_pos = avg_pos.drop(columns=["x2", "y2"])
+
+        # --- Touches ---
+        touches = (
+            df.loc[(df["team"] == team) & df["player"].notna()]
+              .groupby("player", as_index=False)
+              .size()
+              .rename(columns={"size": "touches"})
+        )
+        avg_pos = avg_pos.merge(touches, on="player", how="left")
+
+        # --- Pair pass counts (edges) ---
+        pair_counts = (
+            passes.dropna(subset=["player", "pass_recipient"])
+                  .groupby(["player", "pass_recipient"], as_index=False)
+                  .size()
+                  .rename(columns={"size": "count"})
+        )
+
+        have_xy = set(avg_pos.dropna(subset=["x", "y"])["player"])
+        pair_counts = pair_counts[
+            pair_counts["player"].isin(have_xy) & pair_counts["pass_recipient"].isin(have_xy)
+        ]
+
+        # --- Build Plotly figure ---
+        from plotly.colors import qualitative as qual
+        palette = (qual.Plotly + qual.D3 + qual.Set3)
+
+        fig = go.Figure()
+
+        # Edges
+        for i, row in pair_counts.reset_index(drop=True).iterrows():
+            a = avg_pos.loc[avg_pos["player"] == row["player"], ["x", "y"]].values
+            b = avg_pos.loc[avg_pos["player"] == row["pass_recipient"], ["x", "y"]].values
+            if len(a) and len(b):
+                fig.add_trace(
+                    go.Scatter(
+                        x=[a[0, 0], b[0, 0]],
+                        y=[a[0, 1], b[0, 1]],
+                        mode="lines",
+                        line=dict(
+                            width=0.5 + 0.6 * np.log1p(row["count"]),
+                            color=palette[i % len(palette)],
+                        ),
+                        opacity=0.7,
+                        hoverinfo="text",
+                        text=[None, f"{row['player']} → {row['pass_recipient']} ({int(row['count'])})"],
+                        showlegend=False,
+                    )
+                )
+
+        # Nodes (players)
+        nodes_xy = avg_pos.dropna(subset=["x", "y"]).copy()
+        nodes_xy["size_px"] = 40 + 3 * nodes_xy["touches"].fillna(0)
+
+        fig.add_trace(
+            go.Scatter(
+                x=nodes_xy["x"],
+                y=nodes_xy["y"],
+                mode="markers",
+                marker=dict(
+                    size=nodes_xy["size_px"],
+                    color="royalblue",
+                    opacity=0.9,
+                    line=dict(width=1, color="white"),
+                ),
+                hoverinfo="text",
+                text=[
+                    f"{p}<br>Touches: {int(t) if pd.notna(t) else 0}"
+                    for p, t in zip(nodes_xy["player"], nodes_xy["touches"])
+                ],
+                name="Players",
+                showlegend=False,
+            )
+        )
+
+        # Labels
+        fig.add_trace(
+            go.Scatter(
+                x=nodes_xy["x"],
+                y=nodes_xy["y"],
+                mode="text",
+                text=nodes_xy["player"],
+                textposition="top center",
+                textfont=dict(size=12),
+                hoverinfo="skip",
+                showlegend=False,
+            )
+        )
+
+        # Pitch & layout
+        fig = make_pitch(fig)
+        fig.update_layout(
+            title=f"Passing Network — {team} (size ~ touches)",
+            xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
+            yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
+            plot_bgcolor="white",
+            height=600,
+            width=900,
+            margin=dict(l=40, r=40, t=60, b=30),
+        )
+        fig.update_yaxes(autorange="reversed")
+
+        return fig.to_dict()
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
