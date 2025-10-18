@@ -43,7 +43,7 @@ def make_pitch(fig, linecolor="black", lw=2):
 # Allow React frontend (port 3000 or 5173)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For production, use specific domain
+    allow_origins=["https://columbia-msds-f25-soccer.onrender.com", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
