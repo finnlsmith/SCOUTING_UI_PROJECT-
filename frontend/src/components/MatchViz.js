@@ -58,6 +58,7 @@ export default function MatchViz() {
   const [flipSides, setFlipSides] = useState(false); // State for flipping plot
   const [homeTeam, setHomeTeam] = useState(null);
   const [awayTeam, setAwayTeam] = useState(null);
+  const [vizMode, setVizMode] = useState("shot"); // "shot" | "passing"
 
 
   // Fetch available matches (MOCKED, swap for backend later)
@@ -69,27 +70,27 @@ export default function MatchViz() {
         // const endpoint = `${BACKEND_URL}/api/matches`;
         const endpoint = `${BACKEND_URL}/api/matches`.trim();
         console.log("🎯 Fetching matches from:", endpoint);
-  
+
         const res = await fetch(endpoint);
         const text = await res.text(); // 👈 Read raw text for debug
-  
+
         console.log("🧾 Raw response:", text);
-  
+
         if (!res.ok) throw new Error(`HTTP ${res.status} - ${text}`);
-  
+
         const data = JSON.parse(text); // 👈 Manually parse, ensures we catch format issues
-  
+
         if (!Array.isArray(data)) {
           throw new Error("Invalid data format (expected an array)");
         }
-  
+
         const formatted = data.map((m, i) => ({
           id: i,
           name: m.file.replace(".csv", ""),
           label: m.label,
           file: m.file
-        }));        
-  
+        }));
+
         setMatches(formatted);
         console.log("✅ Matches loaded:", formatted);
       } catch (error) {
@@ -100,7 +101,7 @@ export default function MatchViz() {
         setMatchesLoading(false);
       }
     }
-  
+
     fetchMatches();
   }, []);
 
@@ -208,7 +209,22 @@ export default function MatchViz() {
     } finally {
       setPlotLoading(false);
     }
-  }  
+  }
+
+  async function fetchTeamPassingNetwork(team) {
+    try {
+      setPlotLoading(true);
+      const res = await fetch(`${BACKEND_URL}/api/match/${selectedMatch}/passing_network?team=${encodeURIComponent(team)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setFigData(data);
+      console.log("🧩 Passing Network data:", data);
+    } catch (err) {
+      console.error("Passing network error:", err);
+    } finally {
+      setPlotLoading(false);
+    }
+  }
   // --- Plotly Flip Logic ---
   const PITCH_LENGTH = 120;
   const PITCH_WIDTH = 80;
@@ -216,7 +232,7 @@ export default function MatchViz() {
   const displayFig = React.useMemo(() => {
     if (!figData) return null;
     if (!flipSides) return figData;
-  
+
     console.log("✅ Flipping coordinates now...");
     const flipped = {
       ...figData,
@@ -224,7 +240,7 @@ export default function MatchViz() {
         // Try to safely extract numeric arrays from typed arrays
         const xArr = trace.x?._inputArray || trace.x;
         const yArr = trace.y?._inputArray || trace.y;
-  
+
         if (Array.isArray(xArr) || xArr instanceof Float64Array) {
           const flippedTrace = {
             ...trace,
@@ -240,11 +256,11 @@ export default function MatchViz() {
         return trace;
       }),
     };
-  
+
     return flipped;
   }, [figData, flipSides]);
-  
-  
+
+
 
   return (
     <div style={{ textAlign: "center", padding: "20px" }}>
@@ -292,6 +308,8 @@ export default function MatchViz() {
               value={selectedMatch}
               onChange={(e) => {
                 setSelectedMatch(e.target.value);
+                setVizMode("shot");
+                setFlipSides(false);
               }}
             >
               <option value="">-- Choose a match --</option>
@@ -336,6 +354,7 @@ export default function MatchViz() {
                   setMatchesError("");
                   setGlobalError("");
                   setFlipSides(false);
+                  setVizMode("shot");
                 }}
                 aria-label="Reset selection and view"
               >
@@ -345,16 +364,25 @@ export default function MatchViz() {
             {homeTeam && awayTeam && (
               <div style={{ marginTop: 20 }}>
                 <button
-                  onClick={() => fetchTeamShotmap(homeTeam)}
+                  onClick={() => { setVizMode("shot"); fetchTeamShotmap(homeTeam); }}
                   style={{ marginRight: 12, padding: "8px 14px" }}
                 >
                   Shot Map – {homeTeam}
                 </button>
                 <button
-                  onClick={() => fetchTeamShotmap(awayTeam)}
+                  onClick={() => { setVizMode("shot"); fetchTeamShotmap(awayTeam); }}
                   style={{ padding: "8px 14px" }}
                 >
                   Shot Map – {awayTeam}
+                </button>
+                {/* NEW: Passing Network */}
+                <button onClick={() => { setVizMode("passing"); fetchTeamPassingNetwork(homeTeam); }}
+                  style={{ marginRight: 12, padding: "8px 14px" }}>
+                  Passing Network – {homeTeam}
+                </button>
+                <button onClick={() => { setVizMode("passing"); fetchTeamPassingNetwork(awayTeam); }}
+                  style={{ padding: "8px 14px" }}>
+                  Passing Network – {awayTeam}
                 </button>
               </div>
             )}
@@ -367,13 +395,13 @@ export default function MatchViz() {
         <p style={{ color: "#007bff" }}>Loading visualization...</p>
       ) : displayFig ? (
         <Plot
-          key={`${selectedMatch}-${homeTeam}-${awayTeam}-${flipSides ? "flipped" : "normal"}`} // forces full rerender
+          key={`${selectedMatch}-${homeTeam}-${awayTeam}-${vizMode}-${flipSides ? "flipped" : "normal"}`} // forces full rerender
           data={[...(displayFig?.data || [])]}
           layout={{
             ...(displayFig?.layout || {}),
             title: {
               ...(displayFig?.layout?.title || {}),
-              text: flipSides ? "Shot Map (Flipped)" : "Shot Map",
+              text: displayFig?.layout?.title?.text ?? (vizMode === "passing" ? "Passing Network" : (flipSides ? "Shot Map (Flipped)" : "Shot Map")),
             },
             xaxis: { ...(displayFig?.layout?.xaxis || {}), autorange: true },
             yaxis: { ...(displayFig?.layout?.yaxis || {}), autorange: true },
