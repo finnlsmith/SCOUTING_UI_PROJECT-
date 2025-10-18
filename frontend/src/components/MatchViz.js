@@ -43,7 +43,8 @@ const TEAM_COLORS = {
 // Use environment variable for backend URL
 // const BACKEND_URL = "http://127.0.0.1:8000" || "http://localhost:8000";
 const BACKEND_URL = "https://columbia-msds-f25-soccer.onrender.com";
-
+// const BACKEND_URL =
+// process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:8000";
 
 // Error banner component
 function ErrorBanner({ error, onClose }) {
@@ -100,6 +101,7 @@ export default function MatchViz() {
   const [score, setScore] = useState(null); // 🆕 combined formatted score
   const [isScoreVisible, setIsScoreVisible] = useState(false); // 🆕 for display toggle
   const [competitionStage, setCompetitionStage] = useState(null);
+  const [vizMode, setVizMode] = useState('shot');
 
 
 
@@ -179,8 +181,8 @@ export default function MatchViz() {
           setCompetitionStage(data.competition_stage);
         } else {
           setCompetitionStage(null);
-        }        
-        
+        }
+
         // Normalize scores (accept numbers or numeric strings)
         const hs = data.home_score;
         const as = data.away_score;
@@ -297,7 +299,7 @@ export default function MatchViz() {
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-  
+
       // 🎨 Apply team color
       const teamColor = TEAM_COLORS[team] || "#1f77b4"; // fallback blue if not found
       const recoloredData = {
@@ -320,7 +322,7 @@ export default function MatchViz() {
           return trace;
         }),
       };
-  
+
       setFigData(recoloredData);
       console.log(`🎨 Applied color for ${team}: ${teamColor}`);
     } catch (err) {
@@ -333,28 +335,28 @@ export default function MatchViz() {
     try {
       setFlipSides(false);
       setPlotLoading(true);
-  
+
       // Fetch both teams' shot maps concurrently
       const [homeRes, awayRes] = await Promise.all([
         fetch(`${BACKEND_URL}/api/match/${selectedMatch}/viz?team=${encodeURIComponent(homeTeam)}`),
         fetch(`${BACKEND_URL}/api/match/${selectedMatch}/viz?team=${encodeURIComponent(awayTeam)}`)
       ]);
-  
+
       if (!homeRes.ok || !awayRes.ok) throw new Error("Error fetching team data");
-  
+
       const [homeData, awayData] = await Promise.all([homeRes.json(), awayRes.json()]);
 
       console.log("📊 Raw homeData:", homeData);
       console.log("📊 Raw awayData:", awayData);
 
-  
+
       // 🎨 Team colors
       const homeColor = TEAM_COLORS[homeTeam] || "#1f77b4";
       const awayColor = TEAM_COLORS[awayTeam] || "#ff7f0e";
-  
+
       const PITCH_LENGTH = 120;
       const PITCH_WIDTH = 80;
-  
+
       // 🧭 Flip the away team’s coordinates properly
       const flippedAwayData = {
         ...awayData,
@@ -370,7 +372,7 @@ export default function MatchViz() {
             trace.y?.bdata ||
             trace.y?.data ||
             trace.y;
-      
+
           // Decode base64 if necessary (some responses use bdata with Float64 encoding)
           if (typeof xArr === "string") {
             try {
@@ -390,7 +392,7 @@ export default function MatchViz() {
               yArr = [];
             }
           }
-      
+
           // Flip if we have numeric arrays
           if (xArr && yArr && xArr.length && yArr.length) {
             return {
@@ -399,12 +401,12 @@ export default function MatchViz() {
               y: Array.from(yArr, y => PITCH_WIDTH - y),
             };
           }
-      
+
           console.log("⚠️ Skipped trace — could not extract coords:", trace);
           return trace;
         }),
-      };      
-  
+      };
+
       // 🎨 Apply team colors
       const recoloredHome = homeData.data.map(trace => ({
         ...trace,
@@ -420,7 +422,7 @@ export default function MatchViz() {
         // 👇 Label includes team and shot type (e.g. "Poland – Goal")
         name: `${homeTeam} – ${trace.name}`,
       }));
-      
+
       const recoloredAway = flippedAwayData.data.map(trace => ({
         ...trace,
         marker: {
@@ -433,8 +435,8 @@ export default function MatchViz() {
           opacity: 0.7,
         },
         name: `${awayTeam} – ${trace.name}`,
-      }));      
-  
+      }));
+
       // 🧩 Combine both into one figure
       const mergedFig = {
         data: [...recoloredHome, ...recoloredAway],
@@ -443,7 +445,7 @@ export default function MatchViz() {
           title: `Shot Map — ${homeTeam} (left) vs ${awayTeam} (right)`,
         },
       };
-  
+
       console.log("✅ Both teams shot map rendered (away team flipped)");
       console.log("🏠 Home traces:", homeData.data.length);
       console.log("✈️ Away traces (before flip):", awayData.data.length);
@@ -459,7 +461,63 @@ export default function MatchViz() {
       setPlotLoading(false);
     }
   }
-  
+
+  async function fetchPassingNetwork(team) {
+    console.log("🔵 fetchPassingNetwork clicked", {
+      team,
+      selectedMatch,
+      BACKEND_URL,
+    });
+
+    // Basic validation to avoid silent failures
+    if (!selectedMatch) {
+      setUploadError("Please select a match first.");
+      console.error("❌ No match selected.");
+      return;
+    }
+
+    if (!team) {
+      setUploadError("Team name missing — please try again.");
+      console.error("❌ No team specified.");
+      return;
+    }
+
+    try {
+      setPlotLoading(true);
+      console.log(
+        `📡 Fetching passing network from: ${BACKEND_URL}/api/match/${selectedMatch}/passing_network?team=${encodeURIComponent(
+          team
+        )}`
+      );
+
+      const res = await fetch(
+        `${BACKEND_URL}/api/match/${selectedMatch}/passing_network?team=${encodeURIComponent(
+          team
+        )}`
+      );
+
+      console.log("📬 Response status:", res.status);
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("❌ Error response text:", text);
+        throw new Error(`HTTP ${res.status}: ${text}`);
+      }
+
+      const data = await res.json();
+      console.log("✅ Passing network data received:", data);
+
+      setFigData(data);
+      setUploadError("");
+      console.log("🎯 Passing network rendered successfully for", team);
+    } catch (err) {
+      console.error("🔥 Passing network fetch failed:", err);
+      setUploadError("Failed to load passing network.");
+    } finally {
+      setPlotLoading(false);
+    }
+  }
+
   // --- Plotly Flip Logic ---
   const PITCH_LENGTH = 120;
   const PITCH_WIDTH = 80;
@@ -598,37 +656,94 @@ export default function MatchViz() {
             )}
             {homeTeam && awayTeam && (
               <div style={{ marginTop: 20 }}>
+                {/* Shot Map buttons */}
                 <button
                   onClick={() => { setVizMode("shot"); fetchTeamShotmap(homeTeam); }}
-                  style={{ marginRight: 12, padding: "8px 14px" }}
+                  disabled={!selectedMatch || plotLoading}
+                  style={{
+                    marginRight: 12,
+                    padding: "8px 14px",
+                    opacity: (!selectedMatch || plotLoading) ? 0.6 : 1,
+                    cursor: (!selectedMatch || plotLoading) ? "not-allowed" : "pointer",
+                  }}
                 >
                   Shot Map – {homeTeam}
                 </button>
+
                 <button
-                  onClick={() => fetchTeamShotmap(awayTeam)}
-                  style={{ marginRight: 12, padding: "8px 14px" }}
+                  onClick={() => { setVizMode("shot"); fetchTeamShotmap(awayTeam); }}
+                  disabled={!selectedMatch || plotLoading}
+                  style={{
+                    marginRight: 12,
+                    padding: "8px 14px",
+                    opacity: (!selectedMatch || plotLoading) ? 0.6 : 1,
+                    cursor: (!selectedMatch || plotLoading) ? "not-allowed" : "pointer",
+                  }}
                 >
                   Shot Map – {awayTeam}
                 </button>
+
                 <button
-                  onClick={() => fetchBothShotmaps()}
+                  onClick={() => { setVizMode("shot"); fetchBothShotmaps(); }}
+                  disabled={!selectedMatch || plotLoading}
                   style={{
                     padding: "8px 14px",
                     backgroundColor: "#f0f0f0",
                     border: "1px solid #ccc",
+                    opacity: (!selectedMatch || plotLoading) ? 0.6 : 1,
+                    cursor: (!selectedMatch || plotLoading) ? "not-allowed" : "pointer",
                   }}
                 >
                   Both Teams Shot Map
+                </button>
+
+                {/* Passing Network buttons */}
+                <button
+                  onClick={() => {
+                    setVizMode("passing");
+                    fetchPassingNetwork(homeTeam);
+                  }}
+                  disabled={!selectedMatch || plotLoading}
+                  style={{
+                    padding: "8px 14px",
+                    backgroundColor: "#e8f4ff",
+                    border: "1px solid #007bff",
+                    color: "#007bff",
+                    marginLeft: 12,
+                    opacity: (!selectedMatch || plotLoading) ? 0.6 : 1,
+                    cursor: (!selectedMatch || plotLoading) ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Passing Network – {homeTeam}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setVizMode("passing");
+                    fetchPassingNetwork(awayTeam);
+                  }}
+                  disabled={!selectedMatch || plotLoading}
+                  style={{
+                    padding: "8px 14px",
+                    backgroundColor: "#e8f4ff",
+                    border: "1px solid #007bff",
+                    color: "#007bff",
+                    marginLeft: 12,
+                    opacity: (!selectedMatch || plotLoading) ? 0.6 : 1,
+                    cursor: (!selectedMatch || plotLoading) ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Passing Network – {awayTeam}
                 </button>
               </div>
             )}
           </>
         )}
       </div>
-      
+
       {/* Scoreboard Section (above visualization) */}
-      
-      
+
+
       {isScoreVisible && (
         <div
           style={{
