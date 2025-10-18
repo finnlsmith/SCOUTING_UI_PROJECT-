@@ -100,6 +100,10 @@ export default function MatchViz() {
   const [score, setScore] = useState(null); // 🆕 combined formatted score
   const [isScoreVisible, setIsScoreVisible] = useState(false); // 🆕 for display toggle
   const [competitionStage, setCompetitionStage] = useState(null);
+  const [shots, setShots] = useState(null);
+  const [shotsOnTarget, setShotsOnTarget] = useState(null);
+  const [xg, setXg] = useState(null);
+
 
 
 
@@ -180,6 +184,31 @@ export default function MatchViz() {
         } else {
           setCompetitionStage(null);
         }        
+        if (data.home_shots !== undefined && data.away_shots !== undefined) {
+          setShots(`${data.home_shots} - ${data.away_shots}`);
+        } else {
+          setShots(null);
+        }
+        if (
+          data.home_shots_on_target !== undefined &&
+          data.away_shots_on_target !== undefined
+        ) {
+          setShotsOnTarget(`${data.home_shots_on_target} - ${data.away_shots_on_target}`);
+        } else {
+          setShotsOnTarget(null);
+        }
+        
+        if (
+          data.home_xg_sum !== undefined &&
+          data.away_xg_sum !== undefined
+        ) {
+          // Round to 2 decimals for display
+          const homeXg = Number(data.home_xg_sum).toFixed(2);
+          const awayXg = Number(data.away_xg_sum).toFixed(2);
+          setXg(`${homeXg} - ${awayXg}`);
+        } else {
+          setXg(null);
+        }
         
         // Normalize scores (accept numbers or numeric strings)
         const hs = data.home_score;
@@ -626,94 +655,16 @@ export default function MatchViz() {
       </div>
       
       {/* Scoreboard Section (above visualization) */}
-      
-      
       {isScoreVisible && (
-        <div
-          style={{
-            marginTop: 30,
-            marginBottom: 30,
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "10px 40px",
-              border: "1px solid #e5e7eb",
-              borderRadius: "10px",
-              padding: "20px 30px",
-              backgroundColor: "#f9fafb",
-              width: "360px",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
-              fontFamily: "Inter, system-ui, sans-serif",
-            }}
-          >
-            {/* 🏆 Competition Stage */}
-            {competitionStage && (
-              <div
-                style={{
-                  gridColumn: "1 / span 2",
-                  textAlign: "center",
-                  fontSize: "1rem",
-                  fontWeight: 600,
-                  color: "#6b7280",
-                  marginBottom: "8px",
-                }}
-              >
-                {competitionStage}
-              </div>
-            )}
-
-            {/* Header row: team names */}
-            <div
-              style={{
-                gridColumn: "1 / span 2",
-                display: "flex",
-                justifyContent: "space-between",
-                fontWeight: 700,
-                fontSize: "1.2rem",
-                color: "#111827",
-                marginBottom: "6px",
-              }}
-            >
-              <span>{homeTeam || derivedTeams.home || "Home"}</span>
-              <span>{awayTeam || derivedTeams.away || "Away"}</span>
-            </div>
-
-            {/* Label row */}
-            <div
-              style={{
-                gridColumn: "1 / span 2",
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: "1rem",
-                color: "#4b5563",
-                fontWeight: 500,
-                marginBottom: "2px",
-              }}
-            >
-              <span>Goals</span>
-            </div>
-
-            {/* Score row */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gridColumn: "1 / span 2",
-                fontSize: "1.1rem",
-                fontWeight: 600,
-                color: "#111827",
-              }}
-            >
-              <span>{score ? score.split(" - ")[0] : "-"}</span>
-              <span>{score ? score.split(" - ")[1] : "-"}</span>
-            </div>
-          </div>
-        </div>
+        <Scoreboard
+          stage={competitionStage}
+          home={homeTeam || derivedTeams.home || "Home"}
+          away={awayTeam || derivedTeams.away || "Away"}
+          score={score}
+          shots={shots}
+          shotsOnTarget={shotsOnTarget}
+          xg={xg}
+        />
       )}
 
 
