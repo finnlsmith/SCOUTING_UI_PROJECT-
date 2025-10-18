@@ -3,3 +3,11 @@ Chapter 1-3/
 
 # Venv
 venv-3.10.0/
+
+# Agg
+aggregated/
+
+# Research
+*pdf
+
+.DS_Store
