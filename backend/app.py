@@ -8,6 +8,8 @@ import os
 import io
 import numpy as np
 import plotly.graph_objects as go
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 #test
 app = FastAPI()
 
@@ -41,7 +43,7 @@ def make_pitch(fig, linecolor="black", lw=2):
 # Allow React frontend (port 3000 or 5173)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For production, use specific domain
+    allow_origins=["https://columbia-msds-f25-soccer.onrender.com", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -259,7 +261,96 @@ def get_match_viz(filename: str, team: str | None = None):
         )
         fig.update_yaxes(autorange="reversed")
 
-        return fig.to_dict()
+        # --- Fetch score info from matches_df.csv on S3 ---
+        try:
+            obj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
+            matches_df = pd.read_csv(obj["Body"])
+
+            # Extract match_id digits from filename (e.g., 'events_3788769.csv' → 3788769)
+            import re
+            match_id_match = re.search(r"\d+", filename)
+            match_id = int(match_id_match.group()) if match_id_match else None
+
+            row = matches_df[matches_df["match_id"] == match_id]
+            if not row.empty:
+                row = row.iloc[0]
+                home_team = row["home_team"]
+                away_team = row["away_team"]
+                home_score = int(row["home_score"])
+                away_score = int(row["away_score"])
+                competition_stage = row.get("competition_stage", None)
+            else:
+                home_team = away_team = None
+                home_score = away_score = None
+                competition_stage = None
+        except Exception as e:
+            print("⚠️ Could not fetch score info:", e)
+            home_team = away_team = None
+            home_score = away_score = None
+
+        # --- Compute shot counts, shots on target, and total xG ---
+        home_shots = away_shots = None
+        home_shots_on_target = away_shots_on_target = None
+        home_xg_sum = away_xg_sum = None
+
+        try:
+            events_key = f"events_{match_id}.csv"
+            print(f"🎯 Loading events CSV for shots/xG: {events_key}")
+            ev_obj = s3_client.get_object(Bucket=S3_BUCKET, Key=events_key)
+            ev_df = pd.read_csv(io.BytesIO(ev_obj["Body"].read()))
+
+            if {"type", "team", "shot_outcome", "shot_statsbomb_xg"} <= set(ev_df.columns):
+                # All shots
+                home_shots = int(ev_df[(ev_df["team"] == home_team) & (ev_df["type"] == "Shot")].shape[0])
+                away_shots = int(ev_df[(ev_df["team"] == away_team) & (ev_df["type"] == "Shot")].shape[0])
+
+                # Shots on target (Saved or Goal)
+                on_target = ["Saved", "Goal"]
+                home_shots_on_target = int(ev_df[
+                    (ev_df["team"] == home_team) & 
+                    (ev_df["type"] == "Shot") &
+                    (ev_df["shot_outcome"].isin(on_target))
+                ].shape[0])
+                away_shots_on_target = int(ev_df[
+                    (ev_df["team"] == away_team) &
+                    (ev_df["type"] == "Shot") &
+                    (ev_df["shot_outcome"].isin(on_target))
+                ].shape[0])
+
+                # Total xG
+                home_xg_sum = float(ev_df[
+                    (ev_df["team"] == home_team) &
+                    (ev_df["type"] == "Shot")
+                ]["shot_statsbomb_xg"].sum())
+                away_xg_sum = float(ev_df[
+                    (ev_df["team"] == away_team) &
+                    (ev_df["type"] == "Shot")
+                ]["shot_statsbomb_xg"].sum())
+
+                print(f"📊 {home_team}: Shots={home_shots}, On Target={home_shots_on_target}, xG={home_xg_sum:.2f}")
+                print(f"📊 {away_team}: Shots={away_shots}, On Target={away_shots_on_target}, xG={away_xg_sum:.2f}")
+
+        except Exception as e:
+            print("⚠️ Could not compute shots/xG stats:", e)
+
+        # --- Combine figure + score info ---
+        fig_dict = fig.to_dict()
+        fig_dict.update({
+            "home_team": home_team,
+            "away_team": away_team,
+            "home_score": home_score,
+            "away_score": away_score,
+            "competition_stage": competition_stage,
+            "home_shots": home_shots,
+            "away_shots": away_shots,  # 🆕 add this
+            "home_shots_on_target": home_shots_on_target,
+            "away_shots_on_target": away_shots_on_target,
+            "home_xg_sum": home_xg_sum,
+            "away_xg_sum": away_xg_sum,
+        })
+        print("🚀 Sending keys:", list(fig_dict.keys()))
+        return JSONResponse(content=jsonable_encoder(fig_dict))
+
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
