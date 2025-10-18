@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Scoreboard from "./Scoreboard";
 import Plot from "react-plotly.js";
 
 const TEAM_COLORS = {
