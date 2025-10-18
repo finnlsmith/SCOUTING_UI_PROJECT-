@@ -8,10 +8,12 @@ import os
 import io
 import numpy as np
 import plotly.graph_objects as go
-from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
 #test
 app = FastAPI()
+
+@app.get("/health")
+def health():
+  return {"routes": [getattr(r, "path", None) for r in app.router.routes]}
 
 def make_pitch(fig, linecolor="black", lw=2):
     """Add soccer pitch with goal mouths and posts."""
@@ -43,7 +45,7 @@ def make_pitch(fig, linecolor="black", lw=2):
 # Allow React frontend (port 3000 or 5173)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://columbia-msds-f25-soccer.onrender.com", "http://localhost:3000"],
+    allow_origins=["*"],  # For production, use specific domain
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -261,96 +263,7 @@ def get_match_viz(filename: str, team: str | None = None):
         )
         fig.update_yaxes(autorange="reversed")
 
-        # --- Fetch score info from matches_df.csv on S3 ---
-        try:
-            obj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
-            matches_df = pd.read_csv(obj["Body"])
-
-            # Extract match_id digits from filename (e.g., 'events_3788769.csv' → 3788769)
-            import re
-            match_id_match = re.search(r"\d+", filename)
-            match_id = int(match_id_match.group()) if match_id_match else None
-
-            row = matches_df[matches_df["match_id"] == match_id]
-            if not row.empty:
-                row = row.iloc[0]
-                home_team = row["home_team"]
-                away_team = row["away_team"]
-                home_score = int(row["home_score"])
-                away_score = int(row["away_score"])
-                competition_stage = row.get("competition_stage", None)
-            else:
-                home_team = away_team = None
-                home_score = away_score = None
-                competition_stage = None
-        except Exception as e:
-            print("⚠️ Could not fetch score info:", e)
-            home_team = away_team = None
-            home_score = away_score = None
-
-        # --- Compute shot counts, shots on target, and total xG ---
-        home_shots = away_shots = None
-        home_shots_on_target = away_shots_on_target = None
-        home_xg_sum = away_xg_sum = None
-
-        try:
-            events_key = f"events_{match_id}.csv"
-            print(f"🎯 Loading events CSV for shots/xG: {events_key}")
-            ev_obj = s3_client.get_object(Bucket=S3_BUCKET, Key=events_key)
-            ev_df = pd.read_csv(io.BytesIO(ev_obj["Body"].read()))
-
-            if {"type", "team", "shot_outcome", "shot_statsbomb_xg"} <= set(ev_df.columns):
-                # All shots
-                home_shots = int(ev_df[(ev_df["team"] == home_team) & (ev_df["type"] == "Shot")].shape[0])
-                away_shots = int(ev_df[(ev_df["team"] == away_team) & (ev_df["type"] == "Shot")].shape[0])
-
-                # Shots on target (Saved or Goal)
-                on_target = ["Saved", "Goal"]
-                home_shots_on_target = int(ev_df[
-                    (ev_df["team"] == home_team) & 
-                    (ev_df["type"] == "Shot") &
-                    (ev_df["shot_outcome"].isin(on_target))
-                ].shape[0])
-                away_shots_on_target = int(ev_df[
-                    (ev_df["team"] == away_team) &
-                    (ev_df["type"] == "Shot") &
-                    (ev_df["shot_outcome"].isin(on_target))
-                ].shape[0])
-
-                # Total xG
-                home_xg_sum = float(ev_df[
-                    (ev_df["team"] == home_team) &
-                    (ev_df["type"] == "Shot")
-                ]["shot_statsbomb_xg"].sum())
-                away_xg_sum = float(ev_df[
-                    (ev_df["team"] == away_team) &
-                    (ev_df["type"] == "Shot")
-                ]["shot_statsbomb_xg"].sum())
-
-                print(f"📊 {home_team}: Shots={home_shots}, On Target={home_shots_on_target}, xG={home_xg_sum:.2f}")
-                print(f"📊 {away_team}: Shots={away_shots}, On Target={away_shots_on_target}, xG={away_xg_sum:.2f}")
-
-        except Exception as e:
-            print("⚠️ Could not compute shots/xG stats:", e)
-
-        # --- Combine figure + score info ---
-        fig_dict = fig.to_dict()
-        fig_dict.update({
-            "home_team": home_team,
-            "away_team": away_team,
-            "home_score": home_score,
-            "away_score": away_score,
-            "competition_stage": competition_stage,
-            "home_shots": home_shots,
-            "away_shots": away_shots,  # 🆕 add this
-            "home_shots_on_target": home_shots_on_target,
-            "away_shots_on_target": away_shots_on_target,
-            "home_xg_sum": home_xg_sum,
-            "away_xg_sum": away_xg_sum,
-        })
-        print("🚀 Sending keys:", list(fig_dict.keys()))
-        return JSONResponse(content=jsonable_encoder(fig_dict))
-
+        return fig.to_dict()
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -359,32 +272,44 @@ def get_match_viz(filename: str, team: str | None = None):
 def get_passing_network(filename: str, team: str | None = None):
     """
     Generate a passing network visualization for a specific match and team.
+    Tolerant to missing optional pass columns and to matches with no pass data.
     """
     try:
+        # 1) Load events CSV from S3
         print(f"📂 Fetching file from S3 for passing network: {filename}")
         response = s3_client.get_object(Bucket=S3_BUCKET, Key=filename)
-        df = pd.read_csv(io.BytesIO(response['Body'].read()))
+        df = pd.read_csv(io.BytesIO(response["Body"].read()))
+        print("✅ rows:", len(df), "cols:", df.columns.tolist())
 
-        # --- Required columns ---
-        needed = {"type", "team", "player", "pass_recipient", "location", "pass_end_location"}
-        missing = needed - set(df.columns)
-        if missing:
-            raise HTTPException(status_code=400, detail=f"Missing required columns: {sorted(missing)}")
+        # 2) Validate required base columns; make pass-specific fields optional
+        base_needed = {"type", "team", "player", "location"}
+        missing_base = base_needed - set(df.columns)
+        if missing_base:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required columns: {sorted(missing_base)}"
+            )
 
-        # --- Filter for passes ---
-        passes = df[df["type"] == "Pass"].copy()
+        # Optional columns; create as empty if absent (prevents crashes)
+        if "pass_recipient" not in df.columns:
+            df["pass_recipient"] = np.nan
+        if "pass_end_location" not in df.columns:
+            df["pass_end_location"] = np.nan
+
+        # 3) Choose team
+        passes_all = df[df["type"] == "Pass"].copy()
+        if team is None:
+            if passes_all["team"].dropna().empty:
+                # No passes at all; return a blank pitch with a friendly title
+                return _empty_passing_fig("No passes found")
+            team = passes_all["team"].dropna().mode().iat[0]
+
+        passes = passes_all.loc[passes_all["team"] == team].copy()
         if passes.empty:
-            raise HTTPException(status_code=400, detail="No pass events found")
+            # Team has no passes in this match → return an empty pitch (not an error)
+            return _empty_passing_fig(f"Passing Network — {team} (no pass data)")
 
-        # Pick default team if not specified
-        if not team:
-            team = passes["team"].dropna().mode().iat[0]
-
-        passes = passes.loc[passes["team"] == team].copy()
-        if passes.empty:
-            raise HTTPException(status_code=404, detail=f"No passes found for team '{team}'")
-
-        # --- Parse coordinates ---
+        # 4) Helper to parse StatsBomb-style locations
         def to_xy(val):
             try:
                 arr = json.loads(val) if isinstance(val, str) else val
@@ -395,29 +320,31 @@ def get_passing_network(filename: str, team: str | None = None):
             return (np.nan, np.nan)
 
         passes[["sx", "sy"]] = passes["location"].apply(to_xy).to_list()
-        passes[["ex", "ey"]] = passes["pass_end_location"].apply(to_xy).to_list()
+        # Only parse end locations if present (they may be NaN)
+        ex_ey = passes["pass_end_location"].apply(to_xy).to_list()
+        passes["ex"] = [v[0] for v in ex_ey]
+        passes["ey"] = [v[1] for v in ex_ey]
 
-        # --- Compute player positions from both pass starts and ends ---
+        # 5) Average player positions (starts + ends)
         start_pos = (
-            passes.dropna(subset=["player"])
-                  .groupby("player", as_index=False)[["sx", "sy"]]
-                  .mean()
-                  .rename(columns={"sx": "x", "sy": "y"})
+            passes.dropna(subset=["player"])[["player", "sx", "sy"]]
+                  .groupby("player", as_index=False).mean()
+                  .rename(columns={"sx": "x_start", "sy": "y_start"})
         )
 
-        recv_pos = (
-            passes.dropna(subset=["pass_recipient"])
-                  .groupby("pass_recipient", as_index=False)[["ex", "ey"]]
-                  .mean()
-                  .rename(columns={"pass_recipient": "player", "ex": "x2", "ey": "y2"})
+        end_pos = (
+            passes.dropna(subset=["pass_recipient"])[["pass_recipient", "ex", "ey"]]
+                  .groupby("pass_recipient", as_index=False).mean()
+                  .rename(columns={"pass_recipient": "player", "ex": "x_end", "ey": "y_end"})
         )
 
-        avg_pos = start_pos.merge(recv_pos, on="player", how="outer")
-        avg_pos["x"] = avg_pos[["x", "x2"]].mean(axis=1)
-        avg_pos["y"] = avg_pos[["y", "y2"]].mean(axis=1)
-        avg_pos = avg_pos.drop(columns=["x2", "y2"])
+        avg_pos = start_pos.merge(end_pos, on="player", how="outer")
+        # mean across available columns
+        avg_pos["x"] = avg_pos[["x_start", "x_end"]].mean(axis=1, skipna=True)
+        avg_pos["y"] = avg_pos[["y_start", "y_end"]].mean(axis=1, skipna=True)
+        avg_pos = avg_pos.drop(columns=["x_start", "y_start", "x_end", "y_end"])
 
-        # --- Touches ---
+        # Touches per player (all events for the team)
         touches = (
             df.loc[(df["team"] == team) & df["player"].notna()]
               .groupby("player", as_index=False)
@@ -426,89 +353,67 @@ def get_passing_network(filename: str, team: str | None = None):
         )
         avg_pos = avg_pos.merge(touches, on="player", how="left")
 
-        # --- Pair pass counts (edges) ---
+        # 6) Edge list (player -> recipient) only if both columns exist
         pair_counts = (
             passes.dropna(subset=["player", "pass_recipient"])
-                  .groupby(["player", "pass_recipient"], as_index=False)
-                  .size()
+                  .groupby(["player", "pass_recipient"], as_index=False).size()
                   .rename(columns={"size": "count"})
         )
 
+        # Keep only pairs for which we have coordinates
         have_xy = set(avg_pos.dropna(subset=["x", "y"])["player"])
         pair_counts = pair_counts[
-            pair_counts["player"].isin(have_xy) & pair_counts["pass_recipient"].isin(have_xy)
+            pair_counts["player"].isin(have_xy) &
+            pair_counts["pass_recipient"].isin(have_xy)
         ]
 
-        # --- Build Plotly figure ---
-        from plotly.colors import qualitative as qual
-        palette = (qual.Plotly + qual.D3 + qual.Set3)
-
+        # 7) Build Plotly figure (works even if nodes/edges are empty)
         fig = go.Figure()
 
         # Edges
-        for i, row in pair_counts.reset_index(drop=True).iterrows():
+        for _, row in pair_counts.iterrows():
             a = avg_pos.loc[avg_pos["player"] == row["player"], ["x", "y"]].values
             b = avg_pos.loc[avg_pos["player"] == row["pass_recipient"], ["x", "y"]].values
             if len(a) and len(b):
-                fig.add_trace(
-                    go.Scatter(
-                        x=[a[0, 0], b[0, 0]],
-                        y=[a[0, 1], b[0, 1]],
-                        mode="lines",
-                        line=dict(
-                            width=0.5 + 0.6 * np.log1p(row["count"]),
-                            color=palette[i % len(palette)],
-                        ),
-                        opacity=0.7,
-                        hoverinfo="text",
-                        text=[None, f"{row['player']} → {row['pass_recipient']} ({int(row['count'])})"],
-                        showlegend=False,
-                    )
-                )
+                fig.add_trace(go.Scatter(
+                    x=[a[0, 0], b[0, 0]],
+                    y=[a[0, 1], b[0, 1]],
+                    mode="lines",
+                    line=dict(width=0.5 + 0.6 * np.log1p(row["count"])),
+                    opacity=0.7,
+                    hoverinfo="text",
+                    text=[None, f"{row['player']} → {row['pass_recipient']} ({int(row['count'])})"],
+                    showlegend=False,
+                ))
 
-        # Nodes (players)
+        # Nodes
         nodes_xy = avg_pos.dropna(subset=["x", "y"]).copy()
         nodes_xy["size_px"] = 40 + 3 * nodes_xy["touches"].fillna(0)
 
-        fig.add_trace(
-            go.Scatter(
-                x=nodes_xy["x"],
-                y=nodes_xy["y"],
-                mode="markers",
-                marker=dict(
-                    size=nodes_xy["size_px"],
-                    color="royalblue",
-                    opacity=0.9,
-                    line=dict(width=1, color="white"),
-                ),
-                hoverinfo="text",
-                text=[
-                    f"{p}<br>Touches: {int(t) if pd.notna(t) else 0}"
-                    for p, t in zip(nodes_xy["player"], nodes_xy["touches"])
-                ],
-                name="Players",
-                showlegend=False,
-            )
-        )
+        fig.add_trace(go.Scatter(
+            x=nodes_xy["x"], y=nodes_xy["y"],
+            mode="markers",
+            marker=dict(size=nodes_xy["size_px"], color="royalblue", opacity=0.9, line=dict(width=1, color="white")),
+            hoverinfo="text",
+            text=[f"{p}<br>Touches: {int(t) if pd.notna(t) else 0}" for p, t in zip(nodes_xy["player"], nodes_xy["touches"])],
+            name="Players",
+            showlegend=False,
+        ))
 
-        # Labels
-        fig.add_trace(
-            go.Scatter(
-                x=nodes_xy["x"],
-                y=nodes_xy["y"],
-                mode="text",
-                text=nodes_xy["player"],
-                textposition="top center",
-                textfont=dict(size=12),
-                hoverinfo="skip",
-                showlegend=False,
-            )
-        )
+        fig.add_trace(go.Scatter(
+            x=nodes_xy["x"], y=nodes_xy["y"],
+            mode="text",
+            text=nodes_xy["player"],
+            textposition="top center",
+            textfont=dict(size=12),
+            hoverinfo="skip",
+            showlegend=False,
+        ))
 
-        # Pitch & layout
+        # Pitch + layout
         fig = make_pitch(fig)
         fig.update_layout(
-            title=f"Passing Network — {team} (size ~ touches)",
+            title=f"Passing Network — {team}" + ("" if len(pair_counts) else " (no edges)"),
             xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
             yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
             plot_bgcolor="white",
@@ -520,5 +425,26 @@ def get_passing_network(filename: str, team: str | None = None):
 
         return fig.to_dict()
 
+    except HTTPException:
+        raise
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _empty_passing_fig(title: str):
+    """Return a blank pitch figure with a friendly title (no crash)."""
+    fig = go.Figure()
+    fig = make_pitch(fig)
+    fig.update_layout(
+        title=title,
+        xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
+        yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
+        plot_bgcolor="white",
+        height=600,
+        width=900,
+        margin=dict(l=40, r=40, t=60, b=30),
+    )
+    fig.update_yaxes(autorange="reversed")
+    return fig.to_dict()
