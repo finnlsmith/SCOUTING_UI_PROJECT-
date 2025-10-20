@@ -13,7 +13,7 @@ import PassingNetworkButtons from "./PassingNetworkButtons";
 
 export default function MatchViz() {
   const { matches, loading: matchesLoading, error: matchesError, setError: setMatchesError } = useMatchData();
-  const { file, setFile, upload, uploading, success, error: uploadError, setError: setUploadError } = useUpload();
+  const { setFile, upload, uploading, success, error: uploadError, setError: setUploadError } = useUpload(); //file, 
   const {
     figData,
     loading: plotLoading,
