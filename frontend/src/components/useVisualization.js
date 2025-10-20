@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { TEAM_COLORS } from "../constants/teamColors";
 
-// const BACKEND_URL = "https://columbia-msds-f25-soccer.onrender.com";
-const BACKEND_URL = "http://localhost:8000";
+const BACKEND_URL = "https://columbia-msds-f25-soccer.onrender.com";
+// const BACKEND_URL = "http://localhost:8000";
 
 async function _fetchJson(url) {
   const res = await fetch(url);
