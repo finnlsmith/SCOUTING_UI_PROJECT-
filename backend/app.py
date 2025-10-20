@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import boto3
@@ -10,6 +10,7 @@ import numpy as np
 import plotly.graph_objects as go
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
+import traceback
 #test
 app = FastAPI()
 
@@ -143,214 +144,376 @@ async def upload_csv(file: UploadFile = File(...)):
     except Exception as e:
         return {"error": str(e)}
 
+def _to_xy(val):
+    try:
+        arr = json.loads(val) if isinstance(val, str) else val
+        if isinstance(arr, (list, tuple)) and len(arr) >= 2:
+            return float(arr[0]), float(arr[1])
+    except Exception:
+        pass
+    return (np.nan, np.nan)
+
 @app.get("/api/match/{filename}/viz")
-def get_match_viz(filename: str, team: str | None = None):
+def get_match_viz(filename: str, team: str | None = Query(default=None)):
     """
-    Generate a shot map for a specific match.
-    If ?team=<TeamName> is provided, returns only that team's shots.
-    Otherwise, returns a combined view (home vs away).
+    Robust shot map:
+      - Works if xG/outcome columns are missing
+      - Returns 404 for missing S3 keys or no shots
+      - Adds scoreboard stats best-effort
     """
     try:
-        print(f"📂 Fetching file from S3: {filename}")
-        response = s3_client.get_object(Bucket=S3_BUCKET, Key=filename)
-        df = pd.read_csv(io.BytesIO(response['Body'].read()))
-        print(f"✅ File downloaded from S3 ({len(df)} rows)")
+        # --- fetch CSV (404 if not found)
+        try:
+            obj = s3_client.get_object(Bucket=S3_BUCKET, Key=filename)
+        except s3_client.exceptions.NoSuchKey:
+            raise HTTPException(status_code=404, detail=f"S3 key not found: {filename}")
+        df = pd.read_csv(io.BytesIO(obj["Body"].read()))
 
-        if "type" not in df.columns or "location" not in df.columns:
-            raise HTTPException(status_code=400, detail="Missing required columns")
+        # --- minimum columns
+        for col in ("type", "location"):
+            if col not in df.columns:
+                raise HTTPException(status_code=400, detail=f"Missing required column '{col}'")
 
+        # --- shots + coordinates
         shots = df[df["type"] == "Shot"].copy()
         if shots.empty:
-            raise HTTPException(status_code=400, detail="No shot events found")
+            raise HTTPException(status_code=404, detail="No shot events found in this file")
 
-        # --- Convert location to x, y ---
-        def to_xy(val):
-            try:
-                arr = json.loads(val) if isinstance(val, str) else val
-                if isinstance(arr, (list, tuple)) and len(arr) >= 2:
-                    return float(arr[0]), float(arr[1])
-            except Exception:
-                pass
-            return (np.nan, np.nan)
+        shots[["sx", "sy"]] = shots["location"].apply(_to_xy).to_list()
 
-        shots[["sx", "sy"]] = shots["location"].apply(to_xy).to_list()
-        shots["xg"] = pd.to_numeric(shots.get("shot_statsbomb_xg"), errors="coerce")
-        shots["is_goal"] = shots.get("shot_outcome").eq("Goal")
+        # xG column may be absent or all NaN
+        if "shot_statsbomb_xg" in shots.columns:
+            shots["xg"] = pd.to_numeric(shots["shot_statsbomb_xg"], errors="coerce")
+        else:
+            shots["xg"] = np.nan
 
-        # --- Identify teams ---
-        teams = shots["team"].dropna().unique().tolist()
-        if len(teams) < 2:
-            teams = teams + ["Opponent"]
-        home, away = teams[0], teams[1]
+        # outcome may be absent
+        outcome = shots["shot_outcome"].astype(str).str.lower() if "shot_outcome" in shots.columns else pd.Series("", index=shots.index)
+        is_goal = outcome.eq("goal")
 
-        # --- Filter if team param is provided ---
+        # filter by team if requested
         if team:
-            shots = shots.loc[shots["team"] == team]
-            if shots.empty:
+            if "team" not in shots.columns:
+                raise HTTPException(status_code=400, detail="Missing 'team' column required for team filter")
+            sub = shots.loc[shots["team"] == team].copy()
+            if sub.empty:
                 raise HTTPException(status_code=404, detail=f"No shots found for team '{team}'")
+        else:
+            sub = shots
 
-        # --- Build shot map figure (new version) ---
+        # color scale bounds & marker sizes (avoid NaN issues)
+        xg_vals = sub["xg"].fillna(0.0)
+        xg_max = float(xg_vals.max() if pd.notna(xg_vals.max()) else 0.01)
+        xg_max = max(0.01, xg_max)
+
+        def _size(series):
+            return (10 + 60 * series.fillna(0)).clip(lower=6, upper=40)
+
+        # --- figure
         fig = go.Figure()
-        subset = shots.copy()
-        is_goal = subset["shot_outcome"].fillna("").str.lower() == "goal"
-
-        # All shots
         fig.add_trace(go.Scatter(
-            x=subset["sx"],
-            y=subset["sy"],
+            x=sub["sx"], y=sub["sy"],
             mode="markers",
             marker=dict(
-                size=10 + 60 * subset["xg"].fillna(0),
-                color=subset["xg"],
+                size=_size(sub["xg"]),
+                color=xg_vals,
                 colorscale="Reds",
-                cmin=0,
-                cmax=subset["xg"].max(),
+                cmin=0, cmax=xg_max,
                 showscale=True,
                 colorbar=dict(title="xG"),
-                line=dict(width=0)
+                line=dict(width=0),
             ),
             text=[
-                f"<b>{row['player']}</b><br>"
-                f"Minute: {row.get('minute', '')}<br>"
-                f"Second: {row.get('second', '')}<br>"
-                f"xG: {row['xg']:.3f}<br>"
-                f"Outcome: {row['shot_outcome']}"
-                for _, row in subset.iterrows()
+                f"<b>{str(row.get('player',''))}</b><br>"
+                f"Minute: {str(row.get('minute',''))}<br>"
+                f"Second: {str(row.get('second',''))}<br>"
+                f"xG: {float((row.get('xg') if pd.notna(row.get('xg')) else 0)):.3f}<br>"
+                f"Outcome: {str(row.get('shot_outcome',''))}"
+                for _, row in sub.iterrows()
             ],
             hoverinfo="text",
             name="Shot"
         ))
 
-        # Goals outlined in black
-        if is_goal.any():
+        # highlight goals if any
+        sub_goal_mask = outcome.loc[sub.index].eq("goal")
+        if sub_goal_mask.any():
             fig.add_trace(go.Scatter(
-                x=subset.loc[is_goal, "sx"],
-                y=subset.loc[is_goal, "sy"],
+                x=sub.loc[sub_goal_mask, "sx"], y=sub.loc[sub_goal_mask, "sy"],
                 mode="markers",
                 marker=dict(
-                    size=10 + 60 * subset.loc[is_goal, "xg"].fillna(0),
-                    color=subset.loc[is_goal, "xg"],
+                    size=_size(sub.loc[sub_goal_mask, "xg"]),
+                    color=sub.loc[sub_goal_mask, "xg"].fillna(0.0),
                     colorscale="Reds",
-                    cmin=0,
-                    cmax=subset["xg"].max(),
+                    cmin=0, cmax=xg_max,
                     showscale=False,
-                    line=dict(width=3, color="black")
+                    line=dict(width=3, color="black"),
                 ),
-                text=[
-                    f"<b>{row['player']}</b><br>"
-                    f"Minute: {row.get('minute', '')}<br>"
-                    f"Second: {row.get('second', '')}<br>"
-                    f"xG: {row['xg']:.3f}<br>"
-                    f"Outcome: {row['shot_outcome']}"
-                    for _, row in subset[is_goal].iterrows()
-                ],
-                hoverinfo="text",
+                hoverinfo="skip",
                 name="Goal"
             ))
 
-        # Add pitch
         fig = make_pitch(fig)
+        # identify teams for title if not filtered
+        if not team and "team" in shots.columns:
+            teams = shots["team"].dropna().astype(str).unique().tolist()
+            if len(teams) < 2:
+                teams = teams + ["Opponent"]
+            title_txt = f"{teams[0]} vs {teams[1]}"
+        else:
+            title_txt = team or "Match"
 
         fig.update_layout(
-            title=f"Shot Map — {team or (home + ' vs ' + away)}",
+            title=f"Shot Map — {title_txt}",
             xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
             yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
-            plot_bgcolor="white",
-            height=600,
-            width=900
+            plot_bgcolor="white", height=600, width=900
         )
         fig.update_yaxes(autorange="reversed")
 
-        # --- Fetch score info from matches_df.csv on S3 ---
+        # --- optional scoreboard stats (best-effort; never crash)
+        meta = {
+            "home_team": None, "away_team": None,
+            "home_score": None, "away_score": None,
+            "competition_stage": None,
+            "home_shots": None, "away_shots": None,
+            "home_shots_on_target": None, "away_shots_on_target": None,
+            "home_xg_sum": None, "away_xg_sum": None,
+        }
         try:
-            obj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
-            matches_df = pd.read_csv(obj["Body"])
+            # try matches_df lookup
+            try:
+                mobj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
+                mdf = pd.read_csv(mobj["Body"])
+            except Exception:
+                mdf = None
 
-            # Extract match_id digits from filename (e.g., 'events_3788769.csv' → 3788769)
-            import re
-            match_id_match = re.search(r"\d+", filename)
-            match_id = int(match_id_match.group()) if match_id_match else None
+            # match_id from filename
+            m = re.search(r"\d+", filename or "")
+            match_id = int(m.group()) if m else None
 
-            row = matches_df[matches_df["match_id"] == match_id]
-            if not row.empty:
-                row = row.iloc[0]
-                home_team = row["home_team"]
-                away_team = row["away_team"]
-                home_score = int(row["home_score"])
-                away_score = int(row["away_score"])
-                competition_stage = row.get("competition_stage", None)
-            else:
-                home_team = away_team = None
-                home_score = away_score = None
-                competition_stage = None
-        except Exception as e:
-            print("⚠️ Could not fetch score info:", e)
-            home_team = away_team = None
-            home_score = away_score = None
+            if mdf is not None and match_id is not None and "match_id" in mdf.columns:
+                row = mdf.loc[mdf["match_id"] == match_id]
+                if not row.empty:
+                    r = row.iloc[0]
+                    meta["home_team"] = r.get("home_team")
+                    meta["away_team"] = r.get("away_team")
+                    meta["home_score"] = int(r.get("home_score")) if pd.notna(r.get("home_score")) else None
+                    meta["away_score"] = int(r.get("away_score")) if pd.notna(r.get("away_score")) else None
+                    meta["competition_stage"] = r.get("competition_stage")
 
-        # --- Compute shot counts, shots on target, and total xG ---
-        home_shots = away_shots = None
-        home_shots_on_target = away_shots_on_target = None
-        home_xg_sum = away_xg_sum = None
+            # compute team shot counts/xG if possible
+            if match_id is not None and mdf is not None and meta["home_team"] and meta["away_team"]:
+                ev_key = f"events_{match_id}.csv"
+                ev = pd.read_csv(io.BytesIO(s3_client.get_object(Bucket=S3_BUCKET, Key=ev_key)["Body"].read()))
+                if {"type", "team"} <= set(ev.columns):
+                    shot_df = ev[ev["type"] == "Shot"].copy()
+                    # on target mask
+                    sot = shot_df["shot_outcome"].astype(str).str.lower().str.contains("saved|goal") if "shot_outcome" in shot_df.columns else pd.Series(False, index=shot_df.index)
+                    # counts
+                    for side in ("home", "away"):
+                        t = meta[f"{side}_team"]
+                        if t:
+                            meta[f"{side}_shots"] = int(shot_df[shot_df["team"] == t].shape[0])
+                            meta[f"{side}_shots_on_target"] = int(shot_df[(shot_df["team"] == t) & sot].shape[0])
+                            if "shot_statsbomb_xg" in shot_df.columns:
+                                meta[f"{side}_xg_sum"] = float(pd.to_numeric(shot_df.loc[shot_df["team"] == t, "shot_statsbomb_xg"], errors="coerce").sum())
+        except Exception as e2:
+            print("⚠️ scoreboard/meta compute failed:", e2)
 
-        try:
-            events_key = f"events_{match_id}.csv"
-            print(f"🎯 Loading events CSV for shots/xG: {events_key}")
-            ev_obj = s3_client.get_object(Bucket=S3_BUCKET, Key=events_key)
-            ev_df = pd.read_csv(io.BytesIO(ev_obj["Body"].read()))
+        # combine payload
+        payload = fig.to_dict()
+        payload.update(meta)
+        return JSONResponse(content=jsonable_encoder(payload))
 
-            if {"type", "team", "shot_outcome", "shot_statsbomb_xg"} <= set(ev_df.columns):
-                # All shots
-                home_shots = int(ev_df[(ev_df["team"] == home_team) & (ev_df["type"] == "Shot")].shape[0])
-                away_shots = int(ev_df[(ev_df["team"] == away_team) & (ev_df["type"] == "Shot")].shape[0])
-
-                # Shots on target (Saved or Goal)
-                on_target = ["Saved", "Goal"]
-                home_shots_on_target = int(ev_df[
-                    (ev_df["team"] == home_team) & 
-                    (ev_df["type"] == "Shot") &
-                    (ev_df["shot_outcome"].isin(on_target))
-                ].shape[0])
-                away_shots_on_target = int(ev_df[
-                    (ev_df["team"] == away_team) &
-                    (ev_df["type"] == "Shot") &
-                    (ev_df["shot_outcome"].isin(on_target))
-                ].shape[0])
-
-                # Total xG
-                home_xg_sum = float(ev_df[
-                    (ev_df["team"] == home_team) &
-                    (ev_df["type"] == "Shot")
-                ]["shot_statsbomb_xg"].sum())
-                away_xg_sum = float(ev_df[
-                    (ev_df["team"] == away_team) &
-                    (ev_df["type"] == "Shot")
-                ]["shot_statsbomb_xg"].sum())
-
-                print(f"📊 {home_team}: Shots={home_shots}, On Target={home_shots_on_target}, xG={home_xg_sum:.2f}")
-                print(f"📊 {away_team}: Shots={away_shots}, On Target={away_shots_on_target}, xG={away_xg_sum:.2f}")
-
-        except Exception as e:
-            print("⚠️ Could not compute shots/xG stats:", e)
-
-        # --- Combine figure + score info ---
-        fig_dict = fig.to_dict()
-        fig_dict.update({
-            "home_team": home_team,
-            "away_team": away_team,
-            "home_score": home_score,
-            "away_score": away_score,
-            "competition_stage": competition_stage,
-            "home_shots": home_shots,
-            "away_shots": away_shots,  # 🆕 add this
-            "home_shots_on_target": home_shots_on_target,
-            "away_shots_on_target": away_shots_on_target,
-            "home_xg_sum": home_xg_sum,
-            "away_xg_sum": away_xg_sum,
-        })
-        print("🚀 Sending keys:", list(fig_dict.keys()))
-        return JSONResponse(content=jsonable_encoder(fig_dict))
-
-
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # print full stack for quick debugging
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"/viz failed: {type(e).__name__}: {e}")
+    
+
+@app.get("/api/match/{filename}/passing_network")
+def passing_network_like_matplotlib(
+    filename: str,
+    team: str = Query(...),
+    min_passes: int = Query(1, ge=1),
+    flip: bool = Query(False),
+):
+    try:
+        # Load events
+        obj = s3_client.get_object(Bucket=S3_BUCKET, Key=filename)
+        events = pd.read_csv(io.BytesIO(obj["Body"].read()))
+        cols = set(events.columns)
+
+        # Column resolution (IDs or names)
+        required_geom = {"location", "pass_end_location"}
+        missing_geom = required_geom - cols
+        if missing_geom:
+            raise HTTPException(status_code=400, detail=f"Missing columns: {', '.join(sorted(missing_geom))}")
+
+        if "type" not in cols or "team" not in cols:
+            raise HTTPException(status_code=400, detail="Missing required columns 'type' and/or 'team'")
+
+        # Build source/dest ids
+        df = events.copy()
+        if "player_id" in cols:
+            df["src_id"] = df["player_id"]
+        else:
+            df["src_name"] = df.get("player", "").astype(str)
+
+        if "pass_recipient_id" in cols:
+            df["dst_id"] = df["pass_recipient_id"]
+        else:
+            df["dst_name"] = df.get("pass_recipient", "").astype(str)
+
+        # If ids missing, synthesize consistent ids from names
+        if "src_id" not in df.columns or "dst_id" not in df.columns:
+            src_names = df.get("src_name", pd.Series([], dtype=str)).astype(str)
+            dst_names = df.get("dst_name", pd.Series([], dtype=str)).astype(str)
+            all_names = pd.Index(src_names).append(pd.Index(dst_names)).astype(str).unique()
+            name_to_id = {n: i for i, n in enumerate(all_names)}
+            if "src_id" not in df.columns:
+                df["src_id"] = src_names.map(name_to_id)
+            if "dst_id" not in df.columns:
+                df["dst_id"] = dst_names.map(name_to_id)
+
+        # Map id -> display name (safe dict)
+        id_to_name = {}
+        if "player" in df.columns:
+            id_to_name.update(
+                df.loc[df["team"] == team, ["src_id", "player"]]
+                  .dropna()
+                  .drop_duplicates("src_id")
+                  .set_index("src_id")["player"]
+                  .astype(str)
+                  .to_dict()
+            )
+        if "pass_recipient" in df.columns:
+            # don't overwrite existing keys
+            add = (df.loc[df["team"] == team, ["dst_id", "pass_recipient"]]
+                     .dropna()
+                     .drop_duplicates("dst_id")
+                     .set_index("dst_id")["pass_recipient"]
+                     .astype(str)
+                     .to_dict())
+            for k, v in add.items():
+                id_to_name.setdefault(k, v)
+
+        # Team passes (completed = outcome NaN, if present)
+        passes = df[(df["type"] == "Pass") & (df["team"] == team)].copy()
+        if passes.empty:
+            raise HTTPException(status_code=404, detail=f"No passes for team '{team}'")
+
+        if "pass_outcome" in passes.columns:
+            passes = passes[passes["pass_outcome"].isna()].copy()
+
+        # Geometry
+        passes[["sx", "sy"]] = passes["location"].apply(_to_xy).to_list()
+        passes[["ex", "ey"]] = passes["pass_end_location"].apply(_to_xy).to_list()
+
+        # Touches = any event for team keyed by src_id (safe)
+        touches = (
+            df.loc[df["team"] == team, "src_id"]
+              .value_counts()
+              .rename_axis("player_id")
+              .reset_index(name="touches")
+        )
+
+        # Average positions (start as passer + receive end)
+        start_pos = passes.groupby("src_id")[["sx", "sy"]].mean().rename(columns={"sx": "x_s", "sy": "y_s"})
+        recv_pos = passes.groupby("dst_id")[["ex", "ey"]].mean().rename(columns={"ex": "x_r", "ey": "y_r"})
+        recv_pos.index.name = "src_id"
+        avg_pos = start_pos.join(recv_pos, how="outer").reset_index(names=["player_id"])
+        avg_pos["x"] = avg_pos[["x_s", "x_r"]].mean(axis=1, skipna=True)
+        avg_pos["y"] = avg_pos[["y_s", "y_r"]].mean(axis=1, skipna=True)
+        avg_pos = avg_pos[["player_id", "x", "y"]]
+
+        # Edges
+        edges = (
+            passes.groupby(["src_id", "dst_id"], dropna=True)
+                  .size().rename("count").reset_index()
+                  .rename(columns={"src_id": "player_id", "dst_id": "pass_recipient_id"})
+        )
+        edges = edges[edges["count"] >= int(min_passes)]
+
+        # Nodes table
+        nodes = avg_pos.merge(touches, on="player_id", how="left")
+        nodes["touches"] = nodes["touches"].fillna(0).astype(int)
+        nodes["name"] = nodes["player_id"].map(id_to_name).fillna(nodes["player_id"].astype(str))
+
+        if flip:
+            nodes["x"] = 120 - nodes["x"]
+
+        # Merge coordinates onto edges
+        edges = edges.merge(
+            nodes[["player_id", "x", "y"]].rename(columns={"player_id": "player_id_src", "x": "sx", "y": "sy"}),
+            left_on="player_id", right_on="player_id_src", how="left"
+        ).merge(
+            nodes[["player_id", "x", "y"]].rename(columns={"player_id": "player_id_dst", "x": "ex", "y": "ey"}),
+            left_on="pass_recipient_id", right_on="player_id_dst", how="left"
+        )
+
+        # ---- Build Plotly fig (ensure pure Python types) ----
+        fig = go.Figure()
+
+        # Edges (convert to floats explicitly)
+        if not edges.empty:
+            for r in edges.itertuples(index=False):
+                sx, sy, ex, ey = float(r.sx), float(r.sy), float(r.ex), float(r.ey)
+                width = float(0.5 + 0.5*np.log1p(int(r.count)))
+                fig.add_trace(go.Scatter(
+                    x=[sx, ex], y=[sy, ey],
+                    mode="lines",
+                    line=dict(width=width, color="gray"),
+                    opacity=0.5,
+                    hoverinfo="text",
+                    text=f"{id_to_name.get(r.player_id, r.player_id)} → {id_to_name.get(r.pass_recipient_id, r.pass_recipient_id)}<br>passes: {int(r.count)}",
+                    showlegend=False,
+                ))
+
+        # Nodes (size as plain list, customdata as list — NOT np.array)
+        if not nodes.empty:
+            size_list = (50 + 3*nodes["touches"]).clip(lower=30, upper=120).astype(float).tolist()
+            touches_list = nodes["touches"].astype(int).tolist()
+            x_list = nodes["x"].astype(float).tolist()
+            y_list = nodes["y"].astype(float).tolist()
+            text_list = nodes["name"].astype(str).tolist()
+
+            fig.add_trace(go.Scatter(
+                x=x_list, y=y_list,
+                mode="markers+text",
+                text=text_list,
+                textposition="top center",
+                marker=dict(size=size_list, line=dict(width=2, color="black")),
+                hoverinfo="text",
+                textfont=dict(size=11),
+                name="players",
+                customdata=[ [t] for t in touches_list ],
+                hovertemplate="<b>%{text}</b><br>touches: %{customdata[0]}<extra></extra>",
+            ))
+
+        fig = make_pitch(fig)
+        fig.update_layout(
+            title=f"Passing Network — {team} (size ~ touches)",
+            xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
+            yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
+            plot_bgcolor="white", height=600, width=900
+        )
+        fig.update_yaxes(autorange="reversed")
+
+        payload = fig.to_dict()  # already basic types
+        payload.update({
+            "team": team,
+            "node_count": int(nodes.shape[0]),
+            "edge_count": int(edges.shape[0]),
+            "min_passes": int(min_passes),
+        })
+        return JSONResponse(content=jsonable_encoder(payload))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"passing_network failed: {type(e).__name__}: {e}" )

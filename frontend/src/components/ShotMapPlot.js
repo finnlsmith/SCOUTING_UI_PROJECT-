@@ -1,24 +1,18 @@
 import React from "react";
 import Plot from "react-plotly.js";
 
-export default function ShotMapPlot({ displayFig, flipSides, plotLoading }) {
-  if (plotLoading) return <p style={{ color: "#007bff" }}>Loading visualization...</p>;
-  if (!displayFig) return <p style={{ color: "#666" }}>No match selected or uploaded yet.</p>;
-
+export default function ShotMapPlot({ displayFig, plotLoading }) {
+  if (plotLoading) return <p style={{marginTop:12}}>Loading…</p>;
+  if (!displayFig || !displayFig.data || !displayFig.layout) {
+    return <p style={{marginTop:12, opacity:0.7}}>Select a match, then choose Shot Map or Passing Network.</p>;
+  }
   return (
     <Plot
-      key={flipSides ? "flipped" : "normal"}
-      data={displayFig.data || []}
-      layout={{
-        ...(displayFig.layout || {}),
-        title: {
-          ...(displayFig.layout?.title || {}),
-          text: flipSides ? "Shot Map (Flipped)" : "Shot Map",
-        },
-        xaxis: { ...(displayFig.layout?.xaxis || {}), autorange: true },
-        yaxis: { ...(displayFig.layout?.yaxis || {}), autorange: true },
-      }}
-      style={{ margin: "auto", width: "90%", height: "90%" }}
+      data={displayFig.data}
+      layout={{ ...displayFig.layout, responsive: true }}
+      config={{ displayModeBar: false, responsive: true }}
+      style={{ width: "100%", height: "100%" }}
+      useResizeHandler
     />
   );
 }
