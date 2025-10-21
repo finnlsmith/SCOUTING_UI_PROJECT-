@@ -199,6 +199,13 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
             sub = shots.loc[shots["team"] == team].copy()
             if sub.empty:
                 raise HTTPException(status_code=404, detail=f"No shots found for team '{team}'")
+            # --- Flip X for away team
+            pitch_length = 120
+            pitch_width = 80
+            away_team = meta.get("away_team")
+            if away_team and team == away_team:
+                sub["sx"] = pitch_length - sub["sx"]
+                sub["sy"] = pitch_width - sub["sy"]
         else:
             sub = shots
 
