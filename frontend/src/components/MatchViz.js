@@ -84,7 +84,9 @@ export default function MatchViz() {
         onChange={async (v) => {
           setSelectedMatch(v);
           try {
+            // Only update stats for scoreboard, NOT figData/chart!
             await loadMatchViz(v, setStats);
+            setFigData(null); // Clear chart when new match is selected
           } catch (e) {
             setVizError?.(e?.message || "Failed to load match");
           }
@@ -94,6 +96,7 @@ export default function MatchViz() {
         onReset={() => {
           setSelectedMatch("");
           setStats({});
+          setFigData(null); // Clear chart when reset
         }}
         matchesLoading={matchesLoading}
       />
