@@ -293,11 +293,11 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
             m = re.search(r"\d+", filename or "")
             match_id = int(m.group()) if m else None
             print(f"DEBUG match_id: {match_id}")
-            print(f"DEBUG lookup row: {row}")
             
 
             if mdf is not None and match_id is not None and "match_id" in mdf.columns:
                 row = mdf.loc[mdf["match_id"] == match_id]
+                print(f"DEBUG lookup row: {row.head(1)}")
                 if not row.empty:
                     r = row.iloc[0]
                     meta["home_team"] = r.get("home_team")
