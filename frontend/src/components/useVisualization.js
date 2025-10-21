@@ -10,6 +10,15 @@ async function _fetchJson(url) {
   return res.json();
 }
 
+// Helper to flip x (and optionally y) for away team traces
+function flipTraceX(trace, pitchLength = 120) {
+  const newTrace = { ...trace };
+  if (Array.isArray(newTrace.x)) {
+    newTrace.x = newTrace.x.map(v => (typeof v === "number" ? pitchLength - v : v));
+  }
+  return newTrace;
+}
+
 export default function useVisualization() {
   const [figData, setFigData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -93,7 +102,7 @@ export default function useVisualization() {
             name: `${home} – ${t.name ?? "Shot"}`,
           })),
           ...(awayData.data || []).map((t) => ({
-            ...t,
+            ...flipTraceX(t, 120), // Flip X for away team. 120 = pitch length
             marker: {
               ...(t.marker || {}),
               colorscale: [
