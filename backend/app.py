@@ -192,14 +192,66 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
         outcome = shots["shot_outcome"].astype(str).str.lower() if "shot_outcome" in shots.columns else pd.Series("", index=shots.index)
         is_goal = outcome.eq("goal")
 
-        # filter by team if requested
+        # --- optional scoreboard stats (best-effort; never crash)
+        meta = {
+            "home_team": None, "away_team": None,
+            "home_score": None, "away_score": None,
+            "competition_stage": None,
+            "home_shots": None, "away_shots": None,
+            "home_shots_on_target": None, "away_shots_on_target": None,
+            "home_xg_sum": None, "away_xg_sum": None,
+        }
+        try:
+            # try matches_df lookup
+            try:
+                mobj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
+                mdf = pd.read_csv(mobj["Body"])
+            except Exception:
+                mdf = None
+
+            # match_id from filename
+            m = re.search(r"\d+", filename or "")
+            match_id = int(m.group()) if m else None
+            print(f"DEBUG match_id: {match_id}")
+            
+            if mdf is not None and match_id is not None and "match_id" in mdf.columns:
+                row = mdf.loc[mdf["match_id"] == match_id]
+                print(f"DEBUG lookup row: {row.head(1)}")
+                if not row.empty:
+                    r = row.iloc[0]
+                    meta["home_team"] = r.get("home_team")
+                    meta["away_team"] = r.get("away_team")
+                    meta["home_score"] = int(r.get("home_score")) if pd.notna(r.get("home_score")) else None
+                    meta["away_score"] = int(r.get("away_score")) if pd.notna(r.get("away_score")) else None
+                    meta["competition_stage"] = r.get("competition_stage")
+
+            # compute team shot counts/xG if possible
+            if match_id is not None and mdf is not None and meta["home_team"] and meta["away_team"]:
+                ev_key = f"events_{match_id}.csv"
+                ev = pd.read_csv(io.BytesIO(s3_client.get_object(Bucket=S3_BUCKET, Key=ev_key)["Body"].read()))
+                if {"type", "team"} <= set(ev.columns):
+                    shot_df = ev[ev["type"] == "Shot"].copy()
+                    # on target mask
+                    sot = shot_df["shot_outcome"].astype(str).str.lower().str.contains("saved|goal") if "shot_outcome" in shot_df.columns else pd.Series(False, index=shot_df.index)
+                    # counts
+                    for side in ("home", "away"):
+                        t = meta[f"{side}_team"]
+                        if t:
+                            meta[f"{side}_shots"] = int(shot_df[shot_df["team"] == t].shape[0])
+                            meta[f"{side}_shots_on_target"] = int(shot_df[(shot_df["team"] == t) & sot].shape[0])
+                            if "shot_statsbomb_xg" in shot_df.columns:
+                                meta[f"{side}_xg_sum"] = float(pd.to_numeric(shot_df.loc[shot_df["team"] == t, "shot_statsbomb_xg"], errors="coerce").sum())
+        except Exception as e2:
+            print("⚠️ scoreboard/meta compute failed:", e2)
+
+        # Now meta is always defined, so if team (and possibly away flip) logic can safely use it
         if team:
             if "team" not in shots.columns:
                 raise HTTPException(status_code=400, detail="Missing 'team' column required for team filter")
             sub = shots.loc[shots["team"] == team].copy()
             if sub.empty:
                 raise HTTPException(status_code=404, detail=f"No shots found for team '{team}'")
-            # --- Flip X for away team
+            # --- Flip X/Y for away team
             pitch_length = 120
             pitch_width = 80
             away_team = meta.get("away_team")
@@ -278,59 +330,6 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
             plot_bgcolor="white", height=600, width=900
         )
         fig.update_yaxes(autorange="reversed")
-
-        # --- optional scoreboard stats (best-effort; never crash)
-        meta = {
-            "home_team": None, "away_team": None,
-            "home_score": None, "away_score": None,
-            "competition_stage": None,
-            "home_shots": None, "away_shots": None,
-            "home_shots_on_target": None, "away_shots_on_target": None,
-            "home_xg_sum": None, "away_xg_sum": None,
-        }
-        try:
-            # try matches_df lookup
-            try:
-                mobj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
-                mdf = pd.read_csv(mobj["Body"])
-            except Exception:
-                mdf = None
-
-            # match_id from filename
-            m = re.search(r"\d+", filename or "")
-            match_id = int(m.group()) if m else None
-            print(f"DEBUG match_id: {match_id}")
-            
-
-            if mdf is not None and match_id is not None and "match_id" in mdf.columns:
-                row = mdf.loc[mdf["match_id"] == match_id]
-                print(f"DEBUG lookup row: {row.head(1)}")
-                if not row.empty:
-                    r = row.iloc[0]
-                    meta["home_team"] = r.get("home_team")
-                    meta["away_team"] = r.get("away_team")
-                    meta["home_score"] = int(r.get("home_score")) if pd.notna(r.get("home_score")) else None
-                    meta["away_score"] = int(r.get("away_score")) if pd.notna(r.get("away_score")) else None
-                    meta["competition_stage"] = r.get("competition_stage")
-
-            # compute team shot counts/xG if possible
-            if match_id is not None and mdf is not None and meta["home_team"] and meta["away_team"]:
-                ev_key = f"events_{match_id}.csv"
-                ev = pd.read_csv(io.BytesIO(s3_client.get_object(Bucket=S3_BUCKET, Key=ev_key)["Body"].read()))
-                if {"type", "team"} <= set(ev.columns):
-                    shot_df = ev[ev["type"] == "Shot"].copy()
-                    # on target mask
-                    sot = shot_df["shot_outcome"].astype(str).str.lower().str.contains("saved|goal") if "shot_outcome" in shot_df.columns else pd.Series(False, index=shot_df.index)
-                    # counts
-                    for side in ("home", "away"):
-                        t = meta[f"{side}_team"]
-                        if t:
-                            meta[f"{side}_shots"] = int(shot_df[shot_df["team"] == t].shape[0])
-                            meta[f"{side}_shots_on_target"] = int(shot_df[(shot_df["team"] == t) & sot].shape[0])
-                            if "shot_statsbomb_xg" in shot_df.columns:
-                                meta[f"{side}_xg_sum"] = float(pd.to_numeric(shot_df.loc[shot_df["team"] == t, "shot_statsbomb_xg"], errors="coerce").sum())
-        except Exception as e2:
-            print("⚠️ scoreboard/meta compute failed:", e2)
 
         # combine payload
         payload = fig.to_dict()
