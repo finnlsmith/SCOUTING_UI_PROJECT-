@@ -16,6 +16,7 @@ export default function MatchViz() {
   const { setFile, upload, uploading, success, error: uploadError, setError: setUploadError } = useUpload(); //file, 
   const {
     figData,
+    setFigData,
     loading: plotLoading,
     loadMatchViz,
     loadTeamShotmap,
