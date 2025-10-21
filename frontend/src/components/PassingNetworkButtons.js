@@ -7,6 +7,7 @@ export default function PassingNetworkButtons({
   onHomePN,
   onAwayPN,
 }) {
+  if (!home || !away) return null;
   return (
     <div style={{ marginTop: 20 }}>
       <h3>Passing Network</h3>
