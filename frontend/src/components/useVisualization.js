@@ -85,6 +85,9 @@ export default function useVisualization() {
         _fetchJson(awayUrl),
       ]);
 
+      console.log('Home Team Shot Data:', homeData.data);
+      console.log('Away Team Shot Data:', awayData.data);
+
       const homeColor = TEAM_COLORS[home] || "#1f77b4";
       const awayColor = TEAM_COLORS[away] || "#ff7f0e";
 
@@ -98,6 +101,7 @@ export default function useVisualization() {
                 [0, "white"],
                 [1, homeColor],
               ],
+              showscale: false, // Hide colorbar
             },
             name: `${home} – ${t.name ?? "Shot"}`,
           })),
@@ -109,6 +113,7 @@ export default function useVisualization() {
                 [0, "white"],
                 [1, awayColor],
               ],
+              showscale: false, // Hide colorbar
             },
             name: `${away} – ${t.name ?? "Shot"}`,
           })),
