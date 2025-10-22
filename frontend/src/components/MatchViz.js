@@ -24,6 +24,10 @@ export default function MatchViz() {
     loadPassingNetwork,
     error: vizError,
     setError: setVizError,
+    importantMoments,
+    importantMomentsLoading,
+    importantMomentsError,
+    fetchImportantMoments,
   } = useVisualization();
 
   const [selectedMatch, setSelectedMatch] = useState("");
@@ -57,6 +61,11 @@ export default function MatchViz() {
 
   // Only enable buttons if both names exist
   const canShoot = Boolean(selectedMatch && homeName && awayName);
+
+  // Fetch important moments when a match is selected
+  useEffect(() => {
+    if (selectedMatch) fetchImportantMoments(selectedMatch);
+  }, [selectedMatch]);
 
 
   return (
@@ -127,6 +136,45 @@ export default function MatchViz() {
             : "-"
         }
       />
+
+      {/* --- Important moments table --- */}
+      <div style={{ margin: "30px auto", maxWidth: 540 }}>
+        <h3>Key Moments</h3>
+        {importantMomentsLoading && <div>Loading moments...</div>}
+        {importantMomentsError && <div style={{ color: 'red' }}>{importantMomentsError}</div>}
+        {!importantMomentsLoading && !importantMomentsError && Array.isArray(importantMoments) && importantMoments.length === 0 && (
+          <div>No important moments found for match.</div>
+        )}
+        {!importantMomentsLoading && !importantMomentsError && Array.isArray(importantMoments) && importantMoments.length > 0 && (
+          <table style={{ margin: "0 auto", fontSize: "1rem", borderCollapse: "collapse", minWidth: 380 }}>
+            <thead>
+              <tr style={{ background: '#efefef' }}>
+                <th style={{ border: '1px solid #bbb', padding: '3px 7px' }}>#</th>
+                <th style={{ border: '1px solid #bbb', padding: '3px 7px' }}>When</th>
+                <th style={{ border: '1px solid #bbb', padding: '3px 7px' }}>Who</th>
+                <th style={{ border: '1px solid #bbb', padding: '3px 7px' }}>Type</th>
+                <th style={{ border: '1px solid #bbb', padding: '3px 7px' }}>xG</th>
+                <th style={{ border: '1px solid #bbb', padding: '3px 7px' }}>Outcome</th>
+                <th style={{ border: '1px solid #bbb', padding: '3px 7px' }}>Poss.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {importantMoments.map((m, idx) => (
+                <tr key={idx}>
+                  <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{idx + 1}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{m.when}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{m.who}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{m.event_type}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{m.xg !== undefined && m.xg !== null ? m.xg : ''}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{m.outcome}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{m.possession}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {/* --- End important moments table --- */}
 
       <ShotMapButtons
         home={homeName}
