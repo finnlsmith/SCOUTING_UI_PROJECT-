@@ -65,7 +65,7 @@ export default function MatchViz() {
   // Fetch important moments when a match is selected
   useEffect(() => {
     if (selectedMatch) fetchImportantMoments(selectedMatch);
-  }, [selectedMatch]);
+  }, [selectedMatch, fetchImportantMoments]);
 
 
   return (
