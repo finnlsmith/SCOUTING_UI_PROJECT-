@@ -566,3 +566,76 @@ def passing_network_like_matplotlib(
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"passing_network failed: {type(e).__name__}: {e}" )
+
+
+@app.get("/api/match/{filename}/important_moments")
+def important_moments(filename: str):
+    """
+    Returns a list of key moments (high xG shots, goals, own goals, penalty-winning fouls) for a selected match.
+    Mirrors the logic in extra_eda_for_FE.ipynb, and is future-proofed for scene plotting.
+    """
+    import io
+    import pandas as pd
+    import numpy as np
+    try:
+        # NOTE: supporting both S3 and local debugging
+        if filename.startswith("s3://"):
+            raise NotImplementedError("S3-style not implemented here.")
+        else:
+            # Use local path relative to working directory of backend
+            df_events = pd.read_csv(filename)
+            shots = df_events[df_events["type"] == "Shot"].copy()
+            # Try to extract xG as float if present
+            if "shot_statsbomb_xg" in shots.columns:
+                shots["xg"] = pd.to_numeric(shots["shot_statsbomb_xg"], errors="coerce")
+            else:
+                shots["xg"] = np.nan
+            # Main filter logic (from notebook)
+            moments = pd.concat([
+                shots[(shots["xg"] >= 0.08) | (shots.get('shot_outcome', '') == "Goal")],
+                df_events[df_events['type'] == 'Own Goal Against'],
+                df_events[df_events.get('foul_won_penalty', False) == True] if 'foul_won_penalty' in df_events.columns else pd.DataFrame()
+            ], ignore_index=True).sort_values(by=['period', 'timestamp'])
+            # Build the output: one entry per possession (per row)
+            result = []
+            for idx, row in moments.iterrows():
+                # Build who (with logic similar to to_f_last)
+                player = row.get('player', '')
+                if isinstance(player, str) and player.strip():
+                    parts = player.split()
+                    who = (f"{parts[0][0]}. {parts[-1]}" if len(parts) >= 2 else parts[0])
+                else:
+                    who = "N/A"
+                # Build when
+                shot_minute = row.get('minute', None)
+                shot_second = row.get('second', None)
+                if shot_minute is not None and shot_second is not None and not pd.isnull(shot_minute) and not pd.isnull(shot_second):
+                    when = f"{int(shot_minute)}:{int(shot_second):02d}"
+                else:
+                    when = "N/A"
+                # xG
+                xg_val = row.get('xg', None)
+                xg = round(float(xg_val), 3) if pd.notnull(xg_val) else None
+                # event_type
+                event_type = row.get('type', "")
+                # outcome (goal, saved, etc, or Penalty Won)
+                outcome = row.get('shot_outcome', None)
+                if event_type == "Foul Won" and row.get('foul_won_penalty', False):
+                    outcome = "Penalty Won"
+                # Add
+                result.append({
+                    "original_row": int(idx),
+                    "possession": int(row.get('possession')) if pd.notnull(row.get('possession')) else None,
+                    "who": who,
+                    "when": when,
+                    "event_type": event_type,
+                    "xg": xg,
+                    "outcome": outcome,
+                    "team": row.get('team', None)
+                })
+            return result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=f"important_moments failed: {type(e).__name__}: {e}")
