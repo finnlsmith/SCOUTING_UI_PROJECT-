@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { TEAM_COLORS } from "../constants/teamColors";
 
 const BACKEND_URL = "https://columbia-msds-f25-soccer.onrender.com";
@@ -155,7 +155,7 @@ export default function useVisualization() {
     }
   }
 
-  async function fetchImportantMoments(matchFile) {
+  const fetchImportantMoments = useCallback(async (matchFile) => {
     if (!matchFile) return;
     setImportantMomentsLoading(true);
     setImportantMomentsError(null);
@@ -170,7 +170,7 @@ export default function useVisualization() {
     } finally {
       setImportantMomentsLoading(false);
     }
-  }
+  }, []);
 
   return {
     figData,
