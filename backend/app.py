@@ -83,7 +83,10 @@ def make_pitch(fig, linecolor="black", lw=2):
 # Allow React frontend (port 3000 or 5173)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://columbia-msds-f25-soccer.onrender.com", "http://localhost:3000", "https://columbia-msds-f25-soccer-frontend.onrender.com"],
+    allow_origins=[
+        "https://columbia-msds-f25-soccer.onrender.com", 
+        "http://localhost:3000", 
+        "https://columbia-msds-f25-soccer-frontend.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -577,14 +580,13 @@ def important_moments(filename: str):
     import io
     import pandas as pd
     import numpy as np
+    import math
     try:
         df_events = None
-        # Try to fetch from S3 first (matches /viz logic)
         try:
             obj = s3_client.get_object(Bucket=S3_BUCKET, Key=filename)
             df_events = pd.read_csv(io.BytesIO(obj["Body"].read()))
         except Exception as e:
-            # Fallback: try local disk (for dev only)
             df_events = pd.read_csv(filename)
         shots = df_events[df_events["type"] == "Shot"].copy()
         if "shot_statsbomb_xg" in shots.columns:
@@ -596,35 +598,44 @@ def important_moments(filename: str):
             df_events[df_events['type'] == 'Own Goal Against'],
             df_events[df_events.get('foul_won_penalty', False) == True] if 'foul_won_penalty' in df_events.columns else pd.DataFrame()
         ], ignore_index=True).sort_values(by=['period', 'timestamp'])
+        # Replace all problematic values with None for JSON compatibility
+        moments = moments.replace([np.nan, np.inf, -np.inf], None)
+        moments = moments.where(pd.notnull(moments), None)
         result = []
         for idx, row in moments.iterrows():
+            def safe(val):
+                if val is None: return None
+                if isinstance(val, float) and (math.isnan(val) or math.isinf(val)): return None
+                return val
             player = row.get('player', '')
             if isinstance(player, str) and player.strip():
                 parts = player.split()
                 who = (f"{parts[0][0]}. {parts[-1]}" if len(parts) >=2 else parts[0])
             else:
                 who = "N/A"
-            shot_minute = row.get('minute', None)
-            shot_second = row.get('second', None)
-            if shot_minute is not None and shot_second is not None and not pd.isnull(shot_minute) and not pd.isnull(shot_second):
+            shot_minute = safe(row.get('minute', None))
+            shot_second = safe(row.get('second', None))
+            if shot_minute is not None and shot_second is not None:
                 when = f"{int(shot_minute)}:{int(shot_second):02d}"
             else:
                 when = "N/A"
-            xg_val = row.get('xg', None)
-            xg = round(float(xg_val), 3) if pd.notnull(xg_val) else None
-            event_type = row.get('type', "")
-            outcome = row.get('shot_outcome', None)
+            xg_val = safe(row.get('xg', None))
+            xg = round(float(xg_val), 3) if xg_val is not None else None
+            event_type = safe(row.get('type', ""))
+            outcome = safe(row.get('shot_outcome', None))
             if event_type == "Foul Won" and row.get('foul_won_penalty', False):
                 outcome = "Penalty Won"
+            possession = safe(row.get('possession'))
+            team = safe(row.get('team', None))
             result.append({
                 "original_row": int(idx),
-                "possession": int(row.get('possession')) if pd.notnull(row.get('possession')) else None,
+                "possession": int(possession) if possession is not None else None,
                 "who": who,
                 "when": when,
                 "event_type": event_type,
                 "xg": xg,
                 "outcome": outcome,
-                "team": row.get('team', None)
+                "team": team
             })
         return result
     except Exception as e:
