@@ -5,3 +5,4 @@ plotly
 numpy
 python-multipart
 boto3
+matplotlib
