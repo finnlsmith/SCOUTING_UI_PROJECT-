@@ -682,6 +682,19 @@ def possession_scene(filename: str, possession: int = Query(...)):
         ax.set_xticks([]); ax.set_yticks([]); ax.set_aspect('equal')
         return ax
 
+    def get_player(event):
+        # Handles missing, None, NaN, float('nan'), and empty string -> returns "" instead of None
+        if 'player' not in event:
+            return ""
+        val = event['player']
+        if val is None:
+            return ""
+        if isinstance(val, float) and pd.isnull(val):
+            return ""
+        s = str(val).strip()
+        if not s or s.lower() == 'nan' or s == 'N/A':
+            return ""
+        return s
 
     # 1. Utility/load + helper functions (from notebook)
     def try_json(x):
@@ -894,9 +907,13 @@ def possession_scene(filename: str, possession: int = Query(...)):
             x = x1 + dx*t + squiggle*ortho_x; y = y1 + dy*t + squiggle*ortho_y
             ax.plot(x, y, color=color, linewidth=lw, alpha=0.75, zorder=zorder)
         def format_player_name(full_name):
-            if not isinstance(full_name, str) or len(full_name.strip()) == 0: return ""
-            parts = full_name.split();
-            if len(parts)==1: return parts[0]; first=parts[0]; last=parts[-1]; return f"{first[0]}. {last}"
+            if not full_name: return ""
+            if isinstance(full_name, float) and pd.isnull(full_name): return ""
+            s = str(full_name).strip()
+            if not s or s == 'N/A' or s.lower() == 'nan': return ""
+            parts = s.split()
+            if len(parts)==1: return parts[0]
+            return f"{parts[0][0]}. {parts[-1]}"
         # carry/legend/precompute logic
         ht_x_thresholds=[]
         if 'High Turnover?' in reordered_df_special.columns:
@@ -972,10 +989,12 @@ def possession_scene(filename: str, possession: int = Query(...)):
         for i, event in reordered_df_special.iterrows():
             typ = event.get('type', None)
             if pd.isna(typ): continue
-            player = event.get('player', None)
+            # player = event.get('player', None)
+            # player = event['player'] if 'player' in event and pd.notnull(event['player']) else None
+            player = get_player(event)
             player_short = format_player_name(player)
 
-            print("Event type:", typ, "Player Fielder?:", player_short)
+            print("Event type:", typ, "Player Fielder?:", repr(player_short))
 
             # (... plotting code unchanged ...)
             # [everything below here remains unchanged from your original]
