@@ -179,7 +179,7 @@ async def upload_csv(file: UploadFile = File(...)):
                 title="Uploaded CSV Visualization"
             )
         else:
-            # If the file doesn’t have x/y, just show basic summary
+            # If the file doesn't have x/y, just show basic summary
             fig = px.bar(df.head(), title="Preview of Uploaded Data")
 
         # Convert to Plotly JSON for React
@@ -916,33 +916,33 @@ def possession_scene(filename: str, possession: int = Query(...)):
                 if isinstance(stype, str) and stype.strip() != "":
                     if stype.strip().lower() == "penalty": shot_types_per_shot[idx] = "Penalty"
                     elif stype.strip().lower() == "free kick": shot_types_per_shot[idx] = "Free Kick"
-        def get_passes_deflected_flags(df):
+        def get_passes_deflected_flags(df, shot_team):
             events=list(df.iterrows()); pass_deflected={};
             for idx in range(len(events)):
                 ev_idx, ev = events[idx]
-                if ev.get("type", None)=="Pass" and team_is_shot_team(ev):
+                if ev.get("type", None)=="Pass" and team_is_shot_team(ev, shot_team):
                     immediate_block = False
                     if idx+1 < len(events):
                         _, next_ev = events[idx+1]
-                        if next_ev.get("type") == "Block" and not team_is_shot_team(next_ev): immediate_block = True
+                        if next_ev.get("type") == "Block" and not team_is_shot_team(next_ev, shot_team): immediate_block = True
                     own_deflected = False
                     pd_col = ev.get('pass_deflected', None)
                     if pd_col is True or (isinstance(pd_col, (np.bool_, bool)) and pd_col): own_deflected = True
                     pass_deflected[ev_idx] = immediate_block or own_deflected
             return pass_deflected
-        def get_shots_deflected_flags(df):
+        def get_shots_deflected_flags(df, shot_team):
             events=list(df.iterrows()); shot_deflected={};
             for idx in range(len(events)):
                 ev_idx, ev = events[idx]
-                if ev.get("type", None)=="Shot" and team_is_shot_team(ev):
+                if ev.get("type", None)=="Shot" and team_is_shot_team(ev, shot_team):
                     if idx+1 < len(events):
                         _, next_ev = events[idx+1]
-                        if next_ev.get("type") == "Block" and not team_is_shot_team(next_ev): shot_deflected[ev_idx]=True
+                        if next_ev.get("type") == "Block" and not team_is_shot_team(next_ev, shot_team): shot_deflected[ev_idx]=True
                         else: shot_deflected[ev_idx]=False
                     else: shot_deflected[ev_idx]=False
             return shot_deflected
-        pass_deflected_flags = get_passes_deflected_flags(reordered_df_special)
-        shot_deflected_flags = get_shots_deflected_flags(reordered_df_special)
+        pass_deflected_flags = get_passes_deflected_flags(reordered_df_special, shot_team)
+        shot_deflected_flags = get_shots_deflected_flags(reordered_df_special, shot_team)
         # --- BEGIN REAL PLOT ---
         fig = plt.figure(figsize=(16,8)); gs = gridspec.GridSpec(1,2,width_ratios=[7,2],wspace=0.01)
         ax = fig.add_subplot(gs[0])
@@ -963,7 +963,7 @@ def possession_scene(filename: str, possession: int = Query(...)):
         special_intercept_ballreceipt_indices = set()
         for n in range(len(rows_list)-1):
             i1, ev1 = rows_list[n]; i2, ev2 = rows_list[n+1]
-            if ev1.get("type",None)=="Interception" and not team_is_shot_team(ev1) and ev2.get("type",None)=="Ball Receipt*" and team_is_shot_team(ev2):
+            if ev1.get("type",None)=="Interception" and not team_is_shot_team(ev1, shot_team) and ev2.get("type",None)=="Ball Receipt*" and team_is_shot_team(ev2, shot_team):
                 x, _ = get_xy(ev1.get('location'))
                 if not math.isnan(x): special_intercept_ballreceipt_indices.add(i1)
         # --- PLOT LOOP as in cell ---
