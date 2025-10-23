@@ -35,6 +35,13 @@ export default function MatchViz() {
   const [stats, setStats] = useState({});
   const [globalError, setGlobalError] = useState("");
 
+  // New state for scene image, selected moment
+  const [selectedMomentIdx, setSelectedMomentIdx] = useState(null);
+  const [sceneImageBase64, setSceneImageBase64] = useState(null);
+  const [sceneLoading, setSceneLoading] = useState(false);
+  const [sceneError, setSceneError] = useState(null);
+  const [showImportantScenes, setShowImportantScenes] = useState(false);
+
   useEffect(() => {
     setGlobalError(matchesError || uploadError || vizError || "");
   }, [matchesError, uploadError, vizError]);
@@ -66,6 +73,53 @@ export default function MatchViz() {
   useEffect(() => {
     if (selectedMatch) fetchImportantMoments(selectedMatch);
   }, [selectedMatch, fetchImportantMoments]);
+
+  // When a new moment row is selected, fetch and display the scene plot
+  useEffect(() => {
+    // Only fetch if box ticked and row selected
+    if (!showImportantScenes || selectedMomentIdx === null || importantMoments.length === 0 || !selectedMatch) {
+      setSceneImageBase64(null);
+      setSceneError(null);
+      setSceneLoading(false);
+      return;
+    }
+    const m = importantMoments[selectedMomentIdx];
+    if (!m) return;
+    setSceneImageBase64(null);
+    setSceneLoading(true);
+    setSceneError(null);
+    fetch(`https://columbia-msds-f25-soccer.onrender.com/api/match/${selectedMatch}/possession_scene?possession=${m.possession}`)
+      .then(res => res.json())
+      .then(res => {
+        if (res.image_base64) {
+          setSceneImageBase64(res.image_base64);
+        } else if (res.error) {
+          setSceneError(res.error);
+        } else {
+          setSceneError("No image returned");
+        }
+      })
+      .catch(() => setSceneError("Failed to fetch possession scene"))
+      .finally(() => setSceneLoading(false));
+  }, [selectedMomentIdx, selectedMatch, showImportantScenes, importantMoments]);
+
+  // Select first important moment whenever moments or match change (if box is checked)
+  useEffect(() => {
+    if (showImportantScenes && importantMoments.length > 0) {
+      setSelectedMomentIdx(0);
+    } else {
+      setSelectedMomentIdx(null);
+    }
+  }, [importantMoments, selectedMatch, showImportantScenes]);
+
+  // Handlers
+  const handleMomentClick = idx => {
+    setSelectedMomentIdx(idx);
+    setShowImportantScenes(true);
+  };
+  const handlePrev = () => setSelectedMomentIdx(idx => idx > 0 ? idx - 1 : 0);
+  const handleNext = () => setSelectedMomentIdx(idx => idx < importantMoments.length - 1 ? idx + 1 : idx);
+  const handleShowImportantScenesToggle = () => setShowImportantScenes(s => !s);
 
 
   return (
@@ -137,9 +191,13 @@ export default function MatchViz() {
         }
       />
 
-      {/* --- Important moments table --- */}
+      {/* --- Important moments table with click/select/highlight --- */}
       <div style={{ margin: "30px auto", maxWidth: 540 }}>
         <h3>Key Moments</h3>
+        <label style={{ cursor: 'pointer', fontWeight: 400 }}>
+          <input type="checkbox" checked={showImportantScenes} onChange={handleShowImportantScenesToggle} style={{ marginRight: 6 }} />
+          Show Important Scenes
+        </label>
         {importantMomentsLoading && <div>Loading moments...</div>}
         {importantMomentsError && <div style={{ color: 'red' }}>{importantMomentsError}</div>}
         {!importantMomentsLoading && !importantMomentsError && Array.isArray(importantMoments) && importantMoments.length === 0 && (
@@ -160,7 +218,16 @@ export default function MatchViz() {
             </thead>
             <tbody>
               {importantMoments.map((m, idx) => (
-                <tr key={idx}>
+                <tr
+                  key={idx}
+                  onClick={() => handleMomentClick(idx)}
+                  style={{
+                    cursor: 'pointer',
+                    background: selectedMomentIdx === idx && showImportantScenes ? '#def' : '',
+                    fontWeight: selectedMomentIdx === idx && showImportantScenes ? 600 : 400,
+                    transition: 'background 0.14s',
+                  }}
+                >
                   <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{idx + 1}</td>
                   <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{m.when}</td>
                   <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{m.who}</td>
@@ -173,8 +240,31 @@ export default function MatchViz() {
             </tbody>
           </table>
         )}
+        {/* Scene viewer with navigation */}
+        {showImportantScenes && importantMoments.length > 0 && selectedMomentIdx !== null && (
+          <div style={{ margin: '36px 0 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <button onClick={handlePrev} disabled={selectedMomentIdx <= 0} style={{ fontSize: 20, marginRight: 9, padding: '8px 13px' }}>{'←'}</button>
+              <span style={{ fontSize: 16, fontWeight: 500 }}>
+                Moment {selectedMomentIdx + 1} of {importantMoments.length} (Possession {importantMoments[selectedMomentIdx]?.possession})
+              </span>
+              <button onClick={handleNext} disabled={selectedMomentIdx >= importantMoments.length - 1} style={{ fontSize: 20, marginLeft: 9, padding: '8px 13px' }}>{'→'}</button>
+            </div>
+            <div style={{ minHeight: 42, margin: '16px auto', color: '#ad031c', fontWeight: 500 }}>
+              {sceneLoading && 'Loading scene...'}
+              {sceneError && sceneError}
+            </div>
+            {sceneImageBase64 && (
+              <img
+                src={`data:image/png;base64,${sceneImageBase64}`}
+                alt="Possession Scene"
+                style={{ maxWidth: '98%', margin: '10px auto', border: '2px solid #888', borderRadius: 10, boxShadow: '0 6px 24px #0001' }}
+              />
+            )}
+          </div>
+        )}
       </div>
-      {/* --- End important moments table --- */}
+      {/* --- End important moments scene viewer --- */}
 
       <ShotMapButtons
         home={homeName}
