@@ -734,11 +734,17 @@ def possession_scene(filename: str, possession: int = Query(...)):
         def boolean_get(df, col):
             try: v = df.get(col, None); return v == True if v.dtype==bool else v.astype(str).str.lower() == "true" if v is not None else pd.Series([False]*len(df))
             except Exception: return pd.Series([False]*len(df))
-        shot_filter = ((
-            (reordered_df["type"] == "Shot")&((pd.to_numeric(reordered_df.get('shot_statsbomb_xg', 0),errors='coerce') >= 0.08)| (reordered_df.get('shot_outcome', '') == 'Goal'))
-        )|
-            (reordered_df['type'] == 'Own Goal Against') |
-            ((reordered_df['type'] == 'Foul Won') & boolean_get(reordered_df, 'foul_won_penalty')))
+        shot_filter = (
+            (
+                (reordered_df["type"] == "Shot")&(
+                    (pd.to_numeric(reordered_df.get('shot_statsbomb_xg', 0),errors='coerce') >= 0.08)| 
+                    (reordered_df.get('shot_outcome', '') == 'Goal')
+                )
+            )|
+                (reordered_df['type'] == 'Own Goal Against') 
+            |
+            (
+                (reordered_df['type'] == 'Foul Won') & boolean_get(reordered_df, 'foul_won_penalty')))
         shot_row = reordered_df[shot_filter]
         # Window selection
         if not shot_row.empty and not (shot_row.get('shot_type', pd.Series()).eq('Penalty').any()):
@@ -1327,16 +1333,44 @@ def possession_scene(filename: str, possession: int = Query(...)):
                 return f"{parts[0][0]}. {parts[-1]}"
             else:
                 return name
-        if not shot_row.empty:
-            sr = shot_row.iloc[-1]; who = to_f_last(sr.get('player', 'N/A'))
-            xg_val = sr.get('shot_statsbomb_xg', 'N/A'); xg = round(xg_val,2) if isinstance(xg_val, (int,float)) else xg_val
-            shot_type = sr.get('shot_type', '');         info_note = '(Penalty)' if isinstance(shot_type,str) and shot_type.strip().lower()=='penalty' else '(Free Kick)' if isinstance(shot_type,str) and shot_type.strip().lower()=='free kick' else None
-            shot_minute = sr.get('minute', None); shot_second = sr.get('second', None); when = f"{int(shot_minute)}:{int(shot_second):02d}" if shot_minute is not None and shot_second is not None else 'N/A'; outcome = sr.get('shot_outcome','N/A')
+        # Patch: robust case for 'Penalty Won' events
+        if not shot_row.empty and 'player' in shot_row.columns:
+            sr = shot_row.iloc[-1]
+            if sr.get('type', None) == 'Foul Won' and sr.get('foul_won_penalty', False):
+                # Penalty won event
+                who = to_f_last(sr.get('player', 'N/A'))
+                info_note = '(Penalty Won)'
+                shot_minute = sr.get('minute', None)
+                shot_second = sr.get('second', None)
+                when = f"{int(shot_minute)}:{int(shot_second):02d}" if shot_minute is not None and shot_second is not None else 'N/A'
+                xg = 'N/A'
+                outcome = 'Penalty Won'
+            else:
+                who = to_f_last(sr.get('player', 'N/A'))
+                xg_val = sr.get('shot_statsbomb_xg', 'N/A')
+                xg = round(xg_val,2) if isinstance(xg_val, (int,float)) else xg_val
+                shot_type = sr.get('shot_type', '')
+                if isinstance(shot_type,str) and shot_type.strip().lower() == 'penalty':
+                    info_note = '(Penalty)'
+                elif isinstance(shot_type,str) and shot_type.strip().lower() == 'free kick':
+                    info_note = '(Free Kick)'
+                shot_minute = sr.get('minute', None)
+                shot_second = sr.get('second', None)
+                when = f"{int(shot_minute)}:{int(shot_second):02d}" if shot_minute is not None and shot_second is not None else 'N/A'
+                outcome = sr.get('shot_outcome','N/A')
         elif not reordered_df_special.empty and 'Foul Won' in reordered_df_special['type'].values:
-            foul_row = reordered_df_special[(reordered_df_special['type']=='Foul Won') & (reordered_df_special.get('foul_won_penalty', False)==True)]
-            if not foul_row.empty:
-                fr = foul_row.iloc[-1]; who = to_f_last(fr.get('player','N/A')); info_note='(Penalty Won)'; shot_minute = fr.get('minute', None); shot_second = fr.get('second', None); when = f"{int(shot_minute)}:{int(shot_second):02d}" if shot_minute is not None and shot_second is not None else 'N/A'; outcome='N/A'
-        if info_note is not None and who != 'N/A': who = f"{who} {info_note}"
+            foul_rows = reordered_df_special[(reordered_df_special['type']=='Foul Won') & (reordered_df_special.get('foul_won_penalty', False)==True)]
+            if not foul_rows.empty:
+                fr = foul_rows.iloc[-1]
+                who = to_f_last(fr.get('player','N/A'))
+                info_note = '(Penalty Won)'
+                shot_minute = fr.get('minute', None)
+                shot_second = fr.get('second', None)
+                when = f"{int(shot_minute)}:{int(shot_second):02d}" if shot_minute is not None and shot_second is not None else 'N/A'
+                xg = 'N/A'
+                outcome = 'Penalty Won'
+        if info_note is not None and who != 'N/A':
+            who = f"{who} {info_note}"
         # Try score at shot time
         # Try score at shot time — only run if the events DataFrame exists
         if 'events' in locals():
