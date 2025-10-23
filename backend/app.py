@@ -885,7 +885,8 @@ def possession_scene(filename: str, possession: int = Query(...)):
             return (np.nan, np.nan)
         def flip_y(y): return 80 - y if y is not None and not math.isnan(y) else y
         def flip_x(x): return 120 - x if x is not None and not math.isnan(x) else x
-        def team_is_shot_team(row): return (row.get('team', None) == shot_team)
+        def team_is_shot_team(row, shot_team):
+            return (row.get('team', None) == shot_team)
         def plot_squiggly(ax, x1, y1, x2, y2, color='gray', lw=1, zorder=3):
             t = np.linspace(0, 1, 100); dx=x2-x1; dy=y2-y1; length=np.sqrt(dx*dx+dy*dy); 
             if length < 1e-2: return
