@@ -975,6 +975,8 @@ def possession_scene(filename: str, possession: int = Query(...)):
             player = event.get('player', None)
             player_short = format_player_name(player)
 
+            print("Event type:", typ, "Player Fielder?:", player_short)
+
             # (... plotting code unchanged ...)
             # [everything below here remains unchanged from your original]
             # Own Goal logic remains unchanged
@@ -1299,7 +1301,13 @@ def possession_scene(filename: str, possession: int = Query(...)):
         # --- INFO CARD ---
         info_note, who, when, xg, outcome, score_string = None, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A'
         def to_f_last(name):
-            if not isinstance(name,str) or name.strip()=='' or name=='N/A': return 'N/A'; parts=name.strip().split(); return f"{parts[0][0]}. {parts[-1]}" if len(parts)>=2 else name
+            if not isinstance(name, str) or name.strip() == '' or name == 'N/A':
+                return 'N/A'
+            parts = name.strip().split()
+            if len(parts) >= 2:
+                return f"{parts[0][0]}. {parts[-1]}"
+            else:
+                return name
         if not shot_row.empty:
             sr = shot_row.iloc[-1]; who = to_f_last(sr.get('player', 'N/A'))
             xg_val = sr.get('shot_statsbomb_xg', 'N/A'); xg = round(xg_val,2) if isinstance(xg_val, (int,float)) else xg_val
