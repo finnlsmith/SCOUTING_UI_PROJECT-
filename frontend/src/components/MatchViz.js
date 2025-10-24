@@ -12,22 +12,19 @@ import ShotMapPlot from "./ShotMapPlot";
 
 export default function MatchViz() {
   const { matches, loading: matchesLoading, error: matchesError, setError: setMatchesError } = useMatchData();
-  // const { setFile, upload, uploading, success, error: uploadError, setError: setUploadError } = useUpload();
-  // const {
-  //   figData,
-  //   setFigData,
-  //   loading: plotLoading,
-  //   loadMatchViz,
-  //   loadTeamShotmap,
-  //   loadBothShotmaps,
-  //   loadPassingNetwork,
-  //   error: vizError,
-  //   setError: setVizError,
-  //   importantMoments,
-  //   importantMomentsLoading,
-  //   importantMomentsError,
-  //   fetchImportantMoments,
-  // } = useVisualization();
+  const { error: uploadError, setError: setUploadError } = useUpload();
+  const {
+    loading: plotLoading,
+    loadMatchViz,
+    loadTeamShotmap,
+    loadBothShotmaps,
+    loadPassingNetwork,
+    error: vizError, setError: setVizError,
+    importantMoments,
+    importantMomentsLoading,
+    importantMomentsError,
+    fetchImportantMoments,
+  } = useVisualization();
 
   const [selectedMatch, setSelectedMatch] = useState("");
   const [flipSides, setFlipSides] = useState(false);
@@ -125,7 +122,7 @@ export default function MatchViz() {
                 setSelectedMatch(v);
                 try {
                   await loadMatchViz(v, setStats);
-                  setFigData(null);
+                  // setFigData(null); // This line was commented out in the original file
                 } catch (e) {
                   setVizError?.(e?.message || "Failed to load match");
                 }
@@ -135,7 +132,7 @@ export default function MatchViz() {
               onReset={() => {
                 setSelectedMatch("");
                 setStats({});
-                setFigData(null);
+                // setFigData(null); // This line was commented out in the original file
               }}
               matchesLoading={matchesLoading}
             />
