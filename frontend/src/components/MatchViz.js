@@ -3,31 +3,31 @@ import useMatchData from "./useMatchData";
 import useUpload from "./useUpload";
 import useVisualization from "./useVisualization";
 import ErrorBanner from "./ErrorBanner";
-import FileUpload from "./FileUpload";
+// import FileUpload from "./FileUpload";
 import MatchSelector from "./MatchSelector";
 import Scoreboard from "./Scoreboard";
-import ShotMapButtons from "./ShotMapButtons";
+// import ShotMapButtons from "./ShotMapButtons";
 import ShotMapPlot from "./ShotMapPlot";
-import PassingNetworkButtons from "./PassingNetworkButtons";
+// import PassingNetworkButtons from "./PassingNetworkButtons";
 
 export default function MatchViz() {
   const { matches, loading: matchesLoading, error: matchesError, setError: setMatchesError } = useMatchData();
-  const { setFile, upload, uploading, success, error: uploadError, setError: setUploadError } = useUpload();
-  const {
-    figData,
-    setFigData,
-    loading: plotLoading,
-    loadMatchViz,
-    loadTeamShotmap,
-    loadBothShotmaps,
-    loadPassingNetwork,
-    error: vizError,
-    setError: setVizError,
-    importantMoments,
-    importantMomentsLoading,
-    importantMomentsError,
-    fetchImportantMoments,
-  } = useVisualization();
+  // const { setFile, upload, uploading, success, error: uploadError, setError: setUploadError } = useUpload();
+  // const {
+  //   figData,
+  //   setFigData,
+  //   loading: plotLoading,
+  //   loadMatchViz,
+  //   loadTeamShotmap,
+  //   loadBothShotmaps,
+  //   loadPassingNetwork,
+  //   error: vizError,
+  //   setError: setVizError,
+  //   importantMoments,
+  //   importantMomentsLoading,
+  //   importantMomentsError,
+  //   fetchImportantMoments,
+  // } = useVisualization();
 
   const [selectedMatch, setSelectedMatch] = useState("");
   const [flipSides, setFlipSides] = useState(false);
