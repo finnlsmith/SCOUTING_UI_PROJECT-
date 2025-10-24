@@ -1,14 +1,18 @@
 import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import MatchViz from "./components/MatchViz";
+import TournamentsPage from "./components/TournamentsPage";
+import LandingPage from "./components/LandingPage";
 
 function App() {
   return (
-    <div style={{ backgroundColor: "#f9fafb", minHeight: "100vh" }}>
-      <h1 style={{ textAlign: "center", paddingTop: "20px" }}>
-        Football Analytics Dashboard (MVP)
-      </h1>
-      <MatchViz />
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/tournaments" element={<TournamentsPage />} />
+        <Route path="/euro-2020" element={<MatchViz />} />
+      </Routes>
+    </Router>
   );
 }
 
