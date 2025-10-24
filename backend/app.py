@@ -528,7 +528,8 @@ def passing_network_like_matplotlib(
 
         # Nodes (size as plain list, customdata as list — NOT np.array)
         if not nodes.empty:
-            size_list = (40 + 0.1*nodes["touches"]).clip(lower=30, upper=120).astype(float).tolist()
+            # size_list = (40 + 0.1*nodes["touches"]).clip(lower=30, upper=120).astype(float).tolist()
+            size_list = (14 + 0.045*nodes["touches"]).clip(lower=8, upper=32).astype(float).tolist()
             touches_list = nodes["touches"].astype(int).tolist()
             x_list = nodes["x"].astype(float).tolist()
             y_list = nodes["y"].astype(float).tolist()
