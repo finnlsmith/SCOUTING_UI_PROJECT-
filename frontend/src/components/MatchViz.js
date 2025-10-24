@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import useMatchData from "./useMatchData";
 import useUpload from "./useUpload";
 import useVisualization from "./useVisualization";
-
 import ErrorBanner from "./ErrorBanner";
 import FileUpload from "./FileUpload";
 import MatchSelector from "./MatchSelector";
@@ -13,7 +12,7 @@ import PassingNetworkButtons from "./PassingNetworkButtons";
 
 export default function MatchViz() {
   const { matches, loading: matchesLoading, error: matchesError, setError: setMatchesError } = useMatchData();
-  const { setFile, upload, uploading, success, error: uploadError, setError: setUploadError } = useUpload(); //file, 
+  const { setFile, upload, uploading, success, error: uploadError, setError: setUploadError } = useUpload();
   const {
     figData,
     setFigData,
@@ -34,8 +33,8 @@ export default function MatchViz() {
   const [flipSides, setFlipSides] = useState(false);
   const [stats, setStats] = useState({});
   const [globalError, setGlobalError] = useState("");
-
-  // New state for scene image, selected moment
+  const [shotMapFigData, setShotMapFigData] = useState(null);
+  const [passNetFigData, setPassNetFigData] = useState(null);
   const [selectedMomentIdx, setSelectedMomentIdx] = useState(null);
   const [sceneImageBase64, setSceneImageBase64] = useState(null);
   const [sceneLoading, setSceneLoading] = useState(false);
@@ -54,29 +53,19 @@ export default function MatchViz() {
   }
 
   // ====== FALLBACK TEAM NAME LOGIC ======
-  // Get the selected match label (e.g. "2021-06-28 - France vs Switzerland – Events")
   const selectedLabel = matches.find(m => m.file === selectedMatch)?.label || "";
-
-  // Extract home and away names using regex
   const m = /-\s(.*?)\svs\s(.*?)\s–/.exec(selectedLabel);
   const fallbackHome = m?.[1];
   const fallbackAway = m?.[2];
-
-  // Prefer the actual team names from stats if available, otherwise use fallback
   const homeName = stats?.home_team || fallbackHome;
   const awayName = stats?.away_team || fallbackAway;
-
-  // Only enable buttons if both names exist
   const canShoot = Boolean(selectedMatch && homeName && awayName);
 
-  // Fetch important moments when a match is selected
   useEffect(() => {
     if (selectedMatch) fetchImportantMoments(selectedMatch);
   }, [selectedMatch, fetchImportantMoments]);
 
-  // When a new moment row is selected, fetch and display the scene plot
   useEffect(() => {
-    // Only fetch if box ticked and row selected
     if (!showImportantScenes || selectedMomentIdx === null || importantMoments.length === 0 || !selectedMatch) {
       setSceneImageBase64(null);
       setSceneError(null);
@@ -103,7 +92,6 @@ export default function MatchViz() {
       .finally(() => setSceneLoading(false));
   }, [selectedMomentIdx, selectedMatch, showImportantScenes, importantMoments]);
 
-  // Select first important moment whenever moments or match change (if box is checked)
   useEffect(() => {
     if (showImportantScenes && importantMoments.length > 0) {
       setSelectedMomentIdx(0);
@@ -112,7 +100,6 @@ export default function MatchViz() {
     }
   }, [importantMoments, selectedMatch, showImportantScenes]);
 
-  // Handlers
   const handleMomentClick = idx => {
     setSelectedMomentIdx(idx);
     setShowImportantScenes(true);
@@ -121,168 +108,216 @@ export default function MatchViz() {
   const handleNext = () => setSelectedMomentIdx(idx => idx < importantMoments.length - 1 ? idx + 1 : idx);
   const handleShowImportantScenesToggle = () => setShowImportantScenes(s => !s);
 
-
   return (
-    <div style={{ textAlign: "center", padding: "20px" }}>
+    <div style={{ padding: '40px 0 70px', background: '#fff', minHeight: "100vh" }}>
       <ErrorBanner error={globalError} onClose={handleClearError} />
-
-      <h2>Select or Upload a Match</h2>
-
-      <FileUpload
-        onFileChange={(e) => setFile(e.target.files[0])}
-        onUpload={async () => {
-          try {
-            const data = await upload();
-            if (data) setStats(data);
-          } catch (e) {
-            setVizError?.(e?.message || "Upload failed");
-          }
-        }}
-        uploading={uploading}
-        uploadSuccess={success}
-      />
-
-      <MatchSelector
-        matches={matches}
-        selectedMatch={selectedMatch}
-        onChange={async (v) => {
-          setSelectedMatch(v);
-          try {
-            // Only update stats for scoreboard, NOT figData/chart!
-            await loadMatchViz(v, setStats);
-            setFigData(null); // Clear chart when new match is selected
-          } catch (e) {
-            setVizError?.(e?.message || "Failed to load match");
-          }
-        }}
-        flipSides={flipSides}
-        onFlipChange={setFlipSides}
-        onReset={() => {
-          setSelectedMatch("");
-          setStats({});
-          setFigData(null); // Clear chart when reset
-        }}
-        matchesLoading={matchesLoading}
-      />
-
-      <Scoreboard
-        stage={stats.competition_stage}
-        home={stats.home_team}
-        away={stats.away_team}
-        score={
-          Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score)
-            ? `${stats.home_score} - ${stats.away_score}`
-            : "-"
-        }
-        shots={
-          Number.isFinite(stats.home_shots) && Number.isFinite(stats.away_shots)
-            ? `${stats.home_shots} - ${stats.away_shots}`
-            : "-"
-        }
-        shotsOnTarget={
-          Number.isFinite(stats.home_shots_on_target) && Number.isFinite(stats.away_shots_on_target)
-            ? `${stats.home_shots_on_target} - ${stats.away_shots_on_target}`
-            : "-"
-        }
-        xg={
-          Number.isFinite(stats.home_xg_sum) && Number.isFinite(stats.away_xg_sum)
-            ? `${Number(stats.home_xg_sum || 0).toFixed(2)} - ${Number(stats.away_xg_sum || 0).toFixed(2)}`
-            : "-"
-        }
-      />
-
-      {/* --- Important moments table with click/select/highlight --- */}
-      <div style={{ margin: "30px auto", maxWidth: 540 }}>
-        <h3>Key Moments</h3>
-        <label style={{ cursor: 'pointer', fontWeight: 400 }}>
-          <input type="checkbox" checked={showImportantScenes} onChange={handleShowImportantScenesToggle} style={{ marginRight: 6 }} />
-          Show Important Scenes
-        </label>
-        {importantMomentsLoading && <div>Loading moments...</div>}
-        {importantMomentsError && <div style={{ color: 'red' }}>{importantMomentsError}</div>}
-        {!importantMomentsLoading && !importantMomentsError && Array.isArray(importantMoments) && importantMoments.length === 0 && (
-          <div>No important moments found for match.</div>
-        )}
-        {!importantMomentsLoading && !importantMomentsError && Array.isArray(importantMoments) && importantMoments.length > 0 && (
-          <table style={{ margin: "0 auto", fontSize: "1rem", borderCollapse: "collapse", minWidth: 380 }}>
-            <thead>
-              <tr style={{ background: '#efefef' }}>
-                <th style={{ border: '1px solid #bbb', padding: '3px 7px' }}>#</th>
-                <th style={{ border: '1px solid #bbb', padding: '3px 7px' }}>When</th>
-                <th style={{ border: '1px solid #bbb', padding: '3px 7px' }}>Who</th>
-                <th style={{ border: '1px solid #bbb', padding: '3px 7px' }}>Type</th>
-                <th style={{ border: '1px solid #bbb', padding: '3px 7px' }}>xG</th>
-                <th style={{ border: '1px solid #bbb', padding: '3px 7px' }}>Outcome</th>
-                <th style={{ border: '1px solid #bbb', padding: '3px 7px' }}>Poss.</th>
-              </tr>
-            </thead>
-            <tbody>
-              {importantMoments.map((m, idx) => (
-                <tr
-                  key={idx}
-                  onClick={() => handleMomentClick(idx)}
-                  style={{
-                    cursor: 'pointer',
-                    background: selectedMomentIdx === idx && showImportantScenes ? '#def' : '',
-                    fontWeight: selectedMomentIdx === idx && showImportantScenes ? 600 : 400,
-                    transition: 'background 0.14s',
-                  }}
-                >
-                  <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{idx + 1}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{m.when}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{m.who}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{m.event_type}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{m.xg !== undefined && m.xg !== null ? m.xg : ''}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{m.outcome}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '2px 7px' }}>{m.possession}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {/* Scene viewer with navigation */}
-        {showImportantScenes && importantMoments.length > 0 && selectedMomentIdx !== null && (
-          <div style={{ margin: '36px 0 0' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              <button onClick={handlePrev} disabled={selectedMomentIdx <= 0} style={{ fontSize: 20, marginRight: 9, padding: '8px 13px' }}>{'←'}</button>
-              <span style={{ fontSize: 16, fontWeight: 500 }}>
-                Moment {selectedMomentIdx + 1} of {importantMoments.length} (Possession {importantMoments[selectedMomentIdx]?.possession})
-              </span>
-              <button onClick={handleNext} disabled={selectedMomentIdx >= importantMoments.length - 1} style={{ fontSize: 20, marginLeft: 9, padding: '8px 13px' }}>{'→'}</button>
-            </div>
-            <div style={{ minHeight: 42, margin: '16px auto', color: '#ad031c', fontWeight: 500 }}>
-              {sceneLoading && 'Loading scene...'}
-              {sceneError && sceneError}
-            </div>
-            {sceneImageBase64 && (
-              <img
-                src={`data:image/png;base64,${sceneImageBase64}`}
-                alt="Possession Scene"
-                style={{ maxWidth: '98%', margin: '10px auto', border: '2px solid #888', borderRadius: 10, boxShadow: '0 6px 24px #0001' }}
-              />
-            )}
+      <div style={{ maxWidth: 1310, margin: '0 auto' }}>
+        {/* Tournament Title */}
+        <h1 style={{ fontSize: 44, fontWeight: 800, marginBottom: 19, letterSpacing: 1 }}>Euro 2020</h1>
+        {/* Match Selection */}
+        <div style={{ marginBottom: 30 }}>
+          <h2 style={{ fontSize: 27, fontWeight: 600, marginBottom: 11 }}>Select a Match</h2>
+          <div style={{ maxWidth: 350, marginBottom: 22 }}>
+            <MatchSelector
+              matches={matches}
+              selectedMatch={selectedMatch}
+              onChange={async (v) => {
+                setSelectedMatch(v);
+                try {
+                  await loadMatchViz(v, setStats);
+                  setFigData(null);
+                } catch (e) {
+                  setVizError?.(e?.message || "Failed to load match");
+                }
+              }}
+              flipSides={flipSides}
+              onFlipChange={setFlipSides}
+              onReset={() => {
+                setSelectedMatch("");
+                setStats({});
+                setFigData(null);
+              }}
+              matchesLoading={matchesLoading}
+            />
           </div>
+        </div>
+
+        {selectedMatch && (
+          <>
+            {/* Main 3-panel row */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 48, marginBottom: 54 }}>
+              {/* Match Facts */}
+              <div style={{ flex: 1, minWidth: 295 }}>
+                <h2 style={{ fontSize: 30, fontWeight: 500, marginBottom: 18, textAlign: 'center' }}>Match Facts</h2>
+                <div style={{ boxShadow: '0 2px 16px #0001', borderRadius: 16, background: '#f8fafc', padding: 17, minHeight: 230, maxWidth: 350, margin: '0 auto' }}>
+                  <Scoreboard
+                    stage={stats.competition_stage}
+                    home={stats.home_team}
+                    away={stats.away_team}
+                    score={Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "-"}
+                    shots={Number.isFinite(stats.home_shots) && Number.isFinite(stats.away_shots) ? `${stats.home_shots} - ${stats.away_shots}` : "-"}
+                    shotsOnTarget={Number.isFinite(stats.home_shots_on_target) && Number.isFinite(stats.away_shots_on_target) ? `${stats.home_shots_on_target} - ${stats.away_shots_on_target}` : "-"}
+                    xg={Number.isFinite(stats.home_xg_sum) && Number.isFinite(stats.away_xg_sum) ? `${Number(stats.home_xg_sum || 0).toFixed(2)} - ${Number(stats.away_xg_sum || 0).toFixed(2)}` : "-"}
+                  />
+                </div>
+              </div>
+
+              {/* Shot Maps, with buttons */}
+              <div style={{ flex: 2, minWidth: 340, textAlign:"center" }}>
+                <h2 style={{ fontSize: 30, fontWeight: 500, marginBottom: 18 }}>Shot Maps</h2>
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", marginBottom: 14, gap: 28 }}>
+                  <label style={{ fontSize:18, fontWeight: 400 }}>
+                    <input
+                      type="checkbox"
+                      checked={flipSides}
+                      onChange={(e) => setFlipSides(e.target.checked)}
+                      style={{ transform: 'scale(1.4)', verticalAlign:'middle', marginRight:7 }}
+                    />
+                    Flip Sides
+                  </label>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginBottom: 13 }}>
+                  <button onClick={async () => {
+                    if (!canShoot) return;
+                    const data = await loadTeamShotmap(selectedMatch, homeName);
+                    setShotMapFigData(data);
+                  }} style={{ fontSize:17, padding:'9px 18px', borderRadius:8, border:'1.5px solid #222', fontWeight:500, background:'#fff', boxShadow:'3px 4px 0 #0002', minWidth: 148, cursor:'pointer' }}>Shot map – {homeName}</button>
+                  <button onClick={async () => {
+                    if (!canShoot) return;
+                    const data = await loadTeamShotmap(selectedMatch, awayName);
+                    setShotMapFigData(data);
+                  }} style={{ fontSize:17, padding:'9px 18px', borderRadius:8, border:'1.5px solid #222', fontWeight:500, background:'#fff', boxShadow:'3px 4px 0 #0002', minWidth: 148, cursor:'pointer' }}>Shot map – {awayName}</button>
+                  <button onClick={async () => {
+                    if (!canShoot) return;
+                    const data = await loadBothShotmaps(selectedMatch, homeName, awayName);
+                    setShotMapFigData(data);
+                  }} style={{ fontSize:17, padding:'9px 18px', borderRadius:8, border:'1.5px solid #222', fontWeight:500, background:'#fff', boxShadow:'3px 4px 0 #0002', minWidth: 170, cursor:'pointer' }}>Both Teams Shot Map</button>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12, marginBottom: -12 }}>
+                  <button 
+                    onClick={() => setShotMapFigData(null)}
+                    style={{ fontSize: 16, padding: '6px 20px', borderRadius: 8, border: '1.3px solid #bbb', background: '#fff', fontWeight: 500, margin: '0 4px', cursor: 'pointer' }}
+                  >Reset Shot Map</button>
+                </div>
+                {shotMapFigData && (
+                  <div style={{ margin: '24px auto 0', width: 330, display: 'flex', justifyContent: 'center' }}>
+                    <ShotMapPlot displayFig={shotMapFigData} flipSides={flipSides} plotLoading={plotLoading} smaller />
+                  </div>
+                )}
+              </div>
+
+              {/* Passing Network (right) */}
+              <div style={{ flex: 1.42, minWidth: 295 }}>
+                <h2 style={{ fontSize: 30, fontWeight: 500, marginBottom: 18, textAlign: 'center' }}>Passing Network</h2>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 11, marginBottom: 15 }}>
+                  <button onClick={async () => {
+                    if (!canShoot) return;
+                    const data = await loadPassingNetwork(selectedMatch, homeName, 1, false);
+                    setPassNetFigData(data);
+                  }} style={{ fontSize:17, padding:'9px 18px', borderRadius:8, border:'1.5px solid #222', fontWeight:500, background:'#fff', boxShadow:'3px 4px 0 #0002', minWidth: 155, cursor:'pointer' }}>{homeName} Network</button>
+                  <button onClick={async () => {
+                    if (!canShoot) return;
+                    const data = await loadPassingNetwork(selectedMatch, awayName, 1, true);
+                    setPassNetFigData(data);
+                  }} style={{ fontSize:17, padding:'9px 18px', borderRadius:8, border:'1.5px solid #222', fontWeight:500, background:'#fff', boxShadow:'3px 4px 0 #0002', minWidth: 155, cursor:'pointer' }}>{awayName} Network</button>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12, marginBottom: -12 }}>
+                  <button 
+                    onClick={() => setPassNetFigData(null)}
+                    style={{ fontSize: 16, padding: '6px 20px', borderRadius: 8, border: '1.3px solid #bbb', background: '#fff', fontWeight: 500, margin: '0 4px', cursor: 'pointer' }}
+                  >Reset Passing Network</button>
+                </div>
+                {passNetFigData && (
+                  <div style={{ margin: '24px auto 0', maxWidth:540 }}>
+                    <ShotMapPlot displayFig={passNetFigData} flipSides={flipSides} plotLoading={plotLoading} customSize={{ width: 540, height: 380 }} />
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Key Moments Section */}
+            <div style={{ marginTop: 11 }}>
+              <h2 style={{ fontSize: 29, fontWeight: 500, marginBottom: 5, textAlign:'left' }}>Key Moments <span style={{ fontSize:18, fontWeight:400, marginLeft:18}}><input type="checkbox" checked={showImportantScenes} onChange={handleShowImportantScenesToggle} style={{ transform:'scale(1.32)', marginRight:3, verticalAlign:'middle'}} />Show Scenes</span></h2>
+              <div style={{ display:'flex', flexDirection:'row', alignItems:'flex-start', gap:19, flexWrap:'nowrap' }}>
+                {/* Moments Table */}
+                <div style={{ width: 396, minWidth: 220, maxWidth: 396 }}>
+                  {importantMomentsLoading && <div>Loading moments...</div>}
+                  {importantMomentsError && <div style={{ color: 'red' }}>{importantMomentsError}</div>}
+                  {!importantMomentsLoading && !importantMomentsError && Array.isArray(importantMoments) && importantMoments.length === 0 && (
+                    <div>No important moments found for match.</div>
+                  )}
+                  {!importantMomentsLoading && !importantMomentsError && Array.isArray(importantMoments) && importantMoments.length > 0 && (
+                    <table style={{ width:'99%', fontSize:'1.13rem', borderCollapse: 'collapse', marginBottom: 5, marginTop:8, boxShadow:'0 2px 12px #0000', borderRadius:10 }}>
+                      <thead>
+                        <tr style={{ background: '#f5f5f7' }}>
+                          <th style={{ border: '1px solid #e5e5e6', padding: '3px 7px', fontWeight:600 }}>#</th>
+                          <th style={{ border: '1px solid #e5e5e6', padding: '3px 7px', fontWeight:600 }}>When</th>
+                          <th style={{ border: '1px solid #e5e5e6', padding: '3px 7px', fontWeight:600 }}>Who</th>
+                          <th style={{ border: '1px solid #e5e5e6', padding: '3px 7px', fontWeight:600 }}>Type</th>
+                          <th style={{ border: '1px solid #e5e5e6', padding: '3px 7px', fontWeight:600 }}>xG</th>
+                          <th style={{ border: '1px solid #e5e5e6', padding: '3px 7px', fontWeight:600 }}>Outcome</th>
+                          <th style={{ border: '1px solid #e5e5e6', padding: '3px 7px', fontWeight:600 }}>Poss.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importantMoments.map((m, idx) => (
+                          <tr
+                            key={idx}
+                            onClick={() => handleMomentClick(idx)}
+                            style={{
+                              cursor: 'pointer',
+                              background: selectedMomentIdx === idx && showImportantScenes ? '#def' : '',
+                              fontWeight: selectedMomentIdx === idx && showImportantScenes ? 600 : 400,
+                              transition: 'background 0.14s',
+                            }}
+                          >
+                            <td style={{ border: '1px solid #eee', padding: '2.5px 7px' }}>{idx + 1}</td>
+                            <td style={{ border: '1px solid #eee', padding: '2.5px 7px' }}>{m.when}</td>
+                            <td style={{ border: '1px solid #eee', padding: '2.5px 7px' }}>{m.who}</td>
+                            <td style={{ border: '1px solid #eee', padding: '2.5px 7px' }}>{m.event_type}</td>
+                            <td style={{ border: '1px solid #eee', padding: '2.5px 7px' }}>{m.xg !== undefined && m.xg !== null ? m.xg : ''}</td>
+                            <td style={{ border: '1px solid #eee', padding: '2.5px 7px' }}>{m.outcome}</td>
+                            <td style={{ border: '1px solid #eee', padding: '2.5px 7px' }}>{m.possession}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+                {/* Scene Viewer */}
+                {showImportantScenes && importantMoments.length > 0 && selectedMomentIdx !== null && (
+                  <div style={{ flex:1, minWidth:430, marginLeft:24, borderRadius:22, background:'#fff', boxShadow:'0 1.5px 16px #bbb8', padding: '14px 18px 24px 18px', display:'flex', flexDirection:'column', alignItems:'center' }}>
+                    <div style={{ display:'flex', alignItems:'center', marginBottom:18, gap:13 }}>
+                      <button onClick={handlePrev} disabled={selectedMomentIdx <= 0} style={{ fontSize: 26, fontWeight:600, width:48, height:44, borderRadius:7, background:'#fff', border:'1.5px solid #111', color:'#111', margin:'0 9px 0 0', boxShadow:'2px 2px 0 #4443', cursor:selectedMomentIdx<=0?'not-allowed':'pointer' }}>{'←'}</button>
+                      <span style={{ fontSize: 19, fontWeight: 600 }}>
+                        Moment {selectedMomentIdx + 1} of {importantMoments.length} (Possession {importantMoments[selectedMomentIdx]?.possession})
+                      </span>
+                      <button onClick={handleNext} disabled={selectedMomentIdx >= importantMoments.length - 1} style={{ fontSize: 26, fontWeight:600, width:48, height:44, borderRadius:7, background:'#fff', border:'1.5px solid #111', color:'#111', margin:'0 0 0 9px', boxShadow:'2px 2px 0 #4443', cursor:selectedMomentIdx >= importantMoments.length - 1 ?'not-allowed':'pointer' }}>{'→'}</button>
+                    </div>
+                    <div style={{ minHeight: 42, margin: '10px 0 18px', color: '#ad031c', fontWeight: 500 }}>
+                      {sceneLoading && 'Loading scene...'}
+                      {sceneError && sceneError}
+                    </div>
+                    {sceneImageBase64 && (
+                      <img
+                        src={`data:image/png;base64,${sceneImageBase64}`}
+                        alt="Possession Scene"
+                        style={{ maxWidth: '96%', margin: '10px auto', border: '2px solid #888', borderRadius:10, boxShadow:'0 6px 24px #0001' }}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Game Phases Section (placeholder) */}
+            <div style={{ margin: '52px 0 0', maxWidth:530 }}>
+              <h2 style={{ fontSize: 24, fontWeight: 500, color:'#222', marginBottom: 3 }}>Game Phases</h2>
+              <div style={{ color: '#aaa', fontSize: 21, fontWeight: 400, marginTop:11, marginBottom:26 }}>
+                Nothing to see here yet. (will build in future)
+              </div>
+            </div>
+          </>
         )}
       </div>
-      {/* --- End important moments scene viewer --- */}
-
-      <ShotMapButtons
-        home={homeName}
-        away={awayName}
-        onHome={() => canShoot && loadTeamShotmap(selectedMatch, homeName)}
-        onAway={() => canShoot && loadTeamShotmap(selectedMatch, awayName)}
-        onBoth={() => canShoot && loadBothShotmaps(selectedMatch, homeName, awayName)}
-      />
-
-      <PassingNetworkButtons
-        home={homeName}
-        away={awayName}
-        onHomePN={() => canShoot && loadPassingNetwork(selectedMatch, homeName, 1, false)}
-        onAwayPN={() => canShoot && loadPassingNetwork(selectedMatch, awayName, 1, true)}
-        disabled={!canShoot}
-      />
-
-      <ShotMapPlot displayFig={figData} flipSides={flipSides} plotLoading={plotLoading} />
     </div>
   );
 }

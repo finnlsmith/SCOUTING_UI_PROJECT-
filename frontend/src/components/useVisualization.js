@@ -46,27 +46,23 @@ export default function useVisualization() {
     if (!matchFile || !team) return;
     setLoading(true);
     try {
-      const url = `${BACKEND_URL}/api/match/${encodeURIComponent(
-        matchFile
-      )}/viz?team=${encodeURIComponent(team)}`;
+      const url = `${BACKEND_URL}/api/match/${encodeURIComponent(matchFile)}/viz?team=${encodeURIComponent(team)}`;
       const data = await _fetchJson(url);
-
       const color = TEAM_COLORS[team] || "#1f77b4";
-      setFigData({
+      const result = {
         ...data,
         data: (data.data || []).map((t) => ({
           ...t,
           marker: {
             ...(t.marker || {}),
-            colorscale: [
-              [0, "white"],
-              [1, color],
-            ],
+            colorscale: [ [0, "white"], [1, color] ],
           },
         })),
-      });
+      };
+      return result;
     } catch (err) {
       console.error("Team shotmap fetch failed:", err);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -77,75 +73,51 @@ export default function useVisualization() {
     setLoading(true);
     try {
       const [homeUrl, awayUrl] = [
-        `${BACKEND_URL}/api/match/${encodeURIComponent(
-          matchFile
-        )}/viz?team=${encodeURIComponent(home)}`,
-        `${BACKEND_URL}/api/match/${encodeURIComponent(
-          matchFile
-        )}/viz?team=${encodeURIComponent(away)}`,
+        `${BACKEND_URL}/api/match/${encodeURIComponent(matchFile)}/viz?team=${encodeURIComponent(home)}`,
+        `${BACKEND_URL}/api/match/${encodeURIComponent(matchFile)}/viz?team=${encodeURIComponent(away)}`,
       ];
       const [homeData, awayData] = await Promise.all([
         _fetchJson(homeUrl),
         _fetchJson(awayUrl),
       ]);
-
-      console.log('Home Team Shot Data:', homeData.data);
-      console.log('Away Team Shot Data:', awayData.data);
-
       const homeColor = TEAM_COLORS[home] || "#1f77b4";
       const awayColor = TEAM_COLORS[away] || "#ff7f0e";
-
-      setFigData({
+      const result = {
         data: [
           ...(homeData.data || []).map((t) => ({
             ...t,
             marker: {
               ...(t.marker || {}),
-              colorscale: [
-                [0, "white"],
-                [1, homeColor],
-              ],
-              showscale: false, // Hide colorbar
+              colorscale: [ [0, "white"], [1, homeColor] ], showscale: false,
             },
             name: `${home} – ${t.name ?? "Shot"}`,
           })),
           ...(awayData.data || []).map((t) => ({
-            ...flipTraceX(t, 120), // Flip X for away team. 120 = pitch length
+            ...flipTraceX(t, 120),
             marker: {
               ...(t.marker || {}),
-              colorscale: [
-                [0, "white"],
-                [1, awayColor],
-              ],
-              showscale: false, // Hide colorbar
+              colorscale: [ [0, "white"], [1, awayColor] ], showscale: false,
             },
             name: `${away} – ${t.name ?? "Shot"}`,
           })),
         ],
-        layout: {
-          ...(homeData.layout || {}),
-          title: `Shot Map — ${home} vs ${away}`,
-        },
-      });
+        layout: { ...(homeData.layout || {}), title: `Shot Map — ${home} vs ${away}` },
+      };
+      return result;
     } catch (err) {
       console.error("Both shotmaps fetch failed:", err);
+      return null;
     } finally {
       setLoading(false);
     }
   }
 
-  // ✅ Use BACKEND_URL here (API was undefined)
   async function loadPassingNetwork(filename, team, minPasses = 1, flip = false) {
     if (!filename || !team) return;
     setLoading(true);
     try {
-      const url = `${BACKEND_URL}/api/match/${encodeURIComponent(
-        filename
-      )}/passing_network?team=${encodeURIComponent(
-        team
-      )}&min_passes=${minPasses}&flip=${flip}`;
+      const url = `${BACKEND_URL}/api/match/${encodeURIComponent(filename)}/passing_network?team=${encodeURIComponent(team)}&min_passes=${minPasses}&flip=${flip}`;
       const data = await _fetchJson(url);
-      setFigData(data);
       return data;
     } catch (err) {
       console.error("Passing network fetch failed:", err);

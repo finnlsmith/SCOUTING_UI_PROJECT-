@@ -1,27 +1,27 @@
 import React from "react";
 import Plot from "react-plotly.js";
 
-export default function ShotMapPlot({ displayFig, flipSides, plotLoading }) {
+export default function ShotMapPlot({ displayFig, flipSides, plotLoading, smaller, customSize }) {
   if (plotLoading) return <p style={{marginTop:12}}>Loading…</p>;
   if (!displayFig || !displayFig.data || !displayFig.layout) {
-    return <p style={{marginTop:12, opacity:0.7}}>Select a match, then choose Shot Map or Passing Network.</p>;
+    return null;
   }
-  // Copy the layout so we don't mutate props
   const flippedLayout = {
     ...displayFig.layout,
     xaxis: {
       ...(displayFig.layout?.xaxis || {}),
       range: flipSides ? [120,0] : [0,120],
     },
-    responsive: true,
+    responsive: !(smaller || customSize),
+    ...(smaller ? { width: 590, height: 415 } : {}),
+    ...(customSize ? { width: customSize.width, height: customSize.height } : {}),
   };
   return (
     <Plot
       data={displayFig.data}
       layout={flippedLayout}
-      config={{ displayModeBar: false, responsive: true }}
-      style={{ width: "100%", height: "100%" }}
-      useResizeHandler
+      config={{ displayModeBar: false, responsive: !(smaller || customSize) }}
+      {...(!(smaller || customSize) && { useResizeHandler: true })}
     />
   );
 }
