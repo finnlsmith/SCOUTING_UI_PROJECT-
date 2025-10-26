@@ -747,12 +747,33 @@ def possession_scene(filename: str, possession: int = Query(...)):
             (
                 (reordered_df['type'] == 'Foul Won') & boolean_get(reordered_df, 'foul_won_penalty')))
         shot_row = reordered_df[shot_filter]
-        # Window selection
+        # Window selection (robust for Foul Won Penalty)
+        type_ser = reordered_df['type'].astype(str).str.strip().str.lower() if 'type' in reordered_df.columns else pd.Series(dtype=str)
+        penalty_mask = type_ser == 'foul won'
+        has_penalty_col = 'foul_won_penalty' in reordered_df.columns
+        foul_penalty_mask = pd.Series([False] * len(reordered_df))
+        if has_penalty_col:
+            penalty_vals = reordered_df['foul_won_penalty'].astype(str).str.lower()
+            foul_penalty_mask = (penalty_vals == 'true') | (reordered_df['foul_won_penalty'] == True)
+        foul_row_exists = (penalty_mask & foul_penalty_mask).any()
+
         if not shot_row.empty and not (shot_row.get('shot_type', pd.Series()).eq('Penalty').any()):
-            shot_minute = shot_row.iloc[-1]['minute']; shot_second = shot_row.iloc[-1]['second']; shot_abs_time = shot_minute * 60 + shot_second; reordered_df = reordered_df.copy(); reordered_df['abs_time'] = reordered_df['minute'] * 60 + reordered_df['second']; reordered_df_special = reordered_df[(reordered_df['abs_time'] >= shot_abs_time - 10) & (reordered_df['abs_time'] <= shot_abs_time)]; reordered_df_special = reordered_df_special.drop(columns=['abs_time']) if 'abs_time' in reordered_df_special.columns else reordered_df_special
+            shot_minute = shot_row.iloc[-1]['minute']
+            shot_second = shot_row.iloc[-1]['second']
+            shot_abs_time = shot_minute * 60 + shot_second
+            reordered_df = reordered_df.copy()
+            reordered_df['abs_time'] = reordered_df['minute'] * 60 + reordered_df['second']
+            reordered_df_special = reordered_df[
+                (reordered_df['abs_time'] >= shot_abs_time - 10) &
+                (reordered_df['abs_time'] <= shot_abs_time)
+            ]
+            reordered_df_special = reordered_df_special.drop(columns=['abs_time']) if 'abs_time' in reordered_df_special.columns else reordered_df_special
+        elif not shot_row.empty and (shot_row.get('shot_type', pd.Series()).eq('Penalty').any()):
+            reordered_df_special = reordered_df
+        elif foul_row_exists:
+            reordered_df_special = reordered_df
         else:
-            if not shot_row.empty and (shot_row.get('shot_type', pd.Series()).eq('Penalty').any()): reordered_df_special = reordered_df
-            else: reordered_df_special = reordered_df.iloc[0:0]
+            reordered_df_special = reordered_df.iloc[0:0]
         
         # --- Begin new code: time window adjustment (WITH TIMESTAMP CONVERSION) ---
         import ast
