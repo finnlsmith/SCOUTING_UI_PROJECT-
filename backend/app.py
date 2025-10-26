@@ -747,7 +747,7 @@ def possession_scene(filename: str, possession: int = Query(...)):
             (
                 (reordered_df['type'] == 'Foul Won') & boolean_get(reordered_df, 'foul_won_penalty')))
         shot_row = reordered_df[shot_filter]
-        # Window selection (robust for Foul Won Penalty)
+        # Window selection and penalty logic
         type_ser = reordered_df['type'].astype(str).str.strip().str.lower() if 'type' in reordered_df.columns else pd.Series(dtype=str)
         penalty_mask = type_ser == 'foul won'
         has_penalty_col = 'foul_won_penalty' in reordered_df.columns
@@ -755,7 +755,8 @@ def possession_scene(filename: str, possession: int = Query(...)):
         if has_penalty_col:
             penalty_vals = reordered_df['foul_won_penalty'].astype(str).str.lower()
             foul_penalty_mask = (penalty_vals == 'true') | (reordered_df['foul_won_penalty'] == True)
-        foul_row_exists = (penalty_mask & foul_penalty_mask).any()
+        foul_penalty_rows = reordered_df[penalty_mask & foul_penalty_mask]
+        foul_row_exists = not foul_penalty_rows.empty
 
         if not shot_row.empty and not (shot_row.get('shot_type', pd.Series()).eq('Penalty').any()):
             shot_minute = shot_row.iloc[-1]['minute']
@@ -771,102 +772,20 @@ def possession_scene(filename: str, possession: int = Query(...)):
         elif not shot_row.empty and (shot_row.get('shot_type', pd.Series()).eq('Penalty').any()):
             reordered_df_special = reordered_df
         elif foul_row_exists:
-            reordered_df_special = reordered_df
+            # LIMIT to 10 seconds before the Foul Won event
+            foul_row = foul_penalty_rows.iloc[-1]
+            foul_minute = foul_row['minute']
+            foul_second = foul_row['second']
+            foul_abs_time = foul_minute * 60 + foul_second
+            reordered_df = reordered_df.copy()
+            reordered_df['abs_time'] = reordered_df['minute'] * 60 + reordered_df['second']
+            reordered_df_special = reordered_df[
+                (reordered_df['abs_time'] >= foul_abs_time - 10) &
+                (reordered_df['abs_time'] <= foul_abs_time)
+            ]
+            reordered_df_special = reordered_df_special.drop(columns=['abs_time']) if 'abs_time' in reordered_df_special.columns else reordered_df_special
         else:
             reordered_df_special = reordered_df.iloc[0:0]
-        
-        # --- Begin new code: time window adjustment (WITH TIMESTAMP CONVERSION) ---
-        import ast
-
-        def convert_timestamp_to_seconds(timestamp_value):
-            # Accepts "hh:mm:ss.sss" (like '00:34:37.080') or already numeric types.
-            if isinstance(timestamp_value, (float, int, np.floating, np.integer)):
-                return float(timestamp_value)
-            if isinstance(timestamp_value, pd.Timedelta):
-                return timestamp_value.total_seconds()
-            if isinstance(timestamp_value, str):
-                # Parse format: "hh:mm:ss[.sss]" (e.g., "00:34:37.080")
-                try:
-                    parts = timestamp_value.split(":")
-                    if len(parts) == 3:
-                        hours = int(parts[0])
-                        minutes = int(parts[1])
-                        seconds = float(parts[2])
-                        return hours * 3600 + minutes * 60 + seconds
-                    elif len(parts) == 2:
-                        # fallback: "mm:ss[.sss]"
-                        minutes = int(parts[0])
-                        seconds = float(parts[1])
-                        return minutes * 60 + seconds
-                    elif len(parts) == 1:
-                        # Just seconds
-                        return float(parts[0])
-                except Exception:
-                    return np.nan
-            return np.nan
-
-        if not reordered_df_special.empty \
-            and 'timestamp' in reordered_df_special.columns \
-            and not pd.isnull(reordered_df_special['timestamp'].min()) \
-            and not pd.isnull(reordered_df_special['timestamp'].max()):
-
-            # Convert all timestamps in this frame to seconds for comparison
-            ts_min_raw = reordered_df_special['timestamp'].min()
-            ts_max_raw = reordered_df_special['timestamp'].max()
-            ts_min = convert_timestamp_to_seconds(ts_min_raw)
-            ts_max = convert_timestamp_to_seconds(ts_max_raw)
-            ts_range = ts_max - ts_min
-
-            # If window of timestamps is less than 3 sec:
-            if ts_range < 3:
-                # We want to include all events back to 5s before the first event in reordered_df_special (by minute/second)
-                sec_min = reordered_df_special['second'].min()
-                min_min = reordered_df_special.loc[reordered_df_special['second'].idxmin(), 'minute']
-                if sec_min >= 5:
-                    new_minute = min_min
-                    new_second = sec_min - 5
-                else:
-                    # go to previous minute
-                    new_minute = min_min - 1
-                    if sec_min - 5 < 0:
-                        new_second = 60 + (sec_min - 5)  # example: 4-5 == -1 => 59
-                    else:
-                        new_second = sec_min - 5
-
-                # Make sure minute is not negative
-                new_minute = max(new_minute, 0)
-                # Compose new abs_time threshold
-                abs_time_threshold = new_minute * 60 + new_second
-
-                # Find the latest shot (end) again to ensure consistent upper bound
-                if not shot_row.empty:
-                    last_shot_minute = shot_row.iloc[-1]['minute']
-                    last_shot_second = shot_row.iloc[-1]['second']
-                    last_shot_abs_time = last_shot_minute * 60 + last_shot_second
-                else:
-                    last_shot_abs_time = None
-
-                reordered_df = reordered_df.copy()
-                events['abs_time'] = events['minute'] * 60 + events['second']
-                # For the window, use [abs_time_threshold, last_shot_abs_time] if last_shot_abs_time available, else up through max
-                if last_shot_abs_time is not None:
-                    if (shot_row['shot_type'] == 'Penalty').any():
-                        0==0
-                    else:
-                        reordered_df_special = events[
-                            (events['abs_time'] >= abs_time_threshold) &
-                            (events['abs_time'] <= last_shot_abs_time)
-                        ]
-                else:
-                    reordered_df_special = events[
-                        (events['abs_time'] >= abs_time_threshold)
-                    ]
-                if "abs_time" in reordered_df_special.columns:
-                    reordered_df_special = reordered_df_special.drop(columns=['abs_time'])
-
-                reordered_df_special = reorder_cols(reordered_df_special, cols_first)
-
-        # --- End new code ---
 
         # --- SHOT TEAM logic ---
         shot_team = np.nan
@@ -876,8 +795,9 @@ def possession_scene(filename: str, possession: int = Query(...)):
             foul_won_rows = (
                 reordered_df_special[(reordered_df_special['type']=='Foul Won') & boolean_get(reordered_df_special, 'foul_won_penalty')] if 'foul_won_penalty' in reordered_df_special.columns else reordered_df_special[(reordered_df_special['type']=='Foul Won')]
             )
-            if foul_won_rows is not None and not foul_won_rows.empty:
-                shot_team = foul_won_rows['team'].iloc[0]
+            # PATCH: For Foul Won Penalty event, always use its team
+            if not foul_won_rows.empty:
+                shot_team = foul_won_rows.iloc[-1]['team']
             elif not shot_rows.empty:
                 shot_team = shot_rows['team'].iloc[0]
             elif not own_goal_rows.empty:
