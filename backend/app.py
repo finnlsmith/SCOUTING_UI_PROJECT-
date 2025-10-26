@@ -1324,7 +1324,7 @@ def possession_scene(filename: str, possession: int = Query(...)):
         legend_elements = [mlines.Line2D([],[],color='black',linestyle=':',lw=2,label='Pass (Shot Team)'),mlines.Line2D([],[],color='red',linestyle=':',lw=2.2,label='Pass (Opposition)'),mlines.Line2D([],[],color='black',linestyle='-',lw=2,label='Carry (Shot Team)'),mlines.Line2D([],[],color='gray',linestyle='-',lw=2,label='Carry (Opposition)'),mlines.Line2D([],[],color='green',lw=2,linestyle=(0,(6,3,2,3)),label='Dribble (Shot Team)'),mlines.Line2D([],[],color='red',lw=2,linestyle=(0,(6,3,2,3)),label='Dribble (Opposition)'),mlines.Line2D([],[],color='red',marker='o',markersize=7,lw=0,label='Dribbled Past'),mlines.Line2D([],[],color='red',marker='',lw=0,label='Block',linestyle='None'),mlines.Line2D([],[],color='green',marker='o',markersize=10,lw=0,label='Ball Recovery (Shot Team)'),mlines.Line2D([],[],color='red',marker='o',markersize=10,lw=0,label='Ball Recovery (Opposition)'),mlines.Line2D([],[],color='green',marker='x',markersize=10,lw=0,label='Pressure (Shot Team)'),mlines.Line2D([],[],color='gray',marker='x',markersize=6,lw=0,label='Pressure (Opposition)'),mlines.Line2D([],[],color='green',linestyle=':',lw=2.3,label='Clearance (Shot Team)'),mlines.Line2D([],[],color='red',linestyle=':',lw=2.3,label='Clearance (Opposition)'),mlines.Line2D([],[],color='green',linestyle='-',lw=2.5,label='Shot Path: GOAL'),mlines.Line2D([],[],color='red',linestyle='-',lw=2.5,label='Shot Path: Not Goal'),mpatches.Patch(facecolor='none',edgecolor='red',linewidth=2,label='Shot End: Off Target or Blocked',alpha=1),mlines.Line2D([],[],color='red',marker='$🚫$',markersize=16,lw=0,label='Shot End: Saved'),mlines.Line2D([],[],color='green',marker='s',markersize=10,lw=0,label='Interception (Shot Team)'),mlines.Line2D([],[],color='red',marker='s',markersize=10,lw=0,label='Interception (Opposition)'),failed_interception_legend,mlines.Line2D([],[],marker='o',color='w',markerfacecolor='w',markeredgecolor='black',markeredgewidth=2,lw=0,label='Shot Order'),mlines.Line2D([],[],marker=None,color='w',lw=0,label="Shooter's name shown above shot number"),mlines.Line2D([],[],marker=None,color='w',lw=0,label="('Penalty'/'Free Kick' shown above shot number)")]
         ax_legend = fig.add_subplot(gs[1]); ax_legend.axis('off')
         legend = ax_legend.legend(handles=legend_elements,loc='center left',fontsize=9,frameon=True,ncol=1,title='Event Types',borderaxespad=0.5,columnspacing=0.6,handletextpad=0.5,labelspacing=0.3,borderpad=0.4,handlelength=2.1)
-        # --- INFO CARD ---
+        # --- INFO CARD (robust to Penalty Won) ---
         info_note, who, when, xg, outcome, score_string = None, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A'
         def to_f_last(name):
             if not isinstance(name, str) or name.strip() == '' or name == 'N/A':
@@ -1334,86 +1334,115 @@ def possession_scene(filename: str, possession: int = Query(...)):
                 return f"{parts[0][0]}. {parts[-1]}"
             else:
                 return name
-        # Patch: robust case for 'Penalty Won' events
-        if not shot_row.empty and 'player' in shot_row.columns:
-            sr = shot_row.iloc[-1]
-            if sr.get('type', None) == 'Foul Won' and sr.get('foul_won_penalty', False):
-                # Penalty won event
-                who = to_f_last(sr.get('player', 'N/A'))
-                info_note = '(Penalty Won)'
-                shot_minute = sr.get('minute', None)
-                shot_second = sr.get('second', None)
-                when = f"{int(shot_minute)}:{int(shot_second):02d}" if shot_minute is not None and shot_second is not None else 'N/A'
-                xg = 'N/A'
-                outcome = 'Penalty Won'
+
+        # --- DEBUG LOGGING FOR INFO CARD DECISION ---
+        print("=== Debug: Building info card for possession_scene ===")
+        print("shot_row.shape:", getattr(shot_row, 'shape', None))
+        print("reordered_df_special.shape:", getattr(reordered_df_special, 'shape', None))
+        if not reordered_df_special.empty:
+            print("type unique vals:", reordered_df_special['type'].astype(str).unique().tolist())
+            type_ser = reordered_df_special['type'].astype(str).str.strip().str.lower()
+            print("type_ser (head):", type_ser.head().to_list())
+            penalty_mask = type_ser == "foul won"
+            print("penalty_mask sum:", penalty_mask.sum())
+            if "foul_won_penalty" in reordered_df_special.columns:
+                penalty_vals = reordered_df_special["foul_won_penalty"].astype(str).str.lower()
+                print("foul_won_penalty unique vals:", penalty_vals.unique().tolist())
+                foul_penalty_mask = (penalty_vals == "true") | (reordered_df_special["foul_won_penalty"] == True)
+                print("foul_penalty_mask sum:", foul_penalty_mask.sum())
+        else:
+            print("reordered_df_special is empty!")
+
+        # Normal info card logic continues, but add debug output at each decision
+        shot_row_check = not shot_row.empty
+        foul_rows = pd.DataFrame()
+        if not reordered_df_special.empty and "type" in reordered_df_special.columns:
+            type_ser = reordered_df_special["type"]
+            penalty_mask = type_ser.astype(str).str.strip().str.lower() == "foul won"
+            has_penalty_col = "foul_won_penalty" in reordered_df_special.columns
+            if has_penalty_col:
+                penalty_vals = reordered_df_special["foul_won_penalty"].astype(str).str.lower()
+                foul_penalty_mask = (penalty_vals == "true") | (reordered_df_special["foul_won_penalty"] == True)
+                foul_rows = reordered_df_special[penalty_mask & foul_penalty_mask]
+                print("foul_rows shape (with penalty col):", foul_rows.shape)
             else:
-                who = to_f_last(sr.get('player', 'N/A'))
-                xg_val = sr.get('shot_statsbomb_xg', 'N/A')
-                xg = round(xg_val,2) if isinstance(xg_val, (int,float)) else xg_val
-                shot_type = sr.get('shot_type', '')
-                if isinstance(shot_type,str) and shot_type.strip().lower() == 'penalty':
-                    info_note = '(Penalty)'
-                elif isinstance(shot_type,str) and shot_type.strip().lower() == 'free kick':
-                    info_note = '(Free Kick)'
-                shot_minute = sr.get('minute', None)
-                shot_second = sr.get('second', None)
-                when = f"{int(shot_minute)}:{int(shot_second):02d}" if shot_minute is not None and shot_second is not None else 'N/A'
-                outcome = sr.get('shot_outcome','N/A')
-        elif not reordered_df_special.empty and 'Foul Won' in reordered_df_special['type'].values:
-            foul_rows = reordered_df_special[(reordered_df_special['type']=='Foul Won') & (reordered_df_special.get('foul_won_penalty', False)==True)]
-            if not foul_rows.empty:
-                fr = foul_rows.iloc[-1]
-                who = to_f_last(fr.get('player','N/A'))
-                info_note = '(Penalty Won)'
-                shot_minute = fr.get('minute', None)
-                shot_second = fr.get('second', None)
-                when = f"{int(shot_minute)}:{int(shot_second):02d}" if shot_minute is not None and shot_second is not None else 'N/A'
-                xg = 'N/A'
-                outcome = 'Penalty Won'
+                foul_rows = reordered_df_special[penalty_mask]
+                print("'foul_won_penalty' not present; foul_rows shape:", foul_rows.shape)
+                
+        if shot_row_check:
+            sr = shot_row.iloc[-1]
+            print("Matched shot_row row:", dict(sr))
+            who = to_f_last(sr.get('player', 'N/A'))
+            xg_val = sr.get('shot_statsbomb_xg', 'N/A')
+            if isinstance(xg_val, (int, float)):
+                xg = round(xg_val, 2)
+            else:
+                xg = xg_val
+            shot_type = sr.get('shot_type', '')
+            if isinstance(shot_type, str) and shot_type.strip().lower() == 'penalty':
+                info_note = '(Penalty)'
+            elif isinstance(shot_type, str) and shot_type.strip().lower() == 'free kick':
+                info_note = '(Free Kick)'
+            shot_minute = sr.get('minute', None)
+            shot_second = sr.get('second', None)
+            if shot_minute is not None and shot_second is not None:
+                when = f"{int(shot_minute)}:{int(shot_second):02d}"
+            outcome = sr.get('shot_outcome', 'N/A')
+        elif not foul_rows.empty:
+            fr = foul_rows.iloc[-1]
+            print("Matched penalty-won foul_row:", dict(fr))
+            who = to_f_last(fr.get('player', 'N/A'))
+            info_note = '(Penalty Won)'
+            shot_minute = fr.get('minute', None)
+            shot_second = fr.get('second', None)
+            if shot_minute is not None and shot_second is not None:
+                when = f"{int(shot_minute)}:{int(shot_second):02d}"
+            outcome = 'Penalty Won'
+            xg = 'N/A'
+        else:
+            print("No matching shot or penalty-won row. Info card will be N/A.")
         if info_note is not None and who != 'N/A':
             who = f"{who} {info_note}"
-        # Try score at shot time
-        # Try score at shot time — only run if the events DataFrame exists
-        if 'events' in locals():
-            def row_time(row):
-                return row['minute']*60 + row['second'] if 'minute' in row and 'second' in row else None
 
-            min_sec = None
+        # Get score at time of shot using full match events DataFrame
+        if 'events' in locals() and (not shot_row.empty or (not reordered_df_special.empty and 'Foul Won' in reordered_df_special['type'].values)):
             if not shot_row.empty:
-                sr = shot_row.iloc[-1]
-                min_sec = sr['minute']*60 + sr['second'] if 'minute' in sr and 'second' in sr else None
-            elif not reordered_df_special.empty and 'Foul Won' in reordered_df_special['type'].values:
-                fr = foul_row.iloc[-1]
-                min_sec = fr['minute']*60 + fr['second'] if 'minute' in fr and 'second' in fr else None
+                # Use minute and second ONLY, not timestamp
+                min_sec = sr['minute'] * 60 + sr['second'] if 'minute' in sr and 'second' in sr else None
+            else:
+                fr = foul_rows.iloc[-1]
+                min_sec = fr['minute'] * 60 + fr['second'] if 'minute' in fr and 'second' in fr else None
 
+            # This row_time function ONLY uses minute and second (ignores timestamp)
+            def row_time(row):
+                if 'minute' in row and 'second' in row:
+                    return row['minute']*60 + row['second']
+                else:
+                    return None
+
+            target_time = min_sec
             e = events.copy()
             e['event_time'] = e.apply(row_time, axis=1)
             e = e[~pd.isnull(e['event_time'])]
-            e = e[e['event_time'] <= min_sec] if min_sec is not None else e
-
+            e = e[e['event_time'] <= target_time]
             teams = pd.unique(e['team'].dropna())
             team_names = list(teams)
-            st = shot_team if shot_team in teams else team_names[0] if len(team_names) > 0 else 'Team1'
-            ot = [t for t in teams if t != st][0] if [t for t in teams if t != st] else (team_names[1] if len(team_names) > 1 else 'Team2')
-
+            if shot_team in teams:
+                st = shot_team
+                other_teams = [t for t in teams if t != shot_team]
+                ot = other_teams[0] if other_teams else 'Other'
+            else:
+                st = team_names[0] if team_names else 'Team1'
+                ot = team_names[1] if len(team_names) > 1 else 'Team2'
             def score_for(team):
-                goals = e[(e.get('shot_outcome','')=='Goal') & (e.get('team',None)==team)].shape[0]
-                own_goals = e[(e['type']=='Own Goal For') & (e.get('team',None)==team)].shape[0]
+                goals = e[(e.get('shot_outcome', '')=='Goal') & (e.get('team', None)==team)].shape[0]
+                own_goals = e[(e['type']=='Own Goal For') & (e.get('team', None)==team)].shape[0]
                 return goals + own_goals
-
             st_score = score_for(st)
             ot_score = score_for(ot)
             score_string = f"{st[:3]} {st_score}-{ot_score} {ot[:3]}"
-        else:
-            score_string = 'N/A'
-
-        teams = pd.unique(e['team'].dropna()); team_names=list(teams)
-        st = shot_team if shot_team in teams else team_names[0] if len(team_names)>0 else 'Team1'
-        ot = [t for t in teams if t != st][0] if [t for t in teams if t!= st] else (team_names[1] if len(team_names)>1 else 'Team2')
-        def score_for(team):
-            goals = e[(e.get('shot_outcome','')=='Goal') & (e.get('team',None)==team)].shape[0]; own_goals=e[(e['type']=='Own Goal For') & (e.get('team',None)==team)].shape[0]; return goals+own_goals
-        st_score = score_for(st); ot_score = score_for(ot); score_string = f"{st[:3]} {st_score}-{ot_score} {ot[:3]}"
-        info_cols = ["Who", "When", 'XG', "Result", "Score"]; info_data=[[who,when,xg,outcome,score_string]]
+        info_cols = ["Who", "When", 'XG', "Result", "Score"]
+        info_data = [[who, when, xg, outcome, score_string]]
         widen_factor = 1.42; right_shift = 0.10
         info_table = ax_legend.table(cellText=info_data, colLabels=info_cols, loc='upper center', cellLoc='center', colLoc='center', bbox=[-0.21+right_shift, 0.88, widen_factor, 0.12])
         info_table.auto_set_font_size(False); info_table.set_fontsize(10)
