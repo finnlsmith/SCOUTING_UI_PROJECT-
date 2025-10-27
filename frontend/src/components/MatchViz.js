@@ -152,9 +152,13 @@ export default function MatchViz() {
                     home={stats.home_team}
                     away={stats.away_team}
                     score={Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "-"}
-                    shots={Number.isFinite(stats.home_shots) && Number.isFinite(stats.away_shots) ? `${stats.home_shots} - ${stats.away_shots}` : "-"}
-                    shotsOnTarget={Number.isFinite(stats.home_shots_on_target) && Number.isFinite(stats.away_shots_on_target) ? `${stats.home_shots_on_target} - ${stats.away_shots_on_target}` : "-"}
-                    xg={Number.isFinite(stats.home_xg_sum) && Number.isFinite(stats.away_xg_sum) ? `${Number(stats.home_xg_sum || 0).toFixed(2)} - ${Number(stats.away_xg_sum || 0).toFixed(2)}` : "-"}
+                    shots={(stats.home_shots !== null && stats.away_shots !== null && stats.home_shots !== undefined && stats.away_shots !== undefined)
+                      ? `${stats.home_shots} - ${stats.away_shots}` : "-"}
+                    shotsOnTarget={(stats.home_shots_on_target !== null && stats.away_shots_on_target !== null && stats.home_shots_on_target !== undefined && stats.away_shots_on_target !== undefined)
+                      ? `${stats.home_shots_on_target} - ${stats.away_shots_on_target}` : "-"}
+                    xg={(stats.home_xg_sum && stats.away_xg_sum)
+                        ? `${stats.home_xg_sum} - ${stats.away_xg_sum}`
+                        : "-"}
                   />
                 </div>
               </div>
