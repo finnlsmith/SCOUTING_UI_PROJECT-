@@ -621,6 +621,13 @@ def important_moments(filename: str):
             df_events[df_events['type'] == 'Own Goal Against'],
             df_events[df_events.get('foul_won_penalty', False) == True] if 'foul_won_penalty' in df_events.columns else pd.DataFrame()
         ], ignore_index=True).sort_values(by=['period', 'timestamp'])
+
+        # ===== FILTER: Remove events after 120:00 =====
+        if 'minute' in moments.columns and 'second' in moments.columns:
+            # Keep events with minute < 120, or minute==120 and second <= 0
+            mask = (moments['minute'] < 120) | ((moments['minute'] == 120) & (moments['second'] <= 0))
+            moments = moments[mask].copy()
+
         # Replace all problematic values with None for JSON compatibility
         moments = moments.replace([np.nan, np.inf, -np.inf], None)
         moments = moments.where(pd.notnull(moments), None)
