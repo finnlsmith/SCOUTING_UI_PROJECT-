@@ -641,6 +641,9 @@ def important_moments(filename: str):
                 "outcome": outcome,
                 "team": team
             })
+        # NEW: Group by possession, only keep the last event from each (matches the robust notebook logic)
+        if 'possession' in moments.columns:
+            moments = moments.groupby('possession', as_index=False).last()
         return result
     except Exception as e:
         import traceback
