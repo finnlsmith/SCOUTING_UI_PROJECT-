@@ -788,24 +788,37 @@ def possession_scene(filename: str, possession: int = Query(...)):
         else:
             reordered_df_special = reordered_df.iloc[0:0]
 
-        # --- SHOT TEAM logic ---
+        # --- SHOT TEAM logic (robust, notebook-matching) ---
         shot_team = np.nan
         if not reordered_df_special.empty and 'type' in reordered_df_special.columns:
-            shot_rows = reordered_df_special[reordered_df_special["type"] == 'Shot']
-            own_goal_rows = reordered_df_special[reordered_df_special["type"] == 'Own Goal Against']
-            foul_won_rows = (
-                reordered_df_special[(reordered_df_special['type']=='Foul Won') & boolean_get(reordered_df_special, 'foul_won_penalty')] if 'foul_won_penalty' in reordered_df_special.columns else reordered_df_special[(reordered_df_special['type']=='Foul Won')]
-            )
-            # PATCH: For Foul Won Penalty event, always use its team
-            if not foul_won_rows.empty:
-                shot_team = foul_won_rows.iloc[-1]['team']
-            elif not shot_rows.empty:
-                shot_team = shot_rows['team'].iloc[0]
-            elif not own_goal_rows.empty:
-                og_team = own_goal_rows['team'].iloc[0]
-                teams = pd.unique(reordered_df_special['team'].dropna())
-                shot_tm_cand = [t for t in teams if t != og_team]
-                shot_team = shot_tm_cand[0] if shot_tm_cand else np.nan
+            foul_won_rows = None
+            if 'foul_won_penalty' in reordered_df_special.columns:
+                penalty_col = reordered_df_special['foul_won_penalty']
+                penalty_mask = (
+                    (penalty_col == True) |
+                    (penalty_col.astype(str).str.lower() == 'true')
+                )
+                foul_won_rows = reordered_df_special[
+                    (reordered_df_special['type'] == 'Foul Won') & penalty_mask
+                ]
+            else:
+                foul_won_rows = reordered_df_special[reordered_df_special['type'] == 'Foul Won']
+            if foul_won_rows is not None and not foul_won_rows.empty:
+                shot_team = foul_won_rows['team'].iloc[0]
+            else:
+                shot_rows = reordered_df_special[reordered_df_special["type"] == 'Shot']
+                own_goal_rows = reordered_df_special[reordered_df_special["type"] == 'Own Goal Against']
+                if not shot_rows.empty:
+                    shot_team = shot_rows['team'].iloc[0]
+                elif not own_goal_rows.empty:
+                    og_team = own_goal_rows['team'].iloc[0]
+                    teams = pd.unique(reordered_df_special['team'].dropna())
+                    shot_tm_cand = [t for t in teams if t != og_team]
+                    shot_team = shot_tm_cand[0] if shot_tm_cand else np.nan
+                else:
+                    shot_team = np.nan
+        else:
+            shot_team = np.nan
         # === HIGH TURNOVER ===
         high_turnover_list = []
         if not reordered_df_special.empty:
