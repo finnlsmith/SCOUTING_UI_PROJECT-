@@ -270,6 +270,7 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
                     meta["competition_stage"] = r.get("competition_stage")
 
             # compute team shot counts/xG if possible
+            print("[GUARD DEBUG] match_id:", match_id, "| mdf is not None:", mdf is not None, "| home_team:", meta["home_team"], "| away_team:", meta["away_team"])
             if match_id is not None and mdf is not None and meta["home_team"] and meta["away_team"]:
                 ev_key = f"events_{match_id}.csv"
                 ev = pd.read_csv(io.BytesIO(s3_client.get_object(Bucket=S3_BUCKET, Key=ev_key)["Body"].read()))
@@ -281,10 +282,28 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
                     for side in ("home", "away"):
                         t = meta[f"{side}_team"]
                         if t:
-                            meta[f"{side}_shots"] = int(shot_df[shot_df["team"] == t].shape[0])
-                            meta[f"{side}_shots_on_target"] = int(shot_df[(shot_df["team"] == t) & sot].shape[0])
-                            if "shot_statsbomb_xg" in shot_df.columns:
-                                meta[f"{side}_xg_sum"] = float(pd.to_numeric(shot_df.loc[shot_df["team"] == t, "shot_statsbomb_xg"], errors="coerce").sum())
+                            print(f"[DEBUG] Entered xG calculation for side: {side}, team: {t}")
+                            total_xg_val = 0.0
+                            penalty_xg_val = 0.0
+                            filtered = shot_df.copy()
+                            if 'minute' in shot_df.columns and 'second' in shot_df.columns:
+                                filtered = shot_df[(shot_df['minute'] < 120) | ((shot_df['minute'] == 120) & (shot_df['second'] <= 0))].copy()
+                                print(f"[DEBUG] Filtered to {filtered.shape[0]} shots up to 120:00 for {t}")
+                            else:
+                                print(f"[WARN] 'minute'/'second' columns missing for team {t}")
+                            if 'shot_statsbomb_xg' in filtered.columns:
+                                xg_ser = pd.to_numeric(filtered.loc[filtered["team"] == t, "shot_statsbomb_xg"], errors="coerce")
+                                total_xg_val = float(xg_ser.sum()) if not xg_ser.empty else 0.0
+                                print(f"[DEBUG] Computed total_xg_val={total_xg_val:.2f} for {t}")
+                                if 'shot_type' in filtered.columns:
+                                    penalty_mask = (filtered["team"] == t) & (filtered["shot_type"].astype(str).str.lower() == 'penalty')
+                                    penalty_xg_ser = pd.to_numeric(filtered.loc[penalty_mask, "shot_statsbomb_xg"], errors="coerce")
+                                    penalty_xg_val = float(penalty_xg_ser.sum()) if not penalty_xg_ser.empty else 0.0
+                                    print(f"[DEBUG] Computed penalty_xg_val={penalty_xg_val:.2f} for {t}")
+                            else:
+                                print(f"[WARN] 'shot_statsbomb_xg' column missing for team {t}")
+                            print(f"[DEBUG] Setting meta[{side}_xg_sum] = '{total_xg_val:.2f} ({penalty_xg_val:.2f})'")
+                            meta[f"{side}_xg_sum"] = f"{total_xg_val:.2f} ({penalty_xg_val:.2f})"
         except Exception as e2:
             print("⚠️ scoreboard/meta compute failed:", e2)
 
