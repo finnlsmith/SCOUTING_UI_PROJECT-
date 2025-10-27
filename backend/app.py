@@ -304,6 +304,16 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
                                 print(f"[WARN] 'shot_statsbomb_xg' column missing for team {t}")
                             print(f"[DEBUG] Setting meta[{side}_xg_sum] = '{total_xg_val:.2f} ({penalty_xg_val:.2f})'")
                             meta[f"{side}_xg_sum"] = f"{total_xg_val:.2f} ({penalty_xg_val:.2f})"
+
+                            # SHOTS and SHOTS ON TARGET COUNTS
+                            shots_mask = (filtered["team"] == t)
+                            shots_on_target_mask = shots_mask & (sot if isinstance(sot, pd.Series) else False)
+                            shots_count = int(shots_mask.sum())
+                            shots_on_target_count = int(shots_on_target_mask.sum())
+                            print(f"[DEBUG] Computed shots_count={shots_count} for {t}")
+                            print(f"[DEBUG] Computed shots_on_target_count={shots_on_target_count} for {t}")
+                            meta[f"{side}_shots"] = shots_count
+                            meta[f"{side}_shots_on_target"] = shots_on_target_count
         except Exception as e2:
             print("⚠️ scoreboard/meta compute failed:", e2)
 
