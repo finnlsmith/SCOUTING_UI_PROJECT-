@@ -93,6 +93,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+#testing
 
 AWS_REGION = os.getenv("AWS_REGION", "us-east-2")
 S3_BUCKET = os.getenv("S3_BUCKET_NAME", "capstone-soccer-data")
