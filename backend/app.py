@@ -643,6 +643,10 @@ def important_moments(filename: str):
             })
         # NEW: Group by possession, only keep the last event from each (matches the robust notebook logic)
         if 'possession' in moments.columns:
+            moments = moments.sort_values(
+                ['possession', 'period', 'minute', 'second', 'timestamp'], 
+                ascending=[True, True, True, True, True]
+            )
             moments = moments.groupby('possession', as_index=False).last()
         # Remove FULLY duplicate rows after grouping to ensure no duplicate moments are returned
         moments = moments.drop_duplicates()
