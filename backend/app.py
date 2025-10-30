@@ -14,6 +14,8 @@ import traceback
 import re
 import base64
 import matplotlib.pyplot as plt
+from fastapi.encoders import jsonable_encoder
+
 #test
 app = FastAPI()
 
@@ -104,43 +106,129 @@ s3_client = boto3.client(
     aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
     aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
 )
+
 # @app.get('/api/matches')
 # def list_matches():
 #     try:
-#         response = s3_client.list_objects_v2(Bucket=S3_BUCKET)
-#         if 'Contents' not in response:
-#             return []
-#         files = [obj['Key'] for obj in response['Contents'] if obj['Key'].endswith('.csv')]
-#         return sorted(files)
+#         # # 1️⃣ Get all CSV files in S3 bucket
+#         # response = s3_client.list_objects_v2(Bucket=S3_BUCKET)
+#         # if 'Contents' not in response:
+#         #     return []
+#         # files = [obj['Key'] for obj in response['Contents'] if obj['Key'].endswith('.csv')]
+
+#         # 1️⃣ Get all CSV files in S3 bucket (including subfolders)
+#         paginator = s3_client.get_paginator('list_objects_v2')
+#         pages = paginator.paginate(Bucket=S3_BUCKET, Prefix='')
+
+#         files = []
+#         for page in pages:
+#             for obj in page.get('Contents', []):
+#                 key = obj['Key']
+#                 if key.endswith('.csv'):
+#                     files.append(key)
+
+#         print(f"✅ Found {len(files)} CSVs:")
+#         for f in files[:10]:
+#             print("  ", f)
+
+#         # 2️⃣ Load matches_df.csv from S3 directly
+#         obj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
+#         # matches_df = pd.read_csv(obj['Body'])
+        
+
+#         # Read once
+#         body = obj["Body"].read()
+
+#         import io
+
+#         obj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
+
+#         # ✅ Decode bytes into text and wrap in StringIO
+#         csv_text = obj["Body"].read().decode("utf-8")
+#         print("First 200 chars:", csv_text[:200])
+
+#         matches_df = pd.read_csv(io.StringIO(csv_text))
+
+#         # 3️⃣ Build a lookup: match_id → "YYYY-MM-DD - Home vs Away"
+#         label_lookup = {}
+#         for _, row in matches_df.iterrows():
+#             match_id = str(row['match_id'])
+#             label_lookup[match_id] = f"{row['match_date']} - {row['home_team']} vs {row['away_team']}"
+
+#         # 4️⃣ Map files to readable labels
+#         formatted = []
+#         for f in files:
+#             # Extract numeric ID (e.g., 3788741)
+#             match_id = ''.join([c for c in f if c.isdigit()])
+#             label = label_lookup.get(match_id)
+#             if not label:
+#                 continue
+
+#             if f.startswith("events_"):
+#                 tag = "Events"
+#             elif f.startswith("frames_360_"):
+#                 tag = "Frames 360"
+#             else:
+#                 tag = "Other"
+
+#             formatted.append({
+#                 "file": f,
+#                 "label": f"{label} – {tag}"
+#             })
+
+#         # 5️⃣ Sort matches by date descending (for better UX)
+#         formatted = sorted(formatted, key=lambda x: x['label'], reverse=True)
+
+#         return jsonable_encoder(formatted)
+
+#     # except Exception as e:
+#     #     raise HTTPException(status_code=500, detail=str(e))
 #     except Exception as e:
+#         import traceback
+#         traceback.print_exc()  # 👈 this forces the full traceback to appear
 #         raise HTTPException(status_code=500, detail=str(e))
+
 @app.get('/api/matches')
 def list_matches():
     try:
-        # 1️⃣ Get all CSV files in S3 bucket
-        response = s3_client.list_objects_v2(Bucket=S3_BUCKET)
-        if 'Contents' not in response:
-            return []
-        files = [obj['Key'] for obj in response['Contents'] if obj['Key'].endswith('.csv')]
+        # 1️⃣ Get all CSV files in S3 bucket (including subfolders)
+        paginator = s3_client.get_paginator('list_objects_v2')
+        pages = paginator.paginate(Bucket=S3_BUCKET, Prefix='')
+
+        files = []
+        for page in pages:
+            for obj in page.get('Contents', []):
+                key = obj['Key']
+                if key.endswith('.csv'):
+                    files.append(key)
+
+        print(f"✅ Found {len(files)} CSVs:")
+        for f in files[:10]:
+            print("  ", f)
 
         # 2️⃣ Load matches_df.csv from S3 directly
         obj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
-        matches_df = pd.read_csv(obj['Body'])
+        csv_text = obj["Body"].read().decode("utf-8")
+        print("First 200 chars:", csv_text[:200])
+
+        import io
+        matches_df = pd.read_csv(io.StringIO(csv_text))
 
         # 3️⃣ Build a lookup: match_id → "YYYY-MM-DD - Home vs Away"
-        label_lookup = {}
-        for _, row in matches_df.iterrows():
-            match_id = str(row['match_id'])
-            label_lookup[match_id] = f"{row['match_date']} - {row['home_team']} vs {row['away_team']}"
+        label_lookup = {
+            str(row['match_id']): f"{row['match_date']} - {row['home_team']} vs {row['away_team']}"
+            for _, row in matches_df.iterrows()
+        }
 
         # 4️⃣ Map files to readable labels
         formatted = []
         for f in files:
-            # Extract numeric ID (e.g., 3788741)
             match_id = ''.join([c for c in f if c.isdigit()])
-            label = label_lookup.get(match_id)
-            if not label:
+            if not match_id:
                 continue
+
+            # Use readable label if available, otherwise fall back to generic
+            label = label_lookup.get(match_id, f"Match {match_id}")
 
             if f.startswith("events_"):
                 tag = "Events"
@@ -157,10 +245,13 @@ def list_matches():
         # 5️⃣ Sort matches by date descending (for better UX)
         formatted = sorted(formatted, key=lambda x: x['label'], reverse=True)
 
-        return formatted
+        return jsonable_encoder(formatted)
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @app.post("/api/upload")
@@ -693,6 +784,145 @@ def important_moments(filename: str):
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=f"important_moments failed: {type(e).__name__}: {e}")
 
+
+@app.get("/api/match/{filename}/game_phases")
+def game_phases(filename: str):
+    """
+    Return a chronological list of game phases (periods between score changes).
+    Goals include normal goals (shot_outcome == 'Goal') and own goals (type == 'Own Goal For').
+    Events are sorted by possession, then timestamp (parsed), with robust fallbacks.
+    """
+    import io
+    import pandas as pd
+    try:
+        # Load events (S3 first, fallback to local)
+        try:
+            obj = s3_client.get_object(Bucket=S3_BUCKET, Key=filename)
+            events = pd.read_csv(io.BytesIO(obj["Body"].read()))
+        except Exception:
+            events = pd.read_csv(filename)
+
+        # Identify teams from possession_team
+        team_names = events.get('possession_team', pd.Series([], dtype=str)).dropna().unique()
+        if len(team_names) < 2:
+            # Best-effort fallback: try 'team' column
+            alt = events.get('team', pd.Series([], dtype=str)).dropna().unique()
+            team_names = alt if len(alt) >= 2 else team_names
+        if len(team_names) < 2:
+            return JSONResponse(content=jsonable_encoder({
+                "error": f"Unable to identify two teams. Found: {list(map(str, team_names))}",
+                "phases": []
+            }))
+        home_team, away_team = team_names[:2]
+
+        # Sorting: by possession, then timestamp (parsed) — fallback to minute/second
+        ev = events.copy()
+        if 'timestamp' in ev.columns:
+            # Parse to datetime-like values (coerce errors)
+            ev['timestamp_dt'] = pd.to_datetime(ev['timestamp'], errors='coerce')
+        sort_cols = []
+        if 'possession' in ev.columns:
+            sort_cols.append('possession')
+        if 'timestamp_dt' in ev.columns:
+            sort_cols.append('timestamp_dt')
+        elif 'timestamp' in ev.columns:
+            sort_cols.append('timestamp')
+        elif {'minute', 'second'} <= set(ev.columns):
+            sort_cols.extend(['minute', 'second'])
+        if sort_cols:
+            ev = ev.sort_values(sort_cols)
+
+        # Filter goal events (normal goals + own goals)
+        goal_mask = (ev.get('shot_outcome', '') == 'Goal') | (ev.get('type', '') == 'Own Goal For')
+        goal_events = ev.loc[goal_mask].copy()
+
+        # Determine awarded team (per provided spec)
+        def awarded_team(row):
+            if row.get('shot_outcome', None) == 'Goal':
+                return row.get('possession_team', None)
+            if row.get('type', None) == 'Own Goal For':
+                return row.get('team', None)
+            return None
+
+        if not goal_events.empty:
+            goal_events['goal_for'] = goal_events.apply(awarded_team, axis=1)
+            goal_events = goal_events[goal_events['goal_for'].notna()].copy()
+
+        # Build score history (start at 0-0)
+        score_history = [{
+            "minute": 0,
+            "second": 0,
+            home_team: 0,
+            away_team: 0
+        }]
+        score = {home_team: 0, away_team: 0}
+
+        # Iterate in already-sorted order
+        for _, row in goal_events.iterrows():
+            scorer = row['goal_for']
+            minute = int(row.get('minute', 0) or 0) if 'minute' in row else 0
+            second = int(row.get('second', 0) or 0) if 'second' in row else 0
+            event_type = row.get('type', None)
+            own_goal_team = row.get('team', None) if event_type == 'Own Goal For' else None
+            # increment scoring team
+            if scorer in score:
+                score[scorer] += 1
+            entry = {
+                "minute": minute,
+                "second": second,
+                home_team: score[home_team],
+                away_team: score[away_team],
+                "scorer": scorer,
+                "event_type": event_type,
+                "own_goal_team": own_goal_team,
+            }
+            score_history.append(entry)
+
+        # Build phases between score updates (N goals => N+1 phases)
+        phases = []
+        for i in range(len(score_history)):
+            cur = score_history[i]
+            nxt = score_history[i + 1] if (i + 1) < len(score_history) else None
+            phase = {
+                "phase_idx": i + 1,
+                "score_start": f"{cur[home_team]}-{cur[away_team]}",
+                "start_minute": int(cur['minute']),
+                "start_second": int(cur['second']),
+                "score_end": None,
+                "end_minute": None,
+                "end_second": None,
+                "goal_info": None,
+            }
+            if nxt is not None:
+                phase["score_end"] = f"{nxt[home_team]}-{nxt[away_team]}"
+                phase["end_minute"] = int(nxt['minute'])
+                phase["end_second"] = int(nxt['second'])
+                phase["goal_info"] = {
+                    "scorer": nxt.get("scorer"),
+                    "event_type": nxt.get("event_type"),
+                    "own_goal_team": nxt.get("own_goal_team"),
+                }
+            phases.append(phase)
+
+        # Final phase end time: best-effort from events table
+        if phases and phases[-1]["end_minute"] is None:
+            if 'minute' in events.columns:
+                max_minute = events['minute'].dropna().max()
+                phases[-1]["end_minute"] = int(max_minute) if pd.notna(max_minute) else None
+                if 'second' in events.columns and pd.notna(max_minute):
+                    at_max = events.loc[events['minute'] == max_minute]
+                    if not at_max.empty and 'second' in at_max.columns:
+                        max_second = at_max['second'].dropna().max()
+                        phases[-1]["end_second"] = int(max_second) if pd.notna(max_second) else None
+
+        return JSONResponse(content=jsonable_encoder({
+            "home_team": home_team,
+            "away_team": away_team,
+            "phases": phases
+        }))
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"game_phases failed: {type(e).__name__}: {e}")
 
 @app.get("/api/match/{filename}/possession_scene")
 def possession_scene(filename: str, possession: int = Query(...)):
