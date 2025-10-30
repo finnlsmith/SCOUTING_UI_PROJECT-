@@ -37,6 +37,10 @@ export default function MatchViz() {
   const [sceneLoading, setSceneLoading] = useState(false);
   const [sceneError, setSceneError] = useState(null);
   const [showImportantScenes, setShowImportantScenes] = useState(false);
+  const [gamePhases, setGamePhases] = useState([]);
+  const [gamePhaseLoading, setGamePhaseLoading] = useState(false);
+  const [gamePhaseError, setGamePhaseError] = useState(null);
+  const [gamePhaseTeams, setGamePhaseTeams] = useState({ home: "", away: "" });
 
   useEffect(() => {
     setGlobalError(matchesError || uploadError || vizError || "");
@@ -88,6 +92,24 @@ export default function MatchViz() {
       .catch(() => setSceneError("Failed to fetch possession scene"))
       .finally(() => setSceneLoading(false));
   }, [selectedMomentIdx, selectedMatch, showImportantScenes, importantMoments]);
+
+  useEffect(() => {
+    if (!selectedMatch) {
+      setGamePhases([]); setGamePhaseError(null); setGamePhaseTeams({ home: "", away: "" });
+      return;
+    }
+    setGamePhaseLoading(true);
+    setGamePhaseError(null);
+    fetch(`https://columbia-msds-f25-soccer.onrender.com/api/match/${selectedMatch}/game_phases`)
+      .then(res => res.json())
+      .then(res => {
+        if (res.error) throw new Error(res.error);
+        setGamePhases(res.phases || []);
+        setGamePhaseTeams({ home: res.home_team || "", away: res.away_team || "" });
+      })
+      .catch(e => setGamePhaseError(e.message))
+      .finally(() => setGamePhaseLoading(false));
+  }, [selectedMatch]);
 
   useEffect(() => {
     if (showImportantScenes && importantMoments.length > 0) {
@@ -309,12 +331,40 @@ export default function MatchViz() {
                 )}
               </div>
             </div>
-            {/* Game Phases Section (placeholder) */}
-            <div style={{ margin: '52px 0 0', maxWidth:530 }}>
-              <h2 style={{ fontSize: 24, fontWeight: 500, color:'#222', marginBottom: 3 }}>Game Phases</h2>
-              <div style={{ color: '#aaa', fontSize: 21, fontWeight: 400, marginTop:11, marginBottom:26 }}>
-                Nothing to see here yet. (will build in future)
-              </div>
+            {/* Game Phases Section */}
+            <div style={{ margin: '52px 0 0', maxWidth: 530 }}>
+              <h2 style={{ fontSize: 24, fontWeight: 500, color: '#222', marginBottom: 3 }}>Game Phases</h2>
+              {gamePhaseLoading && <div style={{ color: '#aaa', fontSize: 20, fontWeight: 400 }}>Loading phases...</div>}
+              {gamePhaseError && <div style={{ color: 'red', fontSize: 18 }}>{gamePhaseError}</div>}
+              {!gamePhaseLoading && !gamePhaseError && gamePhases.length === 0 && (
+                <div style={{ color: '#aaa', fontSize: 21, fontWeight: 400, marginTop: 11, marginBottom: 26 }}>
+                  No phases detected for match.
+                </div>
+              )}
+              {!gamePhaseLoading && !gamePhaseError && gamePhases.length > 0 && (
+                <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 25 }}>
+                  {gamePhases.map((ph, idx) => (
+                    <div key={idx} style={{ background: '#f9fafb', border: '2px solid #dadce0', borderRadius: 11, padding: '20px 24px', boxShadow: '0 3px 18px #8881', minHeight: 60 }}>
+                      <div style={{ fontWeight: 700, fontSize: 18 }}>Game Phase {ph.phase_idx}</div>
+                      <div style={{ margin: '8px 0', fontSize: 15, color: '#444' }}>
+                        <b>From: </b>{`${ph.start_minute}:${String(ph.start_second).padStart(2, '0')}`} <b>— To: </b>{ph.end_minute !== null ? `${ph.end_minute}:${String(ph.end_second).padStart(2,'0')}` : 'End'}
+                      </div>
+                      <div style={{ fontSize: 15 }}>
+                        <b>Score: </b>{gamePhaseTeams.home} {ph.score_start} {gamePhaseTeams.away}
+                        {ph.score_end ? ` → ${ph.score_end}` : ''}
+                      </div>
+                      {ph.goal_info && ph.goal_info.scorer && (
+                        <div style={{ marginTop:6, fontSize:14, color:'#357' }}>
+                          Goal Event: <b>{ph.goal_info.event_type}</b>{ph.goal_info.own_goal_team ? ` (Own goal by ${ph.goal_info.own_goal_team})` : ''}, scored by <b>{ph.goal_info.scorer}</b>
+                        </div>
+                      )}
+                      <div style={{ marginTop: 12, color: '#188', fontWeight: 500 }}>
+                        Placeholder {ph.phase_idx} — Info for this phase goes here.
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}

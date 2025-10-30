@@ -5,6 +5,7 @@ import TournamentsPage from "./components/TournamentsPage";
 import LandingPage from "./components/LandingPage";
 
 function App() {
+  console.log("Backend URL:", process.env.REACT_APP_BACKEND_URL); // 👈 add this line
   return (
     <Router>
       <Routes>
