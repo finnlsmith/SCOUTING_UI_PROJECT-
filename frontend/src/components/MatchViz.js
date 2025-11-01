@@ -128,7 +128,7 @@ export default function MatchViz() {
   const handleShowImportantScenesToggle = () => setShowImportantScenes(s => !s);
 
   return (
-    <div style={{ padding: '40px 0 70px', background: '#fff', minHeight: "100vh" }}>
+    <div style={{ padding: '40px 0 70px', color: 'white', minHeight: "100vh" }}>
       <ErrorBanner error={globalError} onClose={handleClearError} />
       <div style={{ maxWidth: 1310, margin: '0 auto' }}>
         {/* Tournament Title */}
@@ -136,7 +136,7 @@ export default function MatchViz() {
         {/* Match Selection */}
         <div style={{ marginBottom: 30 }}>
           <h2 style={{ fontSize: 27, fontWeight: 600, marginBottom: 11 }}>Select a Match</h2>
-          <div style={{ maxWidth: 350, marginBottom: 22 }}>
+          <div style={{ maxWidth: 350, marginBottom: 22, margin: "0 auto" }}>
             <MatchSelector
               matches={matches}
               selectedMatch={selectedMatch}
@@ -271,7 +271,7 @@ export default function MatchViz() {
                   {!importantMomentsLoading && !importantMomentsError && Array.isArray(importantMoments) && importantMoments.length > 0 && (
                     <table style={{ width:'99%', fontSize:'1.13rem', borderCollapse: 'collapse', marginBottom: 5, marginTop:8, boxShadow:'0 2px 12px #0000', borderRadius:10 }}>
                       <thead>
-                        <tr style={{ background: '#f5f5f7' }}>
+                        <tr style={{ background: '#f5f5f7', color: "#0F0E26",}}>
                           <th style={{ border: '1px solid #e5e5e6', padding: '3px 7px', fontWeight:600 }}>#</th>
                           <th style={{ border: '1px solid #e5e5e6', padding: '3px 7px', fontWeight:600 }}>When</th>
                           <th style={{ border: '1px solid #e5e5e6', padding: '3px 7px', fontWeight:600 }}>Who</th>
@@ -333,7 +333,7 @@ export default function MatchViz() {
             </div>
             {/* Game Phases Section */}
             <div style={{ margin: '52px 0 0', maxWidth: 530 }}>
-              <h2 style={{ fontSize: 24, fontWeight: 500, color: '#222', marginBottom: 3 }}>Game Phases</h2>
+              <h2 style={{ fontSize: 24, fontWeight: 500, color: '#f9f9ff', marginBottom: 3 }}>Game Phases</h2>
               {gamePhaseLoading && <div style={{ color: '#aaa', fontSize: 20, fontWeight: 400 }}>Loading phases...</div>}
               {gamePhaseError && <div style={{ color: 'red', fontSize: 18 }}>{gamePhaseError}</div>}
               {!gamePhaseLoading && !gamePhaseError && gamePhases.length === 0 && (
