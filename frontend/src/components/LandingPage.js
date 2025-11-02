@@ -66,18 +66,42 @@ export default function LandingPage() {
         Players (coming soon)
       </button>
       
+      {/* ✅ Bottom navigation links */}
       <div
-        onClick={() => navigate("/about")}
         style={{
-          position: 'absolute',
+          position: "absolute",
           bottom: 20,
+          display: "flex",
+          gap: 24,
           fontSize: 16,
-          color: '#aaa',
-          cursor: 'pointer',
-          textDecoration: 'underline'
+          color: "#aaa",
         }}
       >
-        About
+        <div
+          onClick={() => navigate("/about")}
+          style={{
+            cursor: "pointer",
+            textDecoration: "underline",
+            transition: "color 0.2s",
+          }}
+          onMouseOver={(e) => (e.currentTarget.style.color = "#fff")}
+          onMouseOut={(e) => (e.currentTarget.style.color = "#aaa")}
+        >
+          About
+        </div>
+
+        <div
+          onClick={() => navigate("/contact")}
+          style={{
+            cursor: "pointer",
+            textDecoration: "underline",
+            transition: "color 0.2s",
+          }}
+          onMouseOver={(e) => (e.currentTarget.style.color = "#fff")}
+          onMouseOut={(e) => (e.currentTarget.style.color = "#aaa")}
+        >
+          Contact Us
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import euro2020 from "../assets/euro2020.jpeg";
 
 export default function TournamentsPage() {
   const navigate = useNavigate();
@@ -49,6 +50,23 @@ export default function TournamentsPage() {
       <div style={{ color: "#bbb", marginTop: 24 }}>
         (More tournaments coming soon)
       </div>
+
+      {/* Euro 2020 image fixed at bottom center */}
+      <img
+        src={euro2020}
+        alt="Euro 2020"
+        style={{
+          position: "absolute",
+          bottom: 25,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "80px",
+          height: "auto",
+          opacity: 0.9,
+          borderRadius: 10,
+          boxShadow: "0 4px 15px rgba(0, 0, 0, 0.4)",
+        }}
+      />
     </div>
   );
 }

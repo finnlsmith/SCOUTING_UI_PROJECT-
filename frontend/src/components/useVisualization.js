@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { TEAM_COLORS } from "../constants/teamColors";
+import { TEAM_COLORS } from "../assets/teamColors";
 
 const BACKEND_URL = "https://columbia-msds-f25-soccer.onrender.com";
 // const BACKEND_URL = "http://localhost:8000";

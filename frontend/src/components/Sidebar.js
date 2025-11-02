@@ -1,5 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
+import trilemmaLogo from "../assets/trilemma.jpeg";
+import sincereLogo from "../assets/sincereFC.jpeg";
 
 export default function Sidebar() {
   const location = useLocation();
@@ -27,34 +29,104 @@ export default function Sidebar() {
         padding: "20px",
         boxSizing: "border-box",
         borderRight: "1.5px solid #000",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
       }}
     >
-      <h2
+      {/* --- Top Navigation --- */}
+      <div>
+        <h2
+          style={{
+            fontWeight: 800,
+            fontSize: 20,
+            marginBottom: 30,
+            borderBottom: "1px solid #333",
+            paddingBottom: 6,
+          }}
+        >
+          Navigation
+        </h2>
+
+        <nav style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <Link to="/" style={linkStyle("/")}>
+            Home
+          </Link>
+
+          <Link
+            to="#"
+            style={{ ...linkStyle("#"), opacity: 0.6, cursor: "not-allowed" }}
+          >
+            Players (Coming Soon)
+          </Link>
+
+          <Link to="/tournaments" style={linkStyle("/tournaments")}>
+            Tournaments
+          </Link>
+        </nav>
+      </div>
+
+      {/* --- Bottom Logos Section --- */}
+      <div
         style={{
-          fontWeight: 800,
-          fontSize: 20,
-          marginBottom: 30,
-          borderBottom: "2px solid #000",
-          paddingBottom: 6,
+          borderTop: "1px solid #333",
+          paddingTop: 15,
+          textAlign: "center",
         }}
       >
-        Navigation
-      </h2>
+        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>
+          Powered by
+        </div>
 
-      <Link to="/" style={linkStyle("/")}>
-        Home
-      </Link>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          {/* Trilemma Foundation */}
+          <a
+            href="https://www.trilemma.foundation/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img
+              src={trilemmaLogo}
+              alt="Trilemma Foundation"
+              style={{
+                width: 90,
+                height: "auto",
+                cursor: "pointer",
+                transition: "opacity 0.2s",
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.opacity = "0.8")}
+              onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
+            />
+          </a>
 
-      <Link
-        to="#"
-        style={{ ...linkStyle("#"), opacity: 0.6, cursor: "not-allowed" }}
-      >
-        Players (Coming Soon)
-      </Link>
-
-      <Link to="/tournaments" style={linkStyle("/tournaments")}>
-        Tournaments
-      </Link>
+          {/* Sincere FC */}
+          <a
+            href="https://www.youtube.com/@SincereFC"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img
+              src={sincereLogo}
+              alt="Sincere FC"
+              style={{
+                width: 55,
+                height: "auto",
+                cursor: "pointer",
+                transition: "opacity 0.2s",
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.opacity = "0.8")}
+              onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
+            />
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

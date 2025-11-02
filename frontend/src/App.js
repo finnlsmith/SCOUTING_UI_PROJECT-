@@ -5,6 +5,7 @@ import TournamentsPage from "./components/TournamentsPage";
 import MatchViz from "./components/MatchViz";
 import AboutPage from "./components/AboutPage";
 import Layout from "./components/Layout";
+import ContactUsPage from "./components/ContactUs";
 import "./App.css";
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
         <Route path="/tournaments" element={<Layout><TournamentsPage /></Layout>}/>
         <Route path="/euro-2020" element={<Layout><MatchViz /></Layout>} />
         <Route path="/about" element={<Layout><AboutPage /></Layout>}/>
+        <Route path="/contact" element={<Layout><ContactUsPage /></Layout>}/>
       </Routes>
     </div>
   );
