@@ -29,3 +29,5 @@ Custom React hook to manage CSV file upload flow: controls the file input state,
 
 **useVisualization.js**
 Custom React hook for managing the fetching and state related to plot data (figData) and match stats from the backend. Offers functions to load an overall match, individual team shot maps, or both, as well as controlling loading state and plot data. Used by the main visualization logic flow.
+
+**AboutPage.js**

@@ -23,7 +23,7 @@ export default function Scoreboard({ stage, home, away, score, shots, shotsOnTar
             textAlign: "center",
             fontSize: "1rem",
             fontWeight: 600,
-            color: "#6b7280",
+            color: "#374151",
             marginBottom: "8px"
           }}>
             {stage}
@@ -36,6 +36,7 @@ export default function Scoreboard({ stage, home, away, score, shots, shotsOnTar
           justifyContent: "space-between",
           fontWeight: 700,
           fontSize: "1.2rem",
+          color: "#1e293b",
         }}>
           <span>{home}</span>
           <span>{away}</span>
@@ -57,6 +58,7 @@ export default function Scoreboard({ stage, home, away, score, shots, shotsOnTar
           gridColumn: "1 / span 2",
           fontSize: "1.1rem",
           fontWeight: 600,
+          color: "#111827",
         }}>
           <span>{score ? score.split(" - ")[0] : "-"}</span>
           <span>{score ? score.split(" - ")[1] : "-"}</span>
