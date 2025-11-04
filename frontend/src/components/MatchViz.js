@@ -183,6 +183,11 @@ export default function MatchViz() {
                     xg={(stats.home_xg_sum && stats.away_xg_sum)
                         ? `${stats.home_xg_sum} - ${stats.away_xg_sum}`
                         : "-"}
+                    bigChances={(Number.isFinite(stats.home_big_chances) && Number.isFinite(stats.away_big_chances)) ? `${stats.home_big_chances} - ${stats.away_big_chances}` : "-"}
+                    okChances={(Number.isFinite(stats.home_ok_chances) && Number.isFinite(stats.away_ok_chances)) ? `${stats.home_ok_chances} - ${stats.away_ok_chances}` : "-"}
+                    fouls={(Number.isFinite(stats.home_fouls) && Number.isFinite(stats.away_fouls)) ? `${stats.home_fouls} - ${stats.away_fouls}` : "-"}
+                    cardsLeft={(Number.isFinite(stats.home_cards_total) && Number.isFinite(stats.home_cards_yellow) && Number.isFinite(stats.home_cards_red)) ? `${stats.home_cards_total} (${stats.home_cards_yellow}/${stats.home_cards_red})` : "-"}
+                    cardsRight={(Number.isFinite(stats.away_cards_total) && Number.isFinite(stats.away_cards_yellow) && Number.isFinite(stats.away_cards_red)) ? `${stats.away_cards_total} (${stats.away_cards_yellow}/${stats.away_cards_red})` : "-"}
                   />
                 </div>
               </div>

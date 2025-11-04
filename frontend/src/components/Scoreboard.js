@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function Scoreboard({ stage, home, away, score, shots, shotsOnTarget, xg }) {
+export default function Scoreboard({ stage, home, away, score, shots, shotsOnTarget, xg, bigChances, okChances, fouls, cardsLeft, cardsRight }) {
   if (!home || !away) return null;
   return (
     <div style={{ marginTop: 30, marginBottom: 30, display: "flex", justifyContent: "center" }}>
@@ -134,6 +134,106 @@ export default function Scoreboard({ stage, home, away, score, shots, shotsOnTar
         }}>
           <span>{xg ? xg.split(" - ")[0] : "-"}</span>
           <span>{xg ? xg.split(" - ")[1] : "-"}</span>
+        </div>
+
+        {/* Big Chances label */}
+        <div style={{
+          gridColumn: "1 / span 2",
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "1rem",
+          color: "#4b5563",
+          fontWeight: 500,
+          marginTop: "10px",
+        }}>
+          <span>Big Chances (≥ 0.27 xG)</span>
+        </div>
+        {/* Big Chances values */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gridColumn: "1 / span 2",
+          fontSize: "1.1rem",
+          fontWeight: 600,
+          color: "#111827",
+        }}>
+          <span>{bigChances ? bigChances.split(" - ")[0] : "-"}</span>
+          <span>{bigChances ? bigChances.split(" - ")[1] : "-"}</span>
+        </div>
+
+        {/* OK Chances label */}
+        <div style={{
+          gridColumn: "1 / span 2",
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "1rem",
+          color: "#4b5563",
+          fontWeight: 500,
+          marginTop: "10px",
+        }}>
+          <span>OK Chances (0.08–0.27 xG)</span>
+        </div>
+        {/* OK Chances values */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gridColumn: "1 / span 2",
+          fontSize: "1.1rem",
+          fontWeight: 600,
+          color: "#111827",
+        }}>
+          <span>{okChances ? okChances.split(" - ")[0] : "-"}</span>
+          <span>{okChances ? okChances.split(" - ")[1] : "-"}</span>
+        </div>
+
+        {/* Fouls label */}
+        <div style={{
+          gridColumn: "1 / span 2",
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "1rem",
+          color: "#4b5563",
+          fontWeight: 500,
+          marginTop: "10px",
+        }}>
+          <span>Fouls Committed</span>
+        </div>
+        {/* Fouls values */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gridColumn: "1 / span 2",
+          fontSize: "1.1rem",
+          fontWeight: 600,
+          color: "#111827",
+        }}>
+          <span>{fouls ? fouls.split(" - ")[0] : "-"}</span>
+          <span>{fouls ? fouls.split(" - ")[1] : "-"}</span>
+        </div>
+
+        {/* Cards label */}
+        <div style={{
+          gridColumn: "1 / span 2",
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "1rem",
+          color: "#4b5563",
+          fontWeight: 500,
+          marginTop: "10px",
+        }}>
+          <span>Cards (total with yellow/red)</span>
+        </div>
+        {/* Cards values: format total (yellow/red) */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gridColumn: "1 / span 2",
+          fontSize: "1.1rem",
+          fontWeight: 600,
+          color: "#111827",
+        }}>
+          <span>{cardsLeft ?? '-'}</span>
+          <span>{cardsRight ?? '-'}</span>
         </div>
       </div>
     </div>
