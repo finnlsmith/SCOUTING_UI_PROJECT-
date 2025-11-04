@@ -335,6 +335,12 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
             "home_shots": None, "away_shots": None,
             "home_shots_on_target": None, "away_shots_on_target": None,
             "home_xg_sum": None, "away_xg_sum": None,
+            'home_fouls': None, 'away_fouls': None,
+            'home_cards_yellow': None, 'away_cards_yellow': None,
+            'home_cards_red': None, 'away_cards_red': None,
+            'home_cards_total': None, 'away_cards_total': None,
+            'home_big_chances': None, 'away_big_chances': None,
+            'home_ok_chances': None, 'away_ok_chances': None,
         }
         try:
             # try matches_df lookup
@@ -1067,6 +1073,21 @@ def game_phases(filename: str):
         penalty_box_rect = (102, 18, 120, 62)
         final_third_rect = (80, 0, 120, 80)
 
+        # Helper: score at a given match time (inclusive of that instant)
+        def score_at_time(minute_value: int, second_value: int):
+            mask_upto = (
+                (ev['minute_int'] < int(minute_value)) |
+                ((ev['minute_int'] == int(minute_value)) & (ev['second_int'] <= int(second_value)))
+            )
+            upto = ev.loc[mask_upto]
+            goals_normal = upto[(upto.get('type') == 'Shot') & (upto.get('shot_outcome') == 'Goal')]
+            own_for = upto[(upto.get('type') == 'Own Goal For')]
+            normal_counts = goals_normal.groupby('possession_team').size() if not goals_normal.empty else pd.Series(dtype=int)
+            own_counts = own_for.groupby('team').size() if not own_for.empty else pd.Series(dtype=int)
+            h = int(normal_counts.get(home_team, 0)) + int(own_counts.get(home_team, 0))
+            a = int(normal_counts.get(away_team, 0)) + int(own_counts.get(away_team, 0))
+            return {home_team: h, away_team: a}
+
         # Metrics per phase
         phase_metrics = []
         if phases:
@@ -1083,9 +1104,9 @@ def game_phases(filename: str):
                 es = ph.get('end_second'); es = int(es) if es is not None else ss
                 sp = ph.get('start_period'); sp = int(sp) if sp is not None else None
 
-                # Time range inclusive
+                # Time range: exclude start instant; include end instant
                 base_mask = (
-                    (base_ev['minute_int'] > sm) | ((base_ev['minute_int'] == sm) & (base_ev['second_int'] >= ss))
+                    (base_ev['minute_int'] > sm) | ((base_ev['minute_int'] == sm) & (base_ev['second_int'] > ss))
                 ) & (
                     (base_ev['minute_int'] < em) | ((base_ev['minute_int'] == em) & (base_ev['second_int'] <= es))
                 )
@@ -1136,6 +1157,24 @@ def game_phases(filename: str):
                 passes_in_box_no_outcome_per_team = {home_team: int(pass_counts.get(home_team, 0)), away_team: int(pass_counts.get(away_team, 0))}
                 passes_in_final_third_no_outcome_per_team = {home_team: int(pass_final_counts.get(home_team, 0)), away_team: int(pass_final_counts.get(away_team, 0))}
 
+                # Final third entries (deduplicate by possession across carries and passes)
+                home_poss_final, away_poss_final = set(), set()
+                if not carry_phase.empty and 'possession' in carry_phase.columns:
+                    cf = carry_phase[(carry_phase['in_final_third']) & carry_phase['team'].notna()]
+                    for _, r in cf[['team', 'possession']].iterrows():
+                        if r['team'] == home_team:
+                            home_poss_final.add(int(r['possession']))
+                        elif r['team'] == away_team:
+                            away_poss_final.add(int(r['possession']))
+                if not pass_phase.empty and 'possession' in pass_phase.columns:
+                    pf = pass_phase[(pass_phase['in_final_third']) & pass_phase['team'].notna()]
+                    for _, r in pf[['team', 'possession']].iterrows():
+                        if r['team'] == home_team:
+                            home_poss_final.add(int(r['possession']))
+                        elif r['team'] == away_team:
+                            away_poss_final.add(int(r['possession']))
+                final_third_entries_dedup = {home_team: len(home_poss_final), away_team: len(away_poss_final)}
+
                 # Fouls and cards
                 fouls = ev_phase[ev_phase['type'] == 'Foul Committed'].copy() if 'type' in ev_phase.columns else pd.DataFrame()
                 foul_counts = fouls.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int) if not fouls.empty and 'team' in fouls.columns else pd.Series({home_team: 0, away_team: 0})
@@ -1172,6 +1211,10 @@ def game_phases(filename: str):
                 g_counts = goals_phase['goal_for'].value_counts() if not goals_phase.empty and 'goal_for' in goals_phase.columns else pd.Series({})
                 goals_per_team = {home_team: int(g_counts.get(home_team, 0)), away_team: int(g_counts.get(away_team, 0))}
 
+                # Scores at phase boundaries (inclusive at those instants)
+                score_start_counts = score_at_time(sm, ss)
+                score_end_counts = score_at_time(em, es)
+
                 phase_metrics.append({
                     'phase_idx': ph['phase_idx'],
                     'start_minute': sm,
@@ -1181,11 +1224,13 @@ def game_phases(filename: str):
                     'end_second': es,
                     'possession_pct_by_passes': possession_stats,
                     'box_entries': {home_team: carries_in_box_per_team[home_team] + passes_in_box_no_outcome_per_team[home_team], away_team: carries_in_box_per_team[away_team] + passes_in_box_no_outcome_per_team[away_team]},
-                    'final_third_entries': {home_team: carries_in_final_third_per_team[home_team] + passes_in_final_third_no_outcome_per_team[home_team], away_team: carries_in_final_third_per_team[away_team] + passes_in_final_third_no_outcome_per_team[away_team]},
+                    'final_third_entries': final_third_entries_dedup,
                     'fouls': fouls_per_team,
                     'cards': cards_per_team,
                     'shots': shots_per_team,
                     'goals': goals_per_team,
+                    'score_at_start': score_start_counts,
+                    'score_at_end': score_end_counts,
                 })
 
         return JSONResponse(content=jsonable_encoder({
@@ -1580,7 +1625,7 @@ def possession_scene(filename: str, possession: int = Query(...)):
                     if player_short:
                         ax.text(start_x_flipped, start_y_flipped, player_short, fontsize=7,
                                 color='red', verticalalignment='top', horizontalalignment='right', zorder=40)
-                    if isinstance(pass_type, str) and pass_type.strip().lower() == "corner":
+                    if isinstance_type, str) and pass_type.strip().lower() == "corner":
                         ax.text(start_x_flipped, start_y_flipped + 2.2, "Corner", fontsize=7, color='#9467bd',
                                 ha='center', va='bottom', fontweight='bold', zorder=42)
                 continue
