@@ -752,6 +752,7 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
 #     except Exception as e:
 #         traceback.print_exc()
 #         raise HTTPException(status_code=500, detail=f"passing_network failed: {type(e).__name__}: {e}" )
+
 @app.get("/api/match/{filename}/passing_network")
 def passing_network_like_matplotlib(
     filename: str,
@@ -900,10 +901,10 @@ def passing_network_like_matplotlib(
         if "pass_recipient" in df.columns:
             add = (
                 df.loc[df["team"] == team, ["dst_id", "pass_recipient"]]
-                  .dropna()
-                  .drop_duplicates("dst_id")
-                  .set_index("dst_id")["pass_recipient"]
-                  .astype(str)
+                     .dropna()
+                     .drop_duplicates("dst_id")
+                     .set_index("dst_id")["pass_recipient"]
+                     .astype(str)
                   .to_dict()
             )
             for k, v in add.items():
@@ -1268,8 +1269,8 @@ def game_phases(filename: str):
                 scorer = awarded_team(row)
                 event_type = row.get('type')
                 own_goal_team = row.get('team') if event_type == 'Own Goal For' else None
-                if scorer in score:
-                    score[scorer] += 1
+            if scorer in score:
+                score[scorer] += 1
                 mark_goal_info = {
                     'scorer': scorer,
                     'event_type': event_type,
@@ -1319,7 +1320,7 @@ def game_phases(filename: str):
                 'end_period': end_period,
                 'goal_info': mark['goal_info'],
                 'break_reasons': mark['reasons'],
-            }
+                }
             phases.append(phase)
 
             # Next start
@@ -1485,6 +1486,24 @@ def game_phases(filename: str):
                             away_poss_final.add(int(r['possession']))
                 final_third_entries_dedup = {home_team: len(home_poss_final), away_team: len(away_poss_final)}
 
+                # Box entries dedup (by possession across carries and passes)
+                home_poss_box, away_poss_box = set(), set()
+                if not carry_phase.empty and 'possession' in carry_phase.columns:
+                    cb = carry_phase[(carry_phase['in_box']) & carry_phase['team'].notna()]
+                    for _, r in cb[['team', 'possession']].iterrows():
+                        if r['team'] == home_team:
+                            home_poss_box.add(int(r['possession']))
+                        elif r['team'] == away_team:
+                            away_poss_box.add(int(r['possession']))
+                if not pass_phase.empty and 'possession' in pass_phase.columns:
+                    pb = pass_phase[(pass_phase['in_box']) & pass_phase['team'].notna()]
+                    for _, r in pb[['team', 'possession']].iterrows():
+                        if r['team'] == home_team:
+                            home_poss_box.add(int(r['possession']))
+                        elif r['team'] == away_team:
+                            away_poss_box.add(int(r['possession']))
+                box_entries_dedup = {home_team: len(home_poss_box), away_team: len(away_poss_box)}
+
                 # Fouls and cards
                 fouls = ev_phase[ev_phase['type'] == 'Foul Committed'].copy() if 'type' in ev_phase.columns else pd.DataFrame()
                 foul_counts = fouls.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int) if not fouls.empty and 'team' in fouls.columns else pd.Series({home_team: 0, away_team: 0})
@@ -1501,15 +1520,37 @@ def game_phases(filename: str):
                     shots['xg'] = pd.to_numeric(shots['shot_statsbomb_xg'], errors='coerce')
                 else:
                     shots['xg'] = np.nan if not shots.empty else pd.Series(dtype=float)
-                s_08_27 = shots[(shots['xg'] >= 0.08) & (shots['xg'] < 0.27)] if not shots.empty else pd.DataFrame()
-                s_27 = shots[(shots['xg'] >= 0.27)] if not shots.empty else pd.DataFrame()
-                s_08_27_counts = s_08_27.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int) if not s_08_27.empty and 'team' in s_08_27.columns else pd.Series({home_team: 0, away_team: 0})
-                s_27_counts = s_27.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int) if not s_27.empty and 'team' in s_27.columns else pd.Series({home_team: 0, away_team: 0})
-                # Chances bucketed: OK (0.08-<0.27), Good (>=0.27)
-                chances_per_team = {
-                    home_team: {'ok': int(s_08_27_counts.get(home_team, 0)), 'good': int(s_27_counts.get(home_team, 0))},
-                    away_team: {'ok': int(s_08_27_counts.get(away_team, 0)), 'good': int(s_27_counts.get(away_team, 0))}
-                }
+                # Deduplicate chances within 2 seconds per team; classify each cluster
+                chances_per_team = {home_team: {'ok': 0, 'good': 0}, away_team: {'ok': 0, 'good': 0}}
+                if not shots.empty and {'minute', 'second', 'team'}.issubset(shots.columns):
+                    shots = shots.copy()
+                    shots['abs_sec'] = pd.to_numeric(shots.get('minute'), errors='coerce').fillna(0).astype(int) * 60 + pd.to_numeric(shots.get('second'), errors='coerce').fillna(0).astype(int)
+                    # Keep only shots that qualify as chances
+                    shots_chances = shots[shots['xg'] >= 0.08]
+                    for team_name in [home_team, away_team]:
+                        grp = shots_chances[shots_chances['team'] == team_name].sort_values('abs_sec')
+                        last_time = None
+                        current_max_xg = None
+                        def flush_cluster():
+                            nonlocal chances_per_team, current_max_xg
+                            if current_max_xg is None:
+                                return
+                            if current_max_xg >= 0.27:
+                                chances_per_team[team_name]['good'] += 1
+                            else:
+                                chances_per_team[team_name]['ok'] += 1
+                        for _, r in grp.iterrows():
+                            t = int(r['abs_sec'])
+                            xg_val = float(r['xg']) if pd.notna(r['xg']) else 0.0
+                            if last_time is None or (t - last_time) > 2:
+                                flush_cluster()
+                                last_time = t
+                                current_max_xg = xg_val
+                            else:
+                                last_time = t
+                                if xg_val > (current_max_xg or 0):
+                                    current_max_xg = xg_val
+                        flush_cluster()
 
                 # Shot totals and on-target (Goal or Saved)
                 shots_total_counts = shots.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int) if not shots.empty and 'team' in shots.columns else pd.Series({home_team: 0, away_team: 0})
@@ -1523,6 +1564,14 @@ def game_phases(filename: str):
                     home_team: {'total': int(shots_total_counts.get(home_team, 0)), 'on_target': int(shots_on_target_counts.get(home_team, 0))},
                     away_team: {'total': int(shots_total_counts.get(away_team, 0)), 'on_target': int(shots_on_target_counts.get(away_team, 0))}
                 }
+
+                # Penalties per team in this phase
+                if not shots.empty and 'shot_type' in shots.columns and 'team' in shots.columns:
+                    pens_mask = shots['shot_type'].astype(str).str.lower() == 'penalty'
+                    pens_counts = shots.loc[pens_mask].groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int)
+                else:
+                    pens_counts = pd.Series({home_team: 0, away_team: 0})
+                penalties_per_team = {home_team: int(pens_counts.get(home_team, 0)), away_team: int(pens_counts.get(away_team, 0))}
 
                 # Goals per phase (robust)
                 goals_mask = (ev_phase.get('shot_outcome', '') == 'Goal') | (ev_phase.get('type', '') == 'Own Goal For') if not ev_phase.empty else pd.Series([])
@@ -1550,12 +1599,13 @@ def game_phases(filename: str):
                     'end_minute': em,
                     'end_second': es,
                     'possession_pct_by_passes': possession_stats,
-                    'box_entries': {home_team: carries_in_box_per_team[home_team] + passes_in_box_no_outcome_per_team[home_team], away_team: carries_in_box_per_team[away_team] + passes_in_box_no_outcome_per_team[away_team]},
+                    'box_entries': box_entries_dedup,
                     'final_third_entries': final_third_entries_dedup,
                     'fouls': fouls_per_team,
                     'cards': cards_per_team,
                     'chances': chances_per_team,
                     'shots_summary': shots_summary,
+                    'penalties': penalties_per_team,
                     'goals': goals_per_team,
                     'score_at_start': score_start_counts,
                     'score_at_end': score_end_counts,
