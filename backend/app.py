@@ -567,6 +567,191 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
         raise HTTPException(status_code=500, detail=f"/viz failed: {type(e).__name__}: {e}")
     
 
+# @app.get("/api/match/{filename}/passing_network")
+# def passing_network_like_matplotlib(
+#     filename: str,
+#     team: str = Query(...),
+#     min_passes: int = Query(1, ge=1),
+#     flip: bool = Query(False),
+# ):
+#     try:
+#         # Load events
+#         obj = s3_client.get_object(Bucket=S3_BUCKET, Key=filename)
+#         events = pd.read_csv(io.BytesIO(obj["Body"].read()))
+#         cols = set(events.columns)
+
+#         # Column resolution (IDs or names)
+#         required_geom = {"location", "pass_end_location"}
+#         missing_geom = required_geom - cols
+#         if missing_geom:
+#             raise HTTPException(status_code=400, detail=f"Missing columns: {', '.join(sorted(missing_geom))}")
+
+#         if "type" not in cols or "team" not in cols:
+#             raise HTTPException(status_code=400, detail="Missing required columns 'type' and/or 'team'")
+
+#         # Build source/dest ids
+#         df = events.copy()
+#         if "player_id" in cols:
+#             df["src_id"] = df["player_id"]
+#         else:
+#             df["src_name"] = df.get("player", "").astype(str)
+
+#         if "pass_recipient_id" in cols:
+#             df["dst_id"] = df["pass_recipient_id"]
+#         else:
+#             df["dst_name"] = df.get("pass_recipient", "").astype(str)
+
+#         # If ids missing, synthesize consistent ids from names
+#         if "src_id" not in df.columns or "dst_id" not in df.columns:
+#             src_names = df.get("src_name", pd.Series([], dtype=str)).astype(str)
+#             dst_names = df.get("dst_name", pd.Series([], dtype=str)).astype(str)
+#             all_names = pd.Index(src_names).append(pd.Index(dst_names)).astype(str).unique()
+#             name_to_id = {n: i for i, n in enumerate(all_names)}
+#             if "src_id" not in df.columns:
+#                 df["src_id"] = src_names.map(name_to_id)
+#             if "dst_id" not in df.columns:
+#                 df["dst_id"] = dst_names.map(name_to_id)
+
+#         # Map id -> display name (safe dict)
+#         id_to_name = {}
+#         if "player" in df.columns:
+#             id_to_name.update(
+#                 df.loc[df["team"] == team, ["src_id", "player"]]
+#                   .dropna()
+#                   .drop_duplicates("src_id")
+#                   .set_index("src_id")["player"]
+#                   .astype(str)
+#                   .to_dict()
+#             )
+#         if "pass_recipient" in df.columns:
+#             # don't overwrite existing keys
+#             add = (df.loc[df["team"] == team, ["dst_id", "pass_recipient"]]
+#                      .dropna()
+#                      .drop_duplicates("dst_id")
+#                      .set_index("dst_id")["pass_recipient"]
+#                      .astype(str)
+#                      .to_dict())
+#             for k, v in add.items():
+#                 id_to_name.setdefault(k, v)
+
+#         # Team passes (completed = outcome NaN, if present)
+#         passes = df[(df["type"] == "Pass") & (df["team"] == team)].copy()
+#         if passes.empty:
+#             raise HTTPException(status_code=404, detail=f"No passes for team '{team}'")
+
+#         if "pass_outcome" in passes.columns:
+#             passes = passes[passes["pass_outcome"].isna()].copy()
+
+#         # Geometry
+#         passes[["sx", "sy"]] = passes["location"].apply(_to_xy).to_list()
+#         passes[["ex", "ey"]] = passes["pass_end_location"].apply(_to_xy).to_list()
+
+#         # Touches = any event for team keyed by src_id (safe)
+#         touches = (
+#             df.loc[df["team"] == team, "src_id"]
+#               .value_counts()
+#               .rename_axis("player_id")
+#               .reset_index(name="touches")
+#         )
+
+#         # Average positions (start as passer + receive end)
+#         start_pos = passes.groupby("src_id")[["sx", "sy"]].mean().rename(columns={"sx": "x_s", "sy": "y_s"})
+#         recv_pos = passes.groupby("dst_id")[["ex", "ey"]].mean().rename(columns={"ex": "x_r", "ey": "y_r"})
+#         recv_pos.index.name = "src_id"
+#         avg_pos = start_pos.join(recv_pos, how="outer").reset_index(names=["player_id"])
+#         avg_pos["x"] = avg_pos[["x_s", "x_r"]].mean(axis=1, skipna=True)
+#         avg_pos["y"] = avg_pos[["y_s", "y_r"]].mean(axis=1, skipna=True)
+#         avg_pos = avg_pos[["player_id", "x", "y"]]
+
+#         # Edges
+#         edges = (
+#             passes.groupby(["src_id", "dst_id"], dropna=True)
+#                   .size().rename("count").reset_index()
+#                   .rename(columns={"src_id": "player_id", "dst_id": "pass_recipient_id"})
+#         )
+#         edges = edges[edges["count"] >= int(min_passes)]
+
+#         # Nodes table
+#         nodes = avg_pos.merge(touches, on="player_id", how="left")
+#         nodes["touches"] = nodes["touches"].fillna(0).astype(int)
+#         nodes["name"] = nodes["player_id"].map(id_to_name).fillna(nodes["player_id"].astype(str))
+
+#         if flip:
+#             nodes["x"] = 120 - nodes["x"]
+
+#         # Merge coordinates onto edges
+#         edges = edges.merge(
+#             nodes[["player_id", "x", "y"]].rename(columns={"player_id": "player_id_src", "x": "sx", "y": "sy"}),
+#             left_on="player_id", right_on="player_id_src", how="left"
+#         ).merge(
+#             nodes[["player_id", "x", "y"]].rename(columns={"player_id": "player_id_dst", "x": "ex", "y": "ey"}),
+#             left_on="pass_recipient_id", right_on="player_id_dst", how="left"
+#         )
+
+#         # ---- Build Plotly fig (ensure pure Python types) ----
+#         fig = go.Figure()
+
+#         # Edges (convert to floats explicitly)
+#         if not edges.empty:
+#             for r in edges.itertuples(index=False):
+#                 sx, sy, ex, ey = float(r.sx), float(r.sy), float(r.ex), float(r.ey)
+#                 width = float(0.5 + 0.5*np.log1p(int(r.count)))
+#                 fig.add_trace(go.Scatter(
+#                     x=[sx, ex], y=[sy, ey],
+#                     mode="lines",
+#                     line=dict(width=width, color="gray"),
+#                     opacity=0.5,
+#                     hoverinfo="text",
+#                     text=f"{id_to_name.get(r.player_id, r.player_id)} → {id_to_name.get(r.pass_recipient_id, r.pass_recipient_id)}<br>passes: {int(r.count)}",
+#                     showlegend=False,
+#                 ))
+
+#         # Nodes (size as plain list, customdata as list — NOT np.array)
+#         if not nodes.empty:
+#             # size_list = (40 + 0.1*nodes["touches"]).clip(lower=30, upper=120).astype(float).tolist()
+#             size_list = (14 + 0.045*nodes["touches"]).clip(lower=8, upper=32).astype(float).tolist()
+#             touches_list = nodes["touches"].astype(int).tolist()
+#             x_list = nodes["x"].astype(float).tolist()
+#             y_list = nodes["y"].astype(float).tolist()
+#             text_list = nodes["name"].astype(str).tolist()
+
+#             team_color = TEAM_COLORS.get(team, "#1f77b4")
+#             fig.add_trace(go.Scatter(
+#                 x=x_list, y=y_list,
+#                 mode="markers+text",
+#                 text=text_list,
+#                 textposition="top center",
+#                 marker=dict(size=size_list, line=dict(width=2, color="black"), color=team_color),
+#                 hoverinfo="text",
+#                 textfont=dict(size=11),
+#                 name="players",
+#                 customdata=[ [t] for t in touches_list ],
+#                 hovertemplate="<b>%{text}</b><br>touches: %{customdata[0]}<extra></extra>",
+#             ))
+
+#         fig = make_pitch(fig)
+#         fig.update_layout(
+#             title=f"Passing Network — {team} (size ~ touches)",
+#             xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
+#             yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
+#             plot_bgcolor="white", height=600, width=900
+#         )
+#         fig.update_yaxes(autorange="reversed")
+
+#         payload = fig.to_dict()  # already basic types
+#         payload.update({
+#             "team": team,
+#             "node_count": int(nodes.shape[0]),
+#             "edge_count": int(edges.shape[0]),
+#             "min_passes": int(min_passes),
+#         })
+#         return JSONResponse(content=jsonable_encoder(payload))
+
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         traceback.print_exc()
+#         raise HTTPException(status_code=500, detail=f"passing_network failed: {type(e).__name__}: {e}" )
 @app.get("/api/match/{filename}/passing_network")
 def passing_network_like_matplotlib(
     filename: str,
@@ -574,13 +759,19 @@ def passing_network_like_matplotlib(
     min_passes: int = Query(1, ge=1),
     flip: bool = Query(False),
 ):
+    """
+    Passing network for a selected team, filtered to Starting XI (if lineups are available).
+    - Pulls events_{match_id}.csv (from `filename`) for passes/touches/positions.
+    - Tries to load a corresponding lineups CSV and keeps only Starting XI players.
+      If lineups are missing or malformed, falls back to using all players.
+    """
     try:
-        # Load events
+        # -------- Load events CSV --------
         obj = s3_client.get_object(Bucket=S3_BUCKET, Key=filename)
         events = pd.read_csv(io.BytesIO(obj["Body"].read()))
         cols = set(events.columns)
 
-        # Column resolution (IDs or names)
+        # Minimum required geometry columns
         required_geom = {"location", "pass_end_location"}
         missing_geom = required_geom - cols
         if missing_geom:
@@ -589,8 +780,91 @@ def passing_network_like_matplotlib(
         if "type" not in cols or "team" not in cols:
             raise HTTPException(status_code=400, detail="Missing required columns 'type' and/or 'team'")
 
-        # Build source/dest ids
+        # -------- Derive match_id from filename to locate lineups file(s) --------
+        m = re.search(r"\d+", filename or "")
+        match_id = m.group() if m else None
+
+        # -------- Helper to parse 'positions' cells (list/dict/string/NaN) --------
+        import json as _json
+        import ast as _ast
+
+        def _parse_positions_cell(x):
+            if isinstance(x, list):
+                return x
+            if isinstance(x, dict):
+                return [x]
+            if x is None or (isinstance(x, float) and pd.isna(x)):
+                return []
+            if isinstance(x, str):
+                s = x.strip()
+                if not s:
+                    return []
+                # Try JSON first
+                try:
+                    v = _json.loads(s)
+                    return v if isinstance(v, list) else [v]
+                except Exception:
+                    pass
+                # Try Python literal (handles single quotes)
+                try:
+                    v = _ast.literal_eval(s)
+                    return v if isinstance(v, list) else [v]
+                except Exception:
+                    # JSON-ish fallback
+                    s2 = s.replace("null", "None").replace("true", "True").replace("false", "False")
+                    try:
+                        v = _ast.literal_eval(s2)
+                        return v if isinstance(v, list) else [v]
+                    except Exception:
+                        return []
+            return []
+
+        # -------- Load lineups (best-effort) & build Starting XI whitelist --------
+        starting_ids, starting_names = set(), set()
+
+        def _try_load_lineups():
+            candidates = []
+            if match_id:
+                candidates += [
+                    f"lineups_{match_id}.csv",
+                    f"lineups{match_id}.csv",
+                    f"{match_id}_lineups.csv",
+                ]
+            candidates += ["lineups.csv", "match_lineups.csv"]
+
+            for key in candidates:
+                try:
+                    o = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
+                    return pd.read_csv(io.BytesIO(o["Body"].read()))
+                except Exception:
+                    continue
+            return None
+
+        lineups_df = _try_load_lineups()
+
+        if lineups_df is not None and "positions" in lineups_df.columns:
+            lu = lineups_df.copy()
+            lu["positions_parsed"] = lu["positions"].apply(_parse_positions_cell)
+            mask_start = lu["positions_parsed"].apply(
+                lambda lst: any(isinstance(d, dict) and d.get("start_reason") == "Starting XI" for d in lst)
+            )
+            starters = lu[mask_start].copy()
+
+            # Prefer player_id if present, else fallback to player names
+            if "player_id" in starters.columns:
+                with pd.option_context("mode.chained_assignment", None):
+                    pid_series = pd.to_numeric(starters["player_id"], errors="coerce")
+                starting_ids = set(pid_series.dropna().astype(int).tolist())
+                # If player_id are not numeric (rare), keep raw values too
+                if not starting_ids and starters["player_id"].notna().any():
+                    starting_ids = set(starters["player_id"].astype(str).tolist())
+            if "player" in starters.columns:
+                starting_names = set(starters["player"].astype(str).tolist())
+
+        # -------- Build events working frame & player ids/names --------
         df = events.copy()
+
+        # Source/destination ids
         if "player_id" in cols:
             df["src_id"] = df["player_id"]
         else:
@@ -612,7 +886,7 @@ def passing_network_like_matplotlib(
             if "dst_id" not in df.columns:
                 df["dst_id"] = dst_names.map(name_to_id)
 
-        # Map id -> display name (safe dict)
+        # Map id -> display name
         id_to_name = {}
         if "player" in df.columns:
             id_to_name.update(
@@ -624,37 +898,71 @@ def passing_network_like_matplotlib(
                   .to_dict()
             )
         if "pass_recipient" in df.columns:
-            # don't overwrite existing keys
-            add = (df.loc[df["team"] == team, ["dst_id", "pass_recipient"]]
-                     .dropna()
-                     .drop_duplicates("dst_id")
-                     .set_index("dst_id")["pass_recipient"]
-                     .astype(str)
-                     .to_dict())
+            add = (
+                df.loc[df["team"] == team, ["dst_id", "pass_recipient"]]
+                  .dropna()
+                  .drop_duplicates("dst_id")
+                  .set_index("dst_id")["pass_recipient"]
+                  .astype(str)
+                  .to_dict()
+            )
             for k, v in add.items():
                 id_to_name.setdefault(k, v)
 
-        # Team passes (completed = outcome NaN, if present)
+        # -------- Build Starting XI id whitelist (fallback to names if needed) --------
+        starting_id_whitelist = set()
+        if starting_ids:
+            # Normalize types if df["src_id"] is integer dtype
+            try:
+                if pd.api.types.is_integer_dtype(df["src_id"]):
+                    starting_id_whitelist = set(int(i) for i in starting_ids)
+                else:
+                    starting_id_whitelist = set(starting_ids)
+            except Exception:
+                starting_id_whitelist = set(starting_ids)
+        elif starting_names:
+            # Map names to ids via id_to_name
+            name_to_ids = {}
+            for pid, nm in id_to_name.items():
+                name_to_ids.setdefault(nm, set()).add(pid)
+            for nm in starting_names:
+                for pid in name_to_ids.get(nm, []):
+                    starting_id_whitelist.add(pid)
+
+        # -------- Filter to this team's completed passes (StatsBomb: pass_outcome NaN == completed) --------
         passes = df[(df["type"] == "Pass") & (df["team"] == team)].copy()
         if passes.empty:
             raise HTTPException(status_code=404, detail=f"No passes for team '{team}'")
-
         if "pass_outcome" in passes.columns:
             passes = passes[passes["pass_outcome"].isna()].copy()
 
-        # Geometry
+        # Keep only Starting XI → both ends must be starters
+        if starting_id_whitelist:
+            passes = passes[
+                passes["src_id"].isin(starting_id_whitelist)
+                & passes["dst_id"].isin(starting_id_whitelist)
+            ].copy()
+            if passes.empty:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No completed passes among Starting XI for team '{team}'",
+                )
+
+        # -------- Coordinates (uses global helper _to_xy) --------
         passes[["sx", "sy"]] = passes["location"].apply(_to_xy).to_list()
         passes[["ex", "ey"]] = passes["pass_end_location"].apply(_to_xy).to_list()
 
-        # Touches = any event for team keyed by src_id (safe)
+        # -------- Touches (team-only; then restrict to starters if present) --------
         touches = (
             df.loc[df["team"] == team, "src_id"]
               .value_counts()
               .rename_axis("player_id")
               .reset_index(name="touches")
         )
+        if starting_id_whitelist:
+            touches = touches[touches["player_id"].isin(starting_id_whitelist)]
 
-        # Average positions (start as passer + receive end)
+        # -------- Average positions: mean of start (as passer) + end (as receiver) --------
         start_pos = passes.groupby("src_id")[["sx", "sy"]].mean().rename(columns={"sx": "x_s", "sy": "y_s"})
         recv_pos = passes.groupby("dst_id")[["ex", "ey"]].mean().rename(columns={"ex": "x_r", "ey": "y_r"})
         recv_pos.index.name = "src_id"
@@ -663,7 +971,7 @@ def passing_network_like_matplotlib(
         avg_pos["y"] = avg_pos[["y_s", "y_r"]].mean(axis=1, skipna=True)
         avg_pos = avg_pos[["player_id", "x", "y"]]
 
-        # Edges
+        # -------- Edges: pass counts between pairs (min_passes threshold) --------
         edges = (
             passes.groupby(["src_id", "dst_id"], dropna=True)
                   .size().rename("count").reset_index()
@@ -671,7 +979,7 @@ def passing_network_like_matplotlib(
         )
         edges = edges[edges["count"] >= int(min_passes)]
 
-        # Nodes table
+        # -------- Nodes table --------
         nodes = avg_pos.merge(touches, on="player_id", how="left")
         nodes["touches"] = nodes["touches"].fillna(0).astype(int)
         nodes["name"] = nodes["player_id"].map(id_to_name).fillna(nodes["player_id"].astype(str))
@@ -679,7 +987,7 @@ def passing_network_like_matplotlib(
         if flip:
             nodes["x"] = 120 - nodes["x"]
 
-        # Merge coordinates onto edges
+        # -------- Merge node coords onto edges --------
         edges = edges.merge(
             nodes[["player_id", "x", "y"]].rename(columns={"player_id": "player_id_src", "x": "sx", "y": "sy"}),
             left_on="player_id", right_on="player_id_src", how="left"
@@ -688,14 +996,14 @@ def passing_network_like_matplotlib(
             left_on="pass_recipient_id", right_on="player_id_dst", how="left"
         )
 
-        # ---- Build Plotly fig (ensure pure Python types) ----
+        # -------- Build Plotly figure --------
         fig = go.Figure()
 
-        # Edges (convert to floats explicitly)
+        # Edges: gray lines, width ~ log(pass count)
         if not edges.empty:
             for r in edges.itertuples(index=False):
                 sx, sy, ex, ey = float(r.sx), float(r.sy), float(r.ex), float(r.ey)
-                width = float(0.5 + 0.5*np.log1p(int(r.count)))
+                width = float(0.5 + 0.5 * np.log1p(int(r.count)))
                 fig.add_trace(go.Scatter(
                     x=[sx, ex], y=[sy, ey],
                     mode="lines",
@@ -706,10 +1014,9 @@ def passing_network_like_matplotlib(
                     showlegend=False,
                 ))
 
-        # Nodes (size as plain list, customdata as list — NOT np.array)
+        # Nodes: size ~ touches
         if not nodes.empty:
-            # size_list = (40 + 0.1*nodes["touches"]).clip(lower=30, upper=120).astype(float).tolist()
-            size_list = (14 + 0.045*nodes["touches"]).clip(lower=8, upper=32).astype(float).tolist()
+            size_list = (14 + 0.045 * nodes["touches"]).clip(lower=8, upper=32).astype(float).tolist()
             touches_list = nodes["touches"].astype(int).tolist()
             x_list = nodes["x"].astype(float).tolist()
             y_list = nodes["y"].astype(float).tolist()
@@ -725,25 +1032,27 @@ def passing_network_like_matplotlib(
                 hoverinfo="text",
                 textfont=dict(size=11),
                 name="players",
-                customdata=[ [t] for t in touches_list ],
+                customdata=[[t] for t in touches_list],
                 hovertemplate="<b>%{text}</b><br>touches: %{customdata[0]}<extra></extra>",
             ))
 
         fig = make_pitch(fig)
         fig.update_layout(
-            title=f"Passing Network — {team} (size ~ touches)",
+            title=f"Passing Network — {team} (size ~ touches){' — Starting XI' if starting_id_whitelist else ''}",
             xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
             yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
             plot_bgcolor="white", height=600, width=900
         )
         fig.update_yaxes(autorange="reversed")
 
-        payload = fig.to_dict()  # already basic types
+        payload = fig.to_dict()
         payload.update({
             "team": team,
             "node_count": int(nodes.shape[0]),
             "edge_count": int(edges.shape[0]),
             "min_passes": int(min_passes),
+            "starting_xi_filter_applied": bool(starting_id_whitelist),
+            "match_id": match_id if match_id is not None else None,
         })
         return JSONResponse(content=jsonable_encoder(payload))
 
@@ -751,7 +1060,8 @@ def passing_network_like_matplotlib(
         raise
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"passing_network failed: {type(e).__name__}: {e}" )
+        raise HTTPException(status_code=500, detail=f"passing_network failed: {type(e).__name__}: {e}")
+
 
 
 @app.get("/api/match/{filename}/important_moments")
@@ -1195,7 +1505,24 @@ def game_phases(filename: str):
                 s_27 = shots[(shots['xg'] >= 0.27)] if not shots.empty else pd.DataFrame()
                 s_08_27_counts = s_08_27.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int) if not s_08_27.empty and 'team' in s_08_27.columns else pd.Series({home_team: 0, away_team: 0})
                 s_27_counts = s_27.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int) if not s_27.empty and 'team' in s_27.columns else pd.Series({home_team: 0, away_team: 0})
-                shots_per_team = {home_team: {'above_8_xg': int(s_08_27_counts.get(home_team, 0)), 'above_27_xg': int(s_27_counts.get(home_team, 0))}, away_team: {'above_8_xg': int(s_08_27_counts.get(away_team, 0)), 'above_27_xg': int(s_27_counts.get(away_team, 0))}}
+                # Chances bucketed: OK (0.08-<0.27), Good (>=0.27)
+                chances_per_team = {
+                    home_team: {'ok': int(s_08_27_counts.get(home_team, 0)), 'good': int(s_27_counts.get(home_team, 0))},
+                    away_team: {'ok': int(s_08_27_counts.get(away_team, 0)), 'good': int(s_27_counts.get(away_team, 0))}
+                }
+
+                # Shot totals and on-target (Goal or Saved)
+                shots_total_counts = shots.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int) if not shots.empty and 'team' in shots.columns else pd.Series({home_team: 0, away_team: 0})
+                if not shots.empty and 'shot_outcome' in shots.columns and 'team' in shots.columns:
+                    sot_mask = shots['shot_outcome'].astype(str).str.lower().isin(['goal', 'saved'])
+                    shots_on_target = shots.loc[sot_mask]
+                    shots_on_target_counts = shots_on_target.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int)
+                else:
+                    shots_on_target_counts = pd.Series({home_team: 0, away_team: 0})
+                shots_summary = {
+                    home_team: {'total': int(shots_total_counts.get(home_team, 0)), 'on_target': int(shots_on_target_counts.get(home_team, 0))},
+                    away_team: {'total': int(shots_total_counts.get(away_team, 0)), 'on_target': int(shots_on_target_counts.get(away_team, 0))}
+                }
 
                 # Goals per phase (robust)
                 goals_mask = (ev_phase.get('shot_outcome', '') == 'Goal') | (ev_phase.get('type', '') == 'Own Goal For') if not ev_phase.empty else pd.Series([])
@@ -1227,7 +1554,8 @@ def game_phases(filename: str):
                     'final_third_entries': final_third_entries_dedup,
                     'fouls': fouls_per_team,
                     'cards': cards_per_team,
-                    'shots': shots_per_team,
+                    'chances': chances_per_team,
+                    'shots_summary': shots_summary,
                     'goals': goals_per_team,
                     'score_at_start': score_start_counts,
                     'score_at_end': score_end_counts,
@@ -1625,7 +1953,7 @@ def possession_scene(filename: str, possession: int = Query(...)):
                     if player_short:
                         ax.text(start_x_flipped, start_y_flipped, player_short, fontsize=7,
                                 color='red', verticalalignment='top', horizontalalignment='right', zorder=40)
-                    if isinstance_type, str) and pass_type.strip().lower() == "corner":
+                    if (isinstance_type, str) and pass_type.strip().lower() == "corner":
                         ax.text(start_x_flipped, start_y_flipped + 2.2, "Corner", fontsize=7, color='#9467bd',
                                 ha='center', va='bottom', fontweight='bold', zorder=42)
                 continue
