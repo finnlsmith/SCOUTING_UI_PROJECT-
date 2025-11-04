@@ -788,12 +788,16 @@ def important_moments(filename: str):
 @app.get("/api/match/{filename}/game_phases")
 def game_phases(filename: str):
     """
-    Return a chronological list of game phases (periods between score changes).
-    Goals include normal goals (shot_outcome == 'Goal') and own goals (type == 'Own Goal For').
-    Events are sorted by possession, then timestamp (parsed), with robust fallbacks.
+    Enhanced game phases with splits on:
+      - Goals (shot_outcome == 'Goal') and Own Goal For
+      - Half End → next phase starts at nearest Half Start in the next period (period+1)
+      - Red card (type == 'Foul Committed' and foul_committed_card == 'Red Card')
+
+    Also computes per-phase metrics (possession by passes, box/final-third entries, fouls/cards/shots/goals).
     """
     import io
     import pandas as pd
+    import numpy as np
     try:
         # Load events (S3 first, fallback to local)
         try:
@@ -802,24 +806,27 @@ def game_phases(filename: str):
         except Exception:
             events = pd.read_csv(filename)
 
-        # Identify teams from possession_team
+        # Identify teams
         team_names = events.get('possession_team', pd.Series([], dtype=str)).dropna().unique()
         if len(team_names) < 2:
-            # Best-effort fallback: try 'team' column
             alt = events.get('team', pd.Series([], dtype=str)).dropna().unique()
             team_names = alt if len(alt) >= 2 else team_names
         if len(team_names) < 2:
             return JSONResponse(content=jsonable_encoder({
                 "error": f"Unable to identify two teams. Found: {list(map(str, team_names))}",
-                "phases": []
+                "phases": [],
+                "phase_metrics": []
             }))
         home_team, away_team = team_names[:2]
 
-        # Sorting: by possession, then timestamp (parsed) — fallback to minute/second
+        # Prepare sortable/time helper columns
         ev = events.copy()
         if 'timestamp' in ev.columns:
-            # Parse to datetime-like values (coerce errors)
             ev['timestamp_dt'] = pd.to_datetime(ev['timestamp'], errors='coerce')
+        ev['minute_int'] = ev['minute'].fillna(0).astype(int) if 'minute' in ev.columns else 0
+        ev['second_int'] = ev['second'].fillna(0).astype(int) if 'second' in ev.columns else 0
+        ev['tsec'] = ev['minute_int'] * 60 + ev['second_int']
+
         sort_cols = []
         if 'possession' in ev.columns:
             sort_cols.append('possession')
@@ -827,98 +834,312 @@ def game_phases(filename: str):
             sort_cols.append('timestamp_dt')
         elif 'timestamp' in ev.columns:
             sort_cols.append('timestamp')
-        elif {'minute', 'second'} <= set(ev.columns):
-            sort_cols.extend(['minute', 'second'])
+        elif {'minute_int', 'second_int'} <= set(ev.columns):
+            sort_cols.extend(['minute_int', 'second_int'])
         if sort_cols:
             ev = ev.sort_values(sort_cols)
 
-        # Filter goal events (normal goals + own goals)
-        goal_mask = (ev.get('shot_outcome', '') == 'Goal') | (ev.get('type', '') == 'Own Goal For')
-        goal_events = ev.loc[goal_mask].copy()
+        # Collect Half Start times by period
+        half_starts_by_period = {}
+        if 'type' in ev.columns and 'period' in ev.columns:
+            hs = ev[ev['type'] == 'Half Start']
+            if not hs.empty:
+                for _, r in hs.iterrows():
+                    p = int(r.get('period')) if pd.notna(r.get('period')) else None
+                    if p is None:
+                        continue
+                    tsec = int(r.get('tsec')) if pd.notna(r.get('tsec')) else None
+                    if tsec is None:
+                        continue
+                    half_starts_by_period.setdefault(p, []).append((int(r['minute_int']), int(r['second_int']), tsec))
 
-        # Determine awarded team (per provided spec)
-        def awarded_team(row):
-            if row.get('shot_outcome', None) == 'Goal':
-                return row.get('possession_team', None)
-            if row.get('type', None) == 'Own Goal For':
-                return row.get('team', None)
+        # Helpers
+        def is_goal(row: pd.Series) -> bool:
+            return (row.get('shot_outcome') == 'Goal') or (row.get('type') == 'Own Goal For')
+
+        def awarded_team(row: pd.Series):
+            if row.get('shot_outcome') == 'Goal':
+                return row.get('possession_team')
+            if row.get('type') == 'Own Goal For':
+                return row.get('team')
             return None
 
-        if not goal_events.empty:
-            goal_events['goal_for'] = goal_events.apply(awarded_team, axis=1)
-            goal_events = goal_events[goal_events['goal_for'].notna()].copy()
-
-        # Build score history (start at 0-0)
-        score_history = [{
-            "minute": 0,
-            "second": 0,
-            home_team: 0,
-            away_team: 0
-        }]
+        # Build phase break marks and score progression
         score = {home_team: 0, away_team: 0}
+        from collections import OrderedDict
+        marks = OrderedDict()  # (minute, second, period) -> mark
+        for _, row in ev.iterrows():
+            minute = int(row.get('minute_int', 0) or 0)
+            second = int(row.get('second_int', 0) or 0)
+            tsec = int(row.get('tsec', minute * 60 + second))
+            period_val = int(row.get('period')) if 'period' in row and pd.notna(row.get('period')) else None
+            key = (minute, second, period_val)
 
-        # Iterate in already-sorted order
-        for _, row in goal_events.iterrows():
-            scorer = row['goal_for']
-            minute = int(row.get('minute', 0) or 0) if 'minute' in row else 0
-            second = int(row.get('second', 0) or 0) if 'second' in row else 0
-            event_type = row.get('type', None)
-            own_goal_team = row.get('team', None) if event_type == 'Own Goal For' else None
-            # increment scoring team
-            if scorer in score:
-                score[scorer] += 1
-            entry = {
-                "minute": minute,
-                "second": second,
-                home_team: score[home_team],
-                away_team: score[away_team],
-                "scorer": scorer,
-                "event_type": event_type,
-                "own_goal_team": own_goal_team,
-            }
-            score_history.append(entry)
+            reasons = []
+            mark_goal_info = None
+            score_after = (score[home_team], score[away_team])
+            next_phase_start = None  # (min, sec, period)
 
-        # Build phases between score updates (N goals => N+1 phases)
-        phases = []
-        for i in range(len(score_history)):
-            cur = score_history[i]
-            nxt = score_history[i + 1] if (i + 1) < len(score_history) else None
-            phase = {
-                "phase_idx": i + 1,
-                "score_start": f"{cur[home_team]}-{cur[away_team]}",
-                "start_minute": int(cur['minute']),
-                "start_second": int(cur['second']),
-                "score_end": None,
-                "end_minute": None,
-                "end_second": None,
-                "goal_info": None,
-            }
-            if nxt is not None:
-                phase["score_end"] = f"{nxt[home_team]}-{nxt[away_team]}"
-                phase["end_minute"] = int(nxt['minute'])
-                phase["end_second"] = int(nxt['second'])
-                phase["goal_info"] = {
-                    "scorer": nxt.get("scorer"),
-                    "event_type": nxt.get("event_type"),
-                    "own_goal_team": nxt.get("own_goal_team"),
+            # Half End
+            if row.get('type') == 'Half End':
+                reasons.append('half_end')
+                if period_val is not None:
+                    target_period = period_val + 1
+                    candidates = half_starts_by_period.get(target_period, [])
+                    if candidates:
+                        best = min(candidates, key=lambda x: abs(x[2] - tsec))
+                        next_phase_start = (best[0], best[1], target_period)
+
+            # Red card
+            if (row.get('type') == 'Foul Committed') and (row.get('foul_committed_card') == 'Red Card'):
+                reasons.append('red_card')
+
+            # Goal / Own goal for
+            if is_goal(row):
+                scorer = awarded_team(row)
+                event_type = row.get('type')
+                own_goal_team = row.get('team') if event_type == 'Own Goal For' else None
+                if scorer in score:
+                    score[scorer] += 1
+                mark_goal_info = {
+                    'scorer': scorer,
+                    'event_type': event_type,
+                    'own_goal_team': own_goal_team,
                 }
+                reasons.append('goal')
+                score_after = (score[home_team], score[away_team])
+
+            if reasons:
+                if key not in marks:
+                    marks[key] = {
+                        'minute': minute,
+                        'second': second,
+                        'period': period_val,
+                        'reasons': set(reasons),
+                        'goal_info': mark_goal_info,
+                        'score_after': score_after,
+                        'next_phase_start': next_phase_start,
+                    }
+                else:
+                    marks[key]['reasons'].update(reasons)
+                    if mark_goal_info is not None:
+                        marks[key]['goal_info'] = mark_goal_info
+                        marks[key]['score_after'] = score_after
+                    if next_phase_start is not None:
+                        marks[key]['next_phase_start'] = next_phase_start
+
+        for m in marks.values():
+            m['reasons'] = sorted(list(m['reasons']))
+
+        # Build phases honoring next_phase_start on half_end
+        phases = []
+        cur_start_min, cur_start_sec, cur_start_period = 0, 0, None
+        cur_score_home, cur_score_away = 0, 0
+        for (_, _, _), mark in marks.items():
+            end_minute, end_second = mark['minute'], mark['second']
+            end_period = mark.get('period')
+            phase = {
+                'phase_idx': len(phases) + 1,
+                'score_start': f"{cur_score_home}-{cur_score_away}",
+                'start_minute': cur_start_min,
+                'start_second': cur_start_sec,
+                'start_period': cur_start_period,
+                'score_end': f"{mark['score_after'][0]}-{mark['score_after'][1]}",
+                'end_minute': end_minute,
+                'end_second': end_second,
+                'end_period': end_period,
+                'goal_info': mark['goal_info'],
+                'break_reasons': mark['reasons'],
+            }
             phases.append(phase)
 
-        # Final phase end time: best-effort from events table
-        if phases and phases[-1]["end_minute"] is None:
-            if 'minute' in events.columns:
-                max_minute = events['minute'].dropna().max()
-                phases[-1]["end_minute"] = int(max_minute) if pd.notna(max_minute) else None
-                if 'second' in events.columns and pd.notna(max_minute):
-                    at_max = events.loc[events['minute'] == max_minute]
-                    if not at_max.empty and 'second' in at_max.columns:
-                        max_second = at_max['second'].dropna().max()
-                        phases[-1]["end_second"] = int(max_second) if pd.notna(max_second) else None
+            # Next start
+            if 'half_end' in mark['reasons'] and mark.get('next_phase_start') is not None:
+                ns_min, ns_sec, ns_period = mark['next_phase_start']
+                cur_start_min, cur_start_sec, cur_start_period = ns_min, ns_sec, ns_period
+            else:
+                cur_start_min, cur_start_sec, cur_start_period = end_minute, end_second, end_period
+            cur_score_home, cur_score_away = mark['score_after']
+
+        # Final phase to match end
+        if phases:
+            last_end_minute = phases[-1]['end_minute']
+            last_end_second = phases[-1]['end_second']
+            last_end_period = phases[-1].get('end_period')
+            max_minute = int(ev['minute_int'].max()) if 'minute_int' in ev.columns else last_end_minute
+            at_max = ev.loc[ev['minute_int'] == max_minute]
+            max_second = int(at_max['second_int'].max()) if not at_max.empty else last_end_second
+            if (max_minute, max_second) != (last_end_minute, last_end_second):
+                phases.append({
+                    'phase_idx': len(phases) + 1,
+                    'score_start': f"{cur_score_home}-{cur_score_away}",
+                    'start_minute': cur_start_min,
+                    'start_second': cur_start_sec,
+                    'start_period': cur_start_period,
+                    'score_end': None,
+                    'end_minute': max_minute,
+                    'end_second': max_second,
+                    'end_period': last_end_period,
+                    'goal_info': None,
+                    'break_reasons': ['match_end'],
+                })
+
+        # === Metrics helpers ===
+        def to_point(val):
+            if isinstance(val, (list, tuple, np.ndarray)) and len(val) == 2:
+                return [float(val[0]), float(val[1])]
+            if isinstance(val, str):
+                try:
+                    arr = json.loads(val)
+                    if isinstance(arr, (list, tuple)) and len(arr) == 2:
+                        return [float(arr[0]), float(arr[1])]
+                except Exception:
+                    try:
+                        from ast import literal_eval
+                        arr = literal_eval(val)
+                        if isinstance(arr, (list, tuple)) and len(arr) == 2:
+                            return [float(arr[0]), float(arr[1])]
+                    except Exception:
+                        return None
+            return None
+
+        def point_in_rect(point, rect):
+            if not point:
+                return False
+            x, y = point
+            (x0, y0, x1, y1) = rect
+            return (x0 <= x <= x1) and (y0 <= y <= y1)
+
+        # Right penalty box and final-third rectangles
+        penalty_box_rect = (102, 18, 120, 62)
+        final_third_rect = (80, 0, 120, 80)
+
+        # Metrics per phase
+        phase_metrics = []
+        if phases:
+            base_ev = events.copy()
+            base_ev['minute_int'] = base_ev['minute'].fillna(0).astype(int) if 'minute' in base_ev.columns else 0
+            base_ev['second_int'] = base_ev['second'].fillna(0).astype(int) if 'second' in base_ev.columns else 0
+            period_int = pd.to_numeric(base_ev.get('period', pd.Series([np.nan] * len(base_ev))), errors='coerce')
+            base_ev['period_int'] = period_int
+
+            for ph in phases:
+                sm = int(ph.get('start_minute', 0) or 0)
+                ss = int(ph.get('start_second', 0) or 0)
+                em = ph.get('end_minute'); em = int(em) if em is not None else sm
+                es = ph.get('end_second'); es = int(es) if es is not None else ss
+                sp = ph.get('start_period'); sp = int(sp) if sp is not None else None
+
+                # Time range inclusive
+                base_mask = (
+                    (base_ev['minute_int'] > sm) | ((base_ev['minute_int'] == sm) & (base_ev['second_int'] >= ss))
+                ) & (
+                    (base_ev['minute_int'] < em) | ((base_ev['minute_int'] == em) & (base_ev['second_int'] <= es))
+                )
+                mask = base_mask & (base_ev['period_int'] == sp) if sp is not None else base_mask
+                ev_phase = base_ev.loc[mask].copy()
+
+                # Possession by passes
+                pass_ev = ev_phase[ev_phase['type'] == 'Pass'].copy() if 'type' in ev_phase.columns else pd.DataFrame()
+                denom = len(pass_ev)
+                if denom == 0:
+                    possession_stats = {home_team: 0.0, away_team: 0.0}
+                else:
+                    counts = pass_ev.groupby('team').size() if 'team' in pass_ev.columns else pd.Series(dtype=int)
+                    possession_stats = {
+                        home_team: float(round(float(counts.get(home_team, 0)) / denom * 100)),
+                        away_team: float(round(float(counts.get(away_team, 0)) / denom * 100)),
+                    }
+
+                # Carries ending inside box
+                carry_phase = ev_phase[ev_phase['type'] == 'Carry'].copy() if 'type' in ev_phase.columns else pd.DataFrame()
+                if not carry_phase.empty and 'carry_end_location' in carry_phase.columns:
+                    carry_phase['point'] = carry_phase['carry_end_location'].apply(to_point)
+                    carry_phase['in_box'] = carry_phase['point'].apply(lambda pt: point_in_rect(pt, penalty_box_rect))
+                    carry_phase['in_final_third'] = carry_phase['point'].apply(lambda pt: point_in_rect(pt, final_third_rect))
+                else:
+                    carry_phase['in_box'] = []
+                    carry_phase['in_final_third'] = []
+                carry_counts = carry_phase[carry_phase['in_box']].groupby('team').size() if not carry_phase.empty else pd.Series(dtype=int)
+                carry_final_counts = carry_phase[carry_phase['in_final_third']].groupby('team').size() if not carry_phase.empty else pd.Series(dtype=int)
+                carries_in_box_per_team = {home_team: int(carry_counts.get(home_team, 0)), away_team: int(carry_counts.get(away_team, 0))}
+                carries_in_final_third_per_team = {home_team: int(carry_final_counts.get(home_team, 0)), away_team: int(carry_final_counts.get(away_team, 0))}
+
+                # Passes ending inside box with empty outcome
+                if 'type' in ev_phase.columns:
+                    pass_mask = (ev_phase['type'] == 'Pass') & (ev_phase.get('pass_outcome').isna() if 'pass_outcome' in ev_phase.columns else True)
+                    pass_phase = ev_phase[pass_mask].copy()
+                else:
+                    pass_phase = pd.DataFrame()
+                if not pass_phase.empty and 'pass_end_location' in pass_phase.columns:
+                    pass_phase['point'] = pass_phase['pass_end_location'].apply(to_point)
+                    pass_phase['in_box'] = pass_phase['point'].apply(lambda pt: point_in_rect(pt, penalty_box_rect))
+                    pass_phase['in_final_third'] = pass_phase['point'].apply(lambda pt: point_in_rect(pt, final_third_rect))
+                else:
+                    pass_phase['in_box'] = []
+                    pass_phase['in_final_third'] = []
+                pass_counts = pass_phase[pass_phase['in_box']].groupby('team').size() if not pass_phase.empty else pd.Series(dtype=int)
+                pass_final_counts = pass_phase[pass_phase['in_final_third']].groupby('team').size() if not pass_phase.empty else pd.Series(dtype=int)
+                passes_in_box_no_outcome_per_team = {home_team: int(pass_counts.get(home_team, 0)), away_team: int(pass_counts.get(away_team, 0))}
+                passes_in_final_third_no_outcome_per_team = {home_team: int(pass_final_counts.get(home_team, 0)), away_team: int(pass_final_counts.get(away_team, 0))}
+
+                # Fouls and cards
+                fouls = ev_phase[ev_phase['type'] == 'Foul Committed'].copy() if 'type' in ev_phase.columns else pd.DataFrame()
+                foul_counts = fouls.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int) if not fouls.empty and 'team' in fouls.columns else pd.Series({home_team: 0, away_team: 0})
+                fouls_per_team = {home_team: int(foul_counts.get(home_team, 0)), away_team: int(foul_counts.get(away_team, 0))}
+                yellow_cards = fouls[fouls.get('foul_committed_card') == 'Yellow Card'] if not fouls.empty else pd.DataFrame()
+                red_cards = fouls[fouls.get('foul_committed_card') == 'Red Card'] if not fouls.empty else pd.DataFrame()
+                yellow_counts = yellow_cards.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int) if not yellow_cards.empty and 'team' in yellow_cards.columns else pd.Series({home_team: 0, away_team: 0})
+                red_counts = red_cards.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int) if not red_cards.empty and 'team' in red_cards.columns else pd.Series({home_team: 0, away_team: 0})
+                cards_per_team = {home_team: {'yellow': int(yellow_counts.get(home_team, 0)), 'red': int(red_counts.get(home_team, 0))}, away_team: {'yellow': int(yellow_counts.get(away_team, 0)), 'red': int(red_counts.get(away_team, 0))}}
+
+                # Shots buckets
+                shots = ev_phase[ev_phase['type'] == 'Shot'].copy() if 'type' in ev_phase.columns else pd.DataFrame()
+                if not shots.empty and 'shot_statsbomb_xg' in shots.columns:
+                    shots['xg'] = pd.to_numeric(shots['shot_statsbomb_xg'], errors='coerce')
+                else:
+                    shots['xg'] = np.nan if not shots.empty else pd.Series(dtype=float)
+                s_08_27 = shots[(shots['xg'] >= 0.08) & (shots['xg'] < 0.27)] if not shots.empty else pd.DataFrame()
+                s_27 = shots[(shots['xg'] >= 0.27)] if not shots.empty else pd.DataFrame()
+                s_08_27_counts = s_08_27.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int) if not s_08_27.empty and 'team' in s_08_27.columns else pd.Series({home_team: 0, away_team: 0})
+                s_27_counts = s_27.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int) if not s_27.empty and 'team' in s_27.columns else pd.Series({home_team: 0, away_team: 0})
+                shots_per_team = {home_team: {'above_8_xg': int(s_08_27_counts.get(home_team, 0)), 'above_27_xg': int(s_27_counts.get(home_team, 0))}, away_team: {'above_8_xg': int(s_08_27_counts.get(away_team, 0)), 'above_27_xg': int(s_27_counts.get(away_team, 0))}}
+
+                # Goals per phase (robust)
+                goals_mask = (ev_phase.get('shot_outcome', '') == 'Goal') | (ev_phase.get('type', '') == 'Own Goal For') if not ev_phase.empty else pd.Series([])
+                goals_phase = ev_phase.loc[goals_mask].copy() if not ev_phase.empty else pd.DataFrame()
+                def awarded_team_row(row):
+                    if row.get('shot_outcome') == 'Goal':
+                        return row.get('possession_team')
+                    if row.get('type') == 'Own Goal For':
+                        return row.get('team')
+                    return None
+                if not goals_phase.empty:
+                    goals_phase['goal_for'] = goals_phase.apply(awarded_team_row, axis=1)
+                g_counts = goals_phase['goal_for'].value_counts() if not goals_phase.empty and 'goal_for' in goals_phase.columns else pd.Series({})
+                goals_per_team = {home_team: int(g_counts.get(home_team, 0)), away_team: int(g_counts.get(away_team, 0))}
+
+                phase_metrics.append({
+                    'phase_idx': ph['phase_idx'],
+                    'start_minute': sm,
+                    'start_second': ss,
+                    'start_period': sp,
+                    'end_minute': em,
+                    'end_second': es,
+                    'possession_pct_by_passes': possession_stats,
+                    'box_entries': {home_team: carries_in_box_per_team[home_team] + passes_in_box_no_outcome_per_team[home_team], away_team: carries_in_box_per_team[away_team] + passes_in_box_no_outcome_per_team[away_team]},
+                    'final_third_entries': {home_team: carries_in_final_third_per_team[home_team] + passes_in_final_third_no_outcome_per_team[home_team], away_team: carries_in_final_third_per_team[away_team] + passes_in_final_third_no_outcome_per_team[away_team]},
+                    'fouls': fouls_per_team,
+                    'cards': cards_per_team,
+                    'shots': shots_per_team,
+                    'goals': goals_per_team,
+                })
 
         return JSONResponse(content=jsonable_encoder({
-            "home_team": home_team,
-            "away_team": away_team,
-            "phases": phases
+            'home_team': home_team,
+            'away_team': away_team,
+            'phases': phases,
+            'phase_metrics': phase_metrics,
         }))
     except Exception as e:
         traceback.print_exc()
