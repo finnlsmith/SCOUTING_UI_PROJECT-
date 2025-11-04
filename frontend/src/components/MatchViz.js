@@ -378,33 +378,33 @@ export default function MatchViz() {
                             <div style={{ display:'grid', gridTemplateColumns:'repeat(2, minmax(180px, 1fr))', gap: 10 }}>
                               <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
                                 <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Possession (passes)</div>
-                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.home}: {m.possession_pct_by_passes?.[gamePhaseTeams.home] ?? 0}%</div>
-                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.away}: {m.possession_pct_by_passes?.[gamePhaseTeams.away] ?? 0}%</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.home}: {m.possession_pct_by_passes?.[gamePhaseTeams.home] ?? 0}%</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.away}: {m.possession_pct_by_passes?.[gamePhaseTeams.away] ?? 0}%</div>
                               </div>
                               <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
                                 <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Box Entries</div>
-                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.home}: {m.box_entries?.[gamePhaseTeams.home] ?? 0}</div>
-                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.away}: {m.box_entries?.[gamePhaseTeams.away] ?? 0}</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.home}: {m.box_entries?.[gamePhaseTeams.home] ?? 0}</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.away}: {m.box_entries?.[gamePhaseTeams.away] ?? 0}</div>
                               </div>
                               <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
                                 <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Final Third Entries</div>
-                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.home}: {m.final_third_entries?.[gamePhaseTeams.home] ?? 0}</div>
-                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.away}: {m.final_third_entries?.[gamePhaseTeams.away] ?? 0}</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.home}: {m.final_third_entries?.[gamePhaseTeams.home] ?? 0}</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.away}: {m.final_third_entries?.[gamePhaseTeams.away] ?? 0}</div>
                               </div>
                               <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
                                 <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Fouls / Cards</div>
-                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.home}: {m.fouls?.[gamePhaseTeams.home] ?? 0} fouls, Y {m.cards?.[gamePhaseTeams.home]?.yellow ?? 0} / R {m.cards?.[gamePhaseTeams.home]?.red ?? 0}</div>
-                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.away}: {m.fouls?.[gamePhaseTeams.away] ?? 0} fouls, Y {m.cards?.[gamePhaseTeams.away]?.yellow ?? 0} / R {m.cards?.[gamePhaseTeams.away]?.red ?? 0}</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.home}: {m.fouls?.[gamePhaseTeams.home] ?? 0} fouls, Y {m.cards?.[gamePhaseTeams.home]?.yellow ?? 0} / R {m.cards?.[gamePhaseTeams.home]?.red ?? 0}</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.away}: {m.fouls?.[gamePhaseTeams.away] ?? 0} fouls, Y {m.cards?.[gamePhaseTeams.away]?.yellow ?? 0} / R {m.cards?.[gamePhaseTeams.away]?.red ?? 0}</div>
                               </div>
                               <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
                                 <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Shots</div>
-                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.home}: ≥0.08 {m.shots?.[gamePhaseTeams.home]?.above_8_xg ?? 0}, ≥0.27 {m.shots?.[gamePhaseTeams.home]?.above_27_xg ?? 0}</div>
-                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.away}: ≥0.08 {m.shots?.[gamePhaseTeams.away]?.above_8_xg ?? 0}, ≥0.27 {m.shots?.[gamePhaseTeams.away]?.above_27_xg ?? 0}</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.home}: ≥0.08 {m.shots?.[gamePhaseTeams.home]?.above_8_xg ?? 0}, ≥0.27 {m.shots?.[gamePhaseTeams.home]?.above_27_xg ?? 0}</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.away}: ≥0.08 {m.shots?.[gamePhaseTeams.away]?.above_8_xg ?? 0}, ≥0.27 {m.shots?.[gamePhaseTeams.away]?.above_27_xg ?? 0}</div>
                               </div>
                               <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
                                 <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Goals</div>
-                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.home}: {m.goals?.[gamePhaseTeams.home] ?? 0}</div>
-                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.away}: {m.goals?.[gamePhaseTeams.away] ?? 0}</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.home}: {m.goals?.[gamePhaseTeams.home] ?? 0}</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.away}: {m.goals?.[gamePhaseTeams.away] ?? 0}</div>
                               </div>
                             </div>
                           </div>
