@@ -41,6 +41,7 @@ export default function MatchViz() {
   const [gamePhaseLoading, setGamePhaseLoading] = useState(false);
   const [gamePhaseError, setGamePhaseError] = useState(null);
   const [gamePhaseTeams, setGamePhaseTeams] = useState({ home: "", away: "" });
+  const [gamePhaseMetrics, setGamePhaseMetrics] = useState([]);
 
   useEffect(() => {
     setGlobalError(matchesError || uploadError || vizError || "");
@@ -95,7 +96,7 @@ export default function MatchViz() {
 
   useEffect(() => {
     if (!selectedMatch) {
-      setGamePhases([]); setGamePhaseError(null); setGamePhaseTeams({ home: "", away: "" });
+      setGamePhases([]); setGamePhaseError(null); setGamePhaseTeams({ home: "", away: "" }); setGamePhaseMetrics([]);
       return;
     }
     setGamePhaseLoading(true);
@@ -106,6 +107,7 @@ export default function MatchViz() {
         if (res.error) throw new Error(res.error);
         setGamePhases(res.phases || []);
         setGamePhaseTeams({ home: res.home_team || "", away: res.away_team || "" });
+        setGamePhaseMetrics(res.phase_metrics || []);
       })
       .catch(e => setGamePhaseError(e.message))
       .finally(() => setGamePhaseLoading(false));
@@ -358,9 +360,51 @@ export default function MatchViz() {
                           Goal Event: <b>{ph.goal_info.event_type}</b>{ph.goal_info.own_goal_team ? ` (Own goal by ${ph.goal_info.own_goal_team})` : ''}, scored by <b>{ph.goal_info.scorer}</b>
                         </div>
                       )}
-                      <div style={{ marginTop: 12, color: '#188', fontWeight: 500 }}>
-                        Placeholder {ph.phase_idx} — Info for this phase goes here.
-                      </div>
+                      {Array.isArray(ph.break_reasons) && ph.break_reasons.length > 0 && (
+                        <div style={{ marginTop:6, fontSize:13, color:'#666' }}>
+                          Break reasons: {ph.break_reasons.join(', ')}{ph.start_period ? ` • period ${ph.start_period}` : ''}
+                        </div>
+                      )}
+                      {(() => {
+                        const m = (gamePhaseMetrics || []).find(mm => mm.phase_idx === ph.phase_idx);
+                        if (!m) return null;
+                        return (
+                          <div style={{ marginTop: 12 }}>
+                            <div style={{ display:'grid', gridTemplateColumns:'repeat(2, minmax(180px, 1fr))', gap: 10 }}>
+                              <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
+                                <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Possession (passes)</div>
+                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.home}: {m.possession_pct_by_passes?.[gamePhaseTeams.home] ?? 0}%</div>
+                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.away}: {m.possession_pct_by_passes?.[gamePhaseTeams.away] ?? 0}%</div>
+                              </div>
+                              <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
+                                <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Box Entries</div>
+                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.home}: {m.box_entries?.[gamePhaseTeams.home] ?? 0}</div>
+                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.away}: {m.box_entries?.[gamePhaseTeams.away] ?? 0}</div>
+                              </div>
+                              <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
+                                <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Final Third Entries</div>
+                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.home}: {m.final_third_entries?.[gamePhaseTeams.home] ?? 0}</div>
+                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.away}: {m.final_third_entries?.[gamePhaseTeams.away] ?? 0}</div>
+                              </div>
+                              <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
+                                <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Fouls / Cards</div>
+                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.home}: {m.fouls?.[gamePhaseTeams.home] ?? 0} fouls, Y {m.cards?.[gamePhaseTeams.home]?.yellow ?? 0} / R {m.cards?.[gamePhaseTeams.home]?.red ?? 0}</div>
+                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.away}: {m.fouls?.[gamePhaseTeams.away] ?? 0} fouls, Y {m.cards?.[gamePhaseTeams.away]?.yellow ?? 0} / R {m.cards?.[gamePhaseTeams.away]?.red ?? 0}</div>
+                              </div>
+                              <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
+                                <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Shots</div>
+                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.home}: ≥0.08 {m.shots?.[gamePhaseTeams.home]?.above_8_xg ?? 0}, ≥0.27 {m.shots?.[gamePhaseTeams.home]?.above_27_xg ?? 0}</div>
+                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.away}: ≥0.08 {m.shots?.[gamePhaseTeams.away]?.above_8_xg ?? 0}, ≥0.27 {m.shots?.[gamePhaseTeams.away]?.above_27_xg ?? 0}</div>
+                              </div>
+                              <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
+                                <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Goals</div>
+                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.home}: {m.goals?.[gamePhaseTeams.home] ?? 0}</div>
+                                <div style={{ fontWeight:600 }}>{gamePhaseTeams.away}: {m.goals?.[gamePhaseTeams.away] ?? 0}</div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>
