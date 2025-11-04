@@ -405,6 +405,59 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
                             print(f"[DEBUG] Computed shots_on_target_count={shots_on_target_count} for {t}")
                             meta[f"{side}_shots"] = shots_count
                             meta[f"{side}_shots_on_target"] = shots_on_target_count
+
+                    # === Additional scoreboard metrics ===
+                    # Time filter to <= 120:00 best-effort
+                    ev_filtered = ev.copy()
+                    if 'minute' in ev_filtered.columns and 'second' in ev_filtered.columns:
+                        ev_filtered['minute_int'] = pd.to_numeric(ev_filtered['minute'], errors='coerce').fillna(0).astype(int)
+                        ev_filtered['second_int'] = pd.to_numeric(ev_filtered['second'], errors='coerce').fillna(0).astype(int)
+                        ev_filtered = ev_filtered[(ev_filtered['minute_int'] < 120) | ((ev_filtered['minute_int'] == 120) & (ev_filtered['second_int'] <= 0))]
+
+                    # Big chances (xg >= 0.27) and OK chances (0.08 <= xg < 0.27)
+                    if 'shot_statsbomb_xg' in ev_filtered.columns:
+                        ev_filtered['xg'] = pd.to_numeric(ev_filtered['shot_statsbomb_xg'], errors='coerce')
+                    else:
+                        ev_filtered['xg'] = np.nan
+                    is_shot = ev_filtered['type'] == 'Shot'
+                    big_mask = is_shot & (ev_filtered['xg'] >= 0.27)
+                    ok_mask = is_shot & (ev_filtered['xg'] >= 0.08) & (ev_filtered['xg'] < 0.27)
+                    if 'team' in ev_filtered.columns:
+                        big_counts = ev_filtered.loc[big_mask].groupby('team').size()
+                        ok_counts = ev_filtered.loc[ok_mask].groupby('team').size()
+                        meta['home_big_chances'] = int(big_counts.get(meta['home_team'], 0))
+                        meta['away_big_chances'] = int(big_counts.get(meta['away_team'], 0))
+                        meta['home_ok_chances'] = int(ok_counts.get(meta['home_team'], 0))
+                        meta['away_ok_chances'] = int(ok_counts.get(meta['away_team'], 0))
+                    else:
+                        meta['home_big_chances'] = meta['away_big_chances'] = 0
+                        meta['home_ok_chances'] = meta['away_ok_chances'] = 0
+
+                    # Fouls committed
+                    fouls_df = ev_filtered[ev_filtered['type'] == 'Foul Committed'] if 'type' in ev_filtered.columns else pd.DataFrame()
+                    if not fouls_df.empty and 'team' in fouls_df.columns:
+                        f_counts = fouls_df.groupby('team').size()
+                        meta['home_fouls'] = int(f_counts.get(meta['home_team'], 0))
+                        meta['away_fouls'] = int(f_counts.get(meta['away_team'], 0))
+                    else:
+                        meta['home_fouls'] = meta['away_fouls'] = 0
+
+                    # Cards (from fouls): total, yellow, red
+                    if not fouls_df.empty and 'foul_committed_card' in fouls_df.columns and 'team' in fouls_df.columns:
+                        yellow_df = fouls_df[fouls_df['foul_committed_card'] == 'Yellow Card']
+                        red_df = fouls_df[fouls_df['foul_committed_card'] == 'Red Card']
+                        y_counts = yellow_df.groupby('team').size()
+                        r_counts = red_df.groupby('team').size()
+                        meta['home_cards_yellow'] = int(y_counts.get(meta['home_team'], 0))
+                        meta['away_cards_yellow'] = int(y_counts.get(meta['away_team'], 0))
+                        meta['home_cards_red'] = int(r_counts.get(meta['home_team'], 0))
+                        meta['away_cards_red'] = int(r_counts.get(meta['away_team'], 0))
+                        meta['home_cards_total'] = meta['home_cards_yellow'] + meta['home_cards_red']
+                        meta['away_cards_total'] = meta['away_cards_yellow'] + meta['away_cards_red']
+                    else:
+                        meta['home_cards_yellow'] = meta['away_cards_yellow'] = 0
+                        meta['home_cards_red'] = meta['away_cards_red'] = 0
+                        meta['home_cards_total'] = meta['away_cards_total'] = 0
         except Exception as e2:
             print("⚠️ scoreboard/meta compute failed:", e2)
 
