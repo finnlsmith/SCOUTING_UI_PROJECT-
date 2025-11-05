@@ -196,7 +196,7 @@ export default function Scoreboard({ stage, home, away, score, shots, shotsOnTar
           fontWeight: 500,
           marginTop: "10px",
         }}>
-          <span>Opposition Box Entries (dedup by possession)</span>
+          <span>Opp. Box Entries</span>
         </div>
         {/* Box Entries values */}
         <div style={{
