@@ -464,6 +464,68 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
                         meta['home_cards_yellow'] = meta['away_cards_yellow'] = 0
                         meta['home_cards_red'] = meta['away_cards_red'] = 0
                         meta['home_cards_total'] = meta['away_cards_total'] = 0
+
+                    # Opposition box entries across whole match (dedup by possession)
+                    # Use same logic as phase metrics: carries ending in box + completed passes ending in box
+                    try:
+                        home_team_name = meta.get('home_team')
+                        away_team_name = meta.get('away_team')
+                        if home_team_name and away_team_name:
+                            # Define right-side penalty box rectangle
+                            def _point_in_box(pt):
+                                if not isinstance(pt, (list, tuple)) or len(pt) < 2:
+                                    return False
+                                x, y = float(pt[0]), float(pt[1])
+                                return (102 <= x <= 120) and (18 <= y <= 62)
+
+                            # Carries
+                            carries = ev_filtered[ev_filtered['type'] == 'Carry'].copy() if 'type' in ev_filtered.columns else pd.DataFrame()
+                            if not carries.empty and 'carry_end_location' in carries.columns:
+                                carries[['ex', 'ey']] = carries['carry_end_location'].apply(_to_xy).to_list()
+                                carries['in_box'] = carries.apply(lambda r: _point_in_box([r['ex'], r['ey']]) if pd.notna(r['ex']) and pd.notna(r['ey']) else False, axis=1)
+                            else:
+                                carries['in_box'] = []
+
+                            # Completed passes
+                            if 'type' in ev_filtered.columns:
+                                pass_mask = (ev_filtered['type'] == 'Pass') & (ev_filtered.get('pass_outcome').isna() if 'pass_outcome' in ev_filtered.columns else True)
+                                passes = ev_filtered[pass_mask].copy()
+                            else:
+                                passes = pd.DataFrame()
+                            if not passes.empty and 'pass_end_location' in passes.columns:
+                                passes[['px', 'py']] = passes['pass_end_location'].apply(_to_xy).to_list()
+                                passes['in_box'] = passes.apply(lambda r: _point_in_box([r['px'], r['py']]) if pd.notna(r['px']) and pd.notna(r['py']) else False, axis=1)
+                            else:
+                                passes['in_box'] = []
+
+                            # Deduplicate by possession across carries and passes
+                            home_poss, away_poss = set(), set()
+                            if not carries.empty and {'team', 'possession', 'in_box'} <= set(carries.columns):
+                                for _, r in carries[carries['in_box'] & carries['team'].notna()].iterrows():
+                                    try:
+                                        if r['team'] == home_team_name:
+                                            home_poss.add(int(r['possession']))
+                                        elif r['team'] == away_team_name:
+                                            away_poss.add(int(r['possession']))
+                                    except Exception:
+                                        continue
+                            if not passes.empty and {'team', 'possession', 'in_box'} <= set(passes.columns):
+                                for _, r in passes[passes['in_box'] & passes['team'].notna()].iterrows():
+                                    try:
+                                        if r['team'] == home_team_name:
+                                            home_poss.add(int(r['possession']))
+                                        elif r['team'] == away_team_name:
+                                            away_poss.add(int(r['possession']))
+                                    except Exception:
+                                        continue
+
+                            meta['home_box_entries'] = int(len(home_poss))
+                            meta['away_box_entries'] = int(len(away_poss))
+                        else:
+                            meta['home_box_entries'] = meta['away_box_entries'] = None
+                    except Exception as _e_box:
+                        print('[WARN] box entries compute failed:', _e_box)
+                        meta['home_box_entries'] = meta['away_box_entries'] = None
         except Exception as e2:
             print("⚠️ scoreboard/meta compute failed:", e2)
 
