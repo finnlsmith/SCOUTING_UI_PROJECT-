@@ -1249,6 +1249,7 @@ def game_phases(filename: str):
             mark_goal_info = None
             score_after = (score[home_team], score[away_team])
             next_phase_start = None  # (min, sec, period)
+            scorer = None
 
             # Half End
             if row.get('type') == 'Half End':
@@ -1269,15 +1270,15 @@ def game_phases(filename: str):
                 scorer = awarded_team(row)
                 event_type = row.get('type')
                 own_goal_team = row.get('team') if event_type == 'Own Goal For' else None
-            if scorer in score:
-                score[scorer] += 1
-                mark_goal_info = {
-                    'scorer': scorer,
-                    'event_type': event_type,
-                    'own_goal_team': own_goal_team,
-                }
-                reasons.append('goal')
-                score_after = (score[home_team], score[away_team])
+                if scorer and (scorer in score):
+                    score[scorer] += 1
+                    mark_goal_info = {
+                        'scorer': scorer,
+                        'event_type': event_type,
+                        'own_goal_team': own_goal_team,
+                    }
+                    reasons.append('goal')
+                    score_after = (score[home_team], score[away_team])
 
             if reasons:
                 if key not in marks:
