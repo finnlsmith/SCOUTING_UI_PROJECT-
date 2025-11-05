@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function Scoreboard({ stage, home, away, score, shots, shotsOnTarget, xg, bigChances, okChances, fouls, cardsLeft, cardsRight }) {
+export default function Scoreboard({ stage, home, away, score, shots, shotsOnTarget, xg, bigChances, okChances, fouls, cardsLeft, cardsRight, boxEntries }) {
   if (!home || !away) return null;
   return (
     <div style={{ marginTop: 30, marginBottom: 30, display: "flex", justifyContent: "center" }}>
@@ -186,6 +186,31 @@ export default function Scoreboard({ stage, home, away, score, shots, shotsOnTar
           <span>{okChances ? okChances.split(" - ")[1] : "-"}</span>
         </div>
 
+        {/* Box Entries label */}
+        <div style={{
+          gridColumn: "1 / span 2",
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "1rem",
+          color: "#4b5563",
+          fontWeight: 500,
+          marginTop: "10px",
+        }}>
+          <span>Opposition Box Entries (dedup by possession)</span>
+        </div>
+        {/* Box Entries values */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gridColumn: "1 / span 2",
+          fontSize: "1.1rem",
+          fontWeight: 600,
+          color: "#111827",
+        }}>
+          <span>{boxEntries ? boxEntries.split(" - ")[0] : "-"}</span>
+          <span>{boxEntries ? boxEntries.split(" - ")[1] : "-"}</span>
+        </div>
+
         {/* Fouls label */}
         <div style={{
           gridColumn: "1 / span 2",
@@ -221,7 +246,7 @@ export default function Scoreboard({ stage, home, away, score, shots, shotsOnTar
           fontWeight: 500,
           marginTop: "10px",
         }}>
-          <span>Cards (total with yellow/red)</span>
+          <span>Cards (yellow/red)</span>
         </div>
         {/* Cards values: format total (yellow/red) */}
         <div style={{

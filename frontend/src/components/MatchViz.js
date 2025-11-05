@@ -188,6 +188,7 @@ export default function MatchViz() {
                     fouls={(Number.isFinite(stats.home_fouls) && Number.isFinite(stats.away_fouls)) ? `${stats.home_fouls} - ${stats.away_fouls}` : "-"}
                     cardsLeft={(Number.isFinite(stats.home_cards_total) && Number.isFinite(stats.home_cards_yellow) && Number.isFinite(stats.home_cards_red)) ? `${stats.home_cards_total} (${stats.home_cards_yellow}/${stats.home_cards_red})` : "-"}
                     cardsRight={(Number.isFinite(stats.away_cards_total) && Number.isFinite(stats.away_cards_yellow) && Number.isFinite(stats.away_cards_red)) ? `${stats.away_cards_total} (${stats.away_cards_yellow}/${stats.away_cards_red})` : "-"}
+                    boxEntries={(Number.isFinite(stats.home_box_entries) && Number.isFinite(stats.away_box_entries)) ? `${stats.home_box_entries} - ${stats.away_box_entries}` : "-"}
                   />
                 </div>
               </div>
@@ -339,7 +340,7 @@ export default function MatchViz() {
               </div>
             </div>
             {/* Game Phases Section */}
-            <div style={{ margin: '52px 0 0', maxWidth: 530 }}>
+            <div style={{ margin: '52px 0 0', maxWidth: 980 }}>
               <h2 style={{ fontSize: 24, fontWeight: 500, color: '#f9f9ff', marginBottom: 3 }}>Game Phases</h2>
               {gamePhaseLoading && <div style={{ color: '#aaa', fontSize: 20, fontWeight: 400 }}>Loading phases...</div>}
               {gamePhaseError && <div style={{ color: 'red', fontSize: 18 }}>{gamePhaseError}</div>}
@@ -367,7 +368,8 @@ export default function MatchViz() {
                       )}
                       {Array.isArray(ph.break_reasons) && ph.break_reasons.length > 0 && (
                         <div style={{ marginTop:6, fontSize:13, color:'#666' }}>
-                          Break reasons: {ph.break_reasons.join(', ')}{ph.start_period ? ` • period ${ph.start_period}` : ''}
+                          Phase ended by: {ph.break_reasons.map(r => r === "half_end" ? "Half Ended" : r).join(', ')}
+                          {/* {ph.start_period ? ` • period ${ph.start_period}` : ''} */}
                         </div>
                       )}
                       {(() => {
@@ -375,9 +377,9 @@ export default function MatchViz() {
                         if (!m) return null;
                         return (
                           <div style={{ marginTop: 12 }}>
-                            <div style={{ display:'grid', gridTemplateColumns:'repeat(2, minmax(180px, 1fr))', gap: 10 }}>
+                            <div style={{ display:'grid', gridTemplateColumns:'repeat(2, minmax(260px, 1fr))', gap: 14 }}>
                               <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
-                                <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Possession (passes)</div>
+                                <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Possession</div>
                                 <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.home}: {m.possession_pct_by_passes?.[gamePhaseTeams.home] ?? 0}%</div>
                                 <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.away}: {m.possession_pct_by_passes?.[gamePhaseTeams.away] ?? 0}%</div>
                               </div>
@@ -393,18 +395,30 @@ export default function MatchViz() {
                               </div>
                               <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
                                 <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Fouls / Cards</div>
-                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.home}: {m.fouls?.[gamePhaseTeams.home] ?? 0} fouls, Y {m.cards?.[gamePhaseTeams.home]?.yellow ?? 0} / R {m.cards?.[gamePhaseTeams.home]?.red ?? 0}</div>
-                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.away}: {m.fouls?.[gamePhaseTeams.away] ?? 0} fouls, Y {m.cards?.[gamePhaseTeams.away]?.yellow ?? 0} / R {m.cards?.[gamePhaseTeams.away]?.red ?? 0}</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.home}: {m.fouls?.[gamePhaseTeams.home] ?? 0} fouls, Yellow: {m.cards?.[gamePhaseTeams.home]?.yellow ?? 0} / Red: {m.cards?.[gamePhaseTeams.home]?.red ?? 0}</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.away}: {m.fouls?.[gamePhaseTeams.away] ?? 0} fouls, Yellow {m.cards?.[gamePhaseTeams.away]?.yellow ?? 0} / Red {m.cards?.[gamePhaseTeams.away]?.red ?? 0}</div>
                               </div>
                               <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
-                                <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Shots</div>
-                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.home}: ≥0.08 {m.shots?.[gamePhaseTeams.home]?.above_8_xg ?? 0}, ≥0.27 {m.shots?.[gamePhaseTeams.home]?.above_27_xg ?? 0}</div>
-                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.away}: ≥0.08 {m.shots?.[gamePhaseTeams.away]?.above_8_xg ?? 0}, ≥0.27 {m.shots?.[gamePhaseTeams.away]?.above_27_xg ?? 0}</div>
+                                <div style={{ fontSize: 13, color: '#666', marginBottom: 6 }}>
+                                  Chances (OK = 0.08–&lt;0.27 xG, Good = ≥0.27 xG)
+                                </div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.home}: OK {m.chances?.[gamePhaseTeams.home]?.ok ?? 0}, Good {m.chances?.[gamePhaseTeams.home]?.good ?? 0} (Pens: {m.penalties?.[gamePhaseTeams.home] ?? 0})</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.away}: OK {m.chances?.[gamePhaseTeams.away]?.ok ?? 0}, Good {m.chances?.[gamePhaseTeams.away]?.good ?? 0} (Pens: {m.penalties?.[gamePhaseTeams.away] ?? 0})</div>
                               </div>
                               <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
                                 <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Goals</div>
                                 <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.home}: {m.goals?.[gamePhaseTeams.home] ?? 0}</div>
                                 <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.away}: {m.goals?.[gamePhaseTeams.away] ?? 0}</div>
+                              </div>
+                              <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
+                                <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Shots (total • on target)</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.home}: {m.shots_summary?.[gamePhaseTeams.home]?.total ?? 0} ({m.shots_summary?.[gamePhaseTeams.home]?.on_target ?? 0})</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>{gamePhaseTeams.away}: {m.shots_summary?.[gamePhaseTeams.away]?.total ?? 0} ({m.shots_summary?.[gamePhaseTeams.away]?.on_target ?? 0})</div>
+                              </div>
+                              <div style={{ background:'#fff', border:'1px solid #e8e8ec', borderRadius:8, padding:'10px 12px' }}>
+                                <div style={{ fontSize:13, color:'#666', marginBottom:6 }}>Score (phase)</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>Start: {gamePhaseTeams.home} {m.score_at_start?.[gamePhaseTeams.home] ?? 0} - {m.score_at_start?.[gamePhaseTeams.away] ?? 0} {gamePhaseTeams.away}</div>
+                                <div style={{ fontWeight:600, color:'#0F172A' }}>End: {gamePhaseTeams.home} {m.score_at_end?.[gamePhaseTeams.home] ?? 0} - {m.score_at_end?.[gamePhaseTeams.away] ?? 0} {gamePhaseTeams.away}</div>
                               </div>
                             </div>
                           </div>
