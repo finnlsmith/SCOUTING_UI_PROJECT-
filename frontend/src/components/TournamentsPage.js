@@ -57,7 +57,7 @@ export default function TournamentsPage() {
         alt="Euro 2020"
         style={{
           position: "absolute",
-          bottom: 25,
+          bottom: 50,
           left: "50%",
           transform: "translateX(-50%)",
           width: "80px",
