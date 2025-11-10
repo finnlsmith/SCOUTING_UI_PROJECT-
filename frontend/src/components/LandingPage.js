@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import logo from "../assets/roarstats_logo.png";
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export default function LandingPage() {
         transform: "translateY(-40px)",
       }}
     >
+      <img src={logo} alt="RoarStats Logo" style={{ width: 200, height: 200, marginBottom: 20 }} />
       <h1
         style={{
           fontWeight: 800,
@@ -26,7 +28,8 @@ export default function LandingPage() {
           color: "white",
         }}
       >
-        Columbia MSDS 25 - Placeholder
+        RoarStats - Nov 2025 Beta
+        {/* Columbia MSDS 25 - Placeholder */}
       </h1>
 
       <button
