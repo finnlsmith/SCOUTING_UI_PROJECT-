@@ -1,13 +1,38 @@
 # Columbia-MSDS-F25-Soccer
 Team repo for sharing capstone progress
 
-A tiny guide to what’s here, what the notebooks do, and how to reproduce the results end-to-end. Will keep updating as I go.
+A comprehensive soccer analytics platform with interactive notebooks, a FastAPI backend, and a React frontend for visualizing Euro 2020 match data.
+
+---
+
+## 🚀 Quick Links
+
+- **[API Documentation](backend/API_DOCUMENTATION.md)** - Complete API reference with examples
+- **[Interactive API Docs](http://localhost:8000/docs)** - Swagger UI (run backend first)
+- **[API Spec (OpenAPI)](http://localhost:8000/openapi.json)** - Download OpenAPI 3.0 specification
+- **[Postman Collection](backend/Soccer_Analytics_API.postman_collection.json)** - Import for API testing
 
 ---
 
 ## Overview
 
-This repo contains two complementary analyses:
+This repo contains three main components:
+
+### 1. **Backend API** (`backend/`)
+FastAPI-based REST API serving soccer analytics endpoints:
+- Match data retrieval
+- Shot maps and passing networks
+- Game phase analysis
+- Important moments extraction
+- 360 tracking visualizations
+
+**📖 [Full API Documentation →](backend/API_DOCUMENTATION.md)**
+
+### 2. **Frontend Web App** (`frontend/`)
+React-based interactive web application for visualizing match data.
+
+### 3. **Jupyter Notebooks**
+Exploratory data analysis notebooks:
 
 1. **`initial_EDA.ipynb`** — Tournament-level EDA using:
 
@@ -52,15 +77,62 @@ The code uses only widely available libraries (e.g., `pandas`, `numpy`, `matplot
 
 ## Setup
 
-Create and activate a virtual environment, then install dependencies:
+### Backend Setup
+
+1. **Create virtual environment and install dependencies:**
 
 ```bash
-# using venv
+cd backend
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 
 pip install --upgrade pip
 pip install -r requirements.txt
+```
+
+2. **Configure environment variables:**
+
+```bash
+# Copy the example file
+cp .env.example .env
+
+# Edit .env with your AWS credentials
+# AWS_REGION=us-east-2
+# S3_BUCKET_NAME=your-bucket-name
+# AWS_ACCESS_KEY_ID=your-key
+# AWS_SECRET_ACCESS_KEY=your-secret
+```
+
+3. **Run the API server:**
+
+```bash
+uvicorn app:app --reload
+
+# Server will start at http://localhost:8000
+# Interactive docs at http://localhost:8000/docs
+```
+
+### Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm start
+
+# App will start at http://localhost:3000
+```
+
+### Notebooks Setup
+
+```bash
+# From project root
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+pip install --upgrade pip
+pip install -r requirements.txt
+
+jupyter notebook
 ```
 
 (Conda users can `conda create -n euro20 python=3.10` and then `pip install -r requirements.txt` inside the env.)
@@ -142,7 +214,54 @@ Then open:
 
 ---
 
+## API Usage
+
+### Available Endpoints
+
+The backend API provides 8 main endpoints:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/matches` | GET | List all available match files |
+| `/api/match/{filename}/viz` | GET | Generate shot map visualization |
+| `/api/match/{filename}/passing_network` | GET | Generate passing network |
+| `/api/match/{filename}/important_moments` | GET | Extract key match moments |
+| `/api/match/{filename}/game_phases` | GET | Analyze match phases |
+| `/api/match/{filename}/possession_scene` | GET | Visualize possession sequence |
+| `/api/upload` | POST | Upload and visualize CSV |
+| `/api/client-error` | POST | Log client errors |
+
+### Quick Example
+
+```python
+import requests
+
+# Get available matches
+matches = requests.get('http://localhost:8000/api/matches').json()
+
+# Get shot map for Italy vs England final
+shot_map = requests.get(
+    'http://localhost:8000/api/match/events_3788741.csv/viz',
+    params={'team': 'Italy'}
+).json()
+
+# Get important moments
+moments = requests.get(
+    'http://localhost:8000/api/match/events_3788741.csv/important_moments'
+).json()
+```
+
+### Testing with Postman
+
+1. Import the collection: `backend/Soccer_Analytics_API.postman_collection.json`
+2. Set the `base_url` variable to `http://localhost:8000`
+3. Run requests to test all endpoints
+
+**📖 [Complete API Documentation →](backend/API_DOCUMENTATION.md)**
+
+---
+
 ## Attribution
 
-* Pitch drawing style inspired by **FC Python’s Matplotlib pitch** approach, adapted to StatsBomb 120×80.
+* Pitch drawing style inspired by **FC Python's Matplotlib pitch** approach, adapted to StatsBomb 120×80.
 * Concepts referenced from common football analytics practice (xG maps, passing networks, PPDA, field tilt, progressive passes).

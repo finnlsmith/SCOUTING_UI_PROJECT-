@@ -17,7 +17,54 @@ from fastapi.encoders import jsonable_encoder
 import math
 
 
-app = FastAPI()
+# API versioning and metadata configuration
+API_VERSION = "v1"
+API_TITLE = "Columbia MSDS Soccer Analytics API"
+API_DESCRIPTION = """
+## Soccer Analytics API for Euro 2020 Match Data
+
+This API provides comprehensive soccer analytics endpoints for match visualization,
+player tracking, and tactical analysis using StatsBomb event data.
+
+### Features
+
+* **Match Data**: Access event-level data for Euro 2020 matches
+* **Visualizations**: Shot maps, passing networks, possession scenes
+* **Analytics**: Game phases, important moments, tactical insights
+* **Interactive**: Plotly-based visualizations for web integration
+
+### Data Format
+
+All match data uses StatsBomb's coordinate system (120×80 pitch dimensions).
+
+### Authentication
+
+Currently no authentication required. AWS credentials are handled server-side.
+
+### Rate Limiting
+
+No rate limits currently enforced.
+
+### Support
+
+For issues or questions, contact the development team.
+"""
+
+app = FastAPI(
+    title=API_TITLE,
+    description=API_DESCRIPTION,
+    version=API_VERSION,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    contact={
+        "name": "Columbia MSDS F25 Soccer Team",
+        "email": "support@example.com",
+    },
+    license_info={
+        "name": "MIT",
+    },
+)
 
 TEAM_COLORS = {
     "Albania": "#E41F26",
@@ -106,10 +153,43 @@ s3_client = boto3.client(
     aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
 )
 
-@app.post("/api/client-error")
+@app.post("/api/client-error", tags=["System"], summary="Log client-side errors")
 async def client_error_log(request: Request):
     """
-    Receive client-side error reports from the frontend ErrorBoundary.
+    Receive and log client-side error reports from the frontend ErrorBoundary.
+    
+    This endpoint captures JavaScript errors that occur in the browser and logs them
+    to the server console for debugging and monitoring purposes.
+    
+    **Request Body Example:**
+    ```json
+    {
+        "message": "Cannot read property 'x' of undefined",
+        "stack": "Error: Cannot read property 'x' of undefined\\n    at Component...",
+        "componentStack": "    in ErrorComponent\\n    in App",
+        "url": "https://example.com/match/123",
+        "userAgent": "Mozilla/5.0...",
+        "time": "2024-01-15T10:30:00.000Z"
+    }
+    ```
+    
+    **Response:**
+    ```json
+    {
+        "status": "ok"
+    }
+    ```
+    
+    **Args:**
+        request: FastAPI Request object containing error payload
+        
+    **Returns:**
+        dict: Status acknowledgment
+        
+    **Notes:**
+        - Errors are logged to stdout (captured by hosting provider)
+        - Maximum 10,000 characters logged per error
+        - Non-JSON payloads are handled gracefully
     """
     try:
         payload = await request.json()
@@ -123,8 +203,42 @@ async def client_error_log(request: Request):
     return {"status": "ok"}
 
 
-@app.get('/api/matches')
+@app.get('/api/matches', tags=["Matches"], summary="List all available matches")
 def list_matches():
+    """
+    Retrieve a list of all available match data files from S3 storage.
+    
+    Returns formatted match information including event files and 360 freeze-frame data
+    with human-readable labels (date, teams, data type).
+    
+    **Response Example:**
+    ```json
+    [
+        {
+            "file": "events_3788741.csv",
+            "label": "2021-07-11 - Italy vs England – Events"
+        },
+        {
+            "file": "frames_360_3788741.csv",
+            "label": "2021-07-11 - Italy vs England – Frames 360"
+        }
+    ]
+    ```
+    
+    **Returns:**
+        list[dict]: Array of match files with metadata
+        - file (str): S3 key/filename
+        - label (str): Human-readable match description
+        
+    **Raises:**
+        HTTPException 500: If S3 access fails or matches_df.csv is unavailable
+        
+    **Notes:**
+        - Results are sorted by date (most recent first)
+        - Only CSV files are included
+        - Requires AWS credentials configured server-side
+        - Match labels are generated from matches_df.csv metadata
+    """
     try:
         # 1️⃣ Get all CSV files in S3 bucket (including subfolders)
         paginator = s3_client.get_paginator('list_objects_v2')
@@ -182,10 +296,47 @@ def list_matches():
 
 
 
-@app.post("/api/upload")
+@app.post("/api/upload", tags=["Data Upload"], summary="Upload and visualize CSV data")
 async def upload_csv(file: UploadFile = File(...)):
     """
-    Receives a CSV file, processes it, and returns a Plotly figure.
+    Upload a CSV file and receive an automated Plotly visualization.
+    
+    This endpoint accepts CSV files and generates appropriate visualizations based on
+    the detected columns. Useful for quick data exploration.
+    
+    **Parameters:**
+        - **file** (UploadFile): CSV file to upload
+        
+    **Response Example:**
+    ```json
+    {
+        "data": [...],
+        "layout": {
+            "title": {"text": "Uploaded CSV Visualization"},
+            ...
+        }
+    }
+    ```
+    
+    **Returns:**
+        dict: Plotly figure object (JSON format) ready for rendering
+        
+    **Behavior:**
+        - If CSV has 'x' and 'y' columns: creates scatter plot
+        - Otherwise: creates bar chart preview of first rows
+        - Returns Plotly figure as JSON dictionary
+        
+    **Error Response:**
+    ```json
+    {
+        "error": "Error message describing the issue"
+    }
+    ```
+    
+    **Notes:**
+        - Maximum file size depends on server configuration
+        - Supports standard CSV format with header row
+        - Non-blocking upload processing
     """
     try:
         # Read CSV into pandas
@@ -217,13 +368,51 @@ def _to_xy(val):
         pass
     return (np.nan, np.nan)
 
-@app.get("/api/match/{filename}/viz")
-def get_match_viz(filename: str, team: str | None = Query(default=None)):
+@app.get("/api/match/{filename}/viz", tags=["Match Visualizations"], summary="Generate shot map visualization")
+def get_match_viz(filename: str, team: str | None = Query(default=None, description="Filter by specific team name")):
     """
-    Robust shot map:
-      - Works if xG/outcome columns are missing
-      - Returns 404 for missing S3 keys or no shots
-      - Adds scoreboard stats best-effort
+    Generate an interactive shot map visualization for a match.
+    
+    Creates a Plotly-based shot map showing all shots with xG values, outcomes (goals vs misses),
+    and optional team filtering. Includes scoreboard statistics and pitch overlay.
+    
+    **Path Parameters:**
+        - **filename** (str): S3 key of the match events file (e.g., "events_3788741.csv")
+        
+    **Query Parameters:**
+        - **team** (str, optional): Filter shots for a specific team
+        
+    **Response Example:**
+    ```json
+    {
+        "data": [...],
+        "layout": {
+            "title": {"text": "Italy 1-1 England (3-2 pens) | Shots: 20 (6 on target)"},
+            "shapes": [...],
+            ...
+        }
+    }
+    ```
+    
+    **Returns:**
+        dict: Plotly figure with shot locations, xG sizes, and pitch markings
+        
+    **Raises:**
+        - HTTPException 404: File not found in S3 or no shots in match
+        - HTTPException 400: Missing required columns (type, location)
+        
+    **Features:**
+        - StatsBomb 120×80 pitch coordinates
+        - Shot markers sized by xG value
+        - Goals vs non-goals color-coded
+        - Scoreboard with score, shots, shots on target
+        - Team-specific filtering available
+        - Graceful handling of missing xG data
+        
+    **Notes:**
+        - Requires valid events CSV with 'type' and 'location' columns
+        - xG column (shot_statsbomb_xg) is optional
+        - Team colors auto-assigned from predefined palette
     """
     try:
         # --- fetch CSV (404 if not found)
@@ -547,18 +736,60 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
         raise HTTPException(status_code=500, detail=f"/viz failed: {type(e).__name__}: {e}")
     
 
-@app.get("/api/match/{filename}/passing_network")
+@app.get("/api/match/{filename}/passing_network", tags=["Match Visualizations"], summary="Generate passing network visualization")
 def passing_network_like_matplotlib(
     filename: str,
-    team: str = Query(...),
-    min_passes: int = Query(1, ge=1),
-    flip: bool = Query(False),
+    team: str = Query(..., description="Team name to generate passing network for"),
+    min_passes: int = Query(1, ge=1, description="Minimum passes between players to display"),
+    flip: bool = Query(False, description="Flip the pitch orientation horizontally"),
 ):
     """
-    Passing network for a selected team, filtered to Starting XI (if lineups are available).
-    - Pulls events_{match_id}.csv (from `filename`) for passes/touches/positions.
-    - Tries to load a corresponding lineups CSV and keeps only Starting XI players.
-      If lineups are missing or malformed, falls back to using all players.
+    Generate an interactive passing network visualization for a team.
+    
+    Creates a network graph showing passing connections between players with nodes
+    representing average player positions and edges weighted by pass frequency.
+    Automatically filters to Starting XI if lineup data is available.
+    
+    **Path Parameters:**
+        - **filename** (str): S3 key of match events file (e.g., "events_3788741.csv")
+        
+    **Query Parameters:**
+        - **team** (str, required): Team name for which to generate network
+        - **min_passes** (int, optional): Minimum passes between two players to show edge (default: 1)
+        - **flip** (bool, optional): Flip pitch horizontally (default: false)
+        
+    **Response Example:**
+    ```json
+    {
+        "data": [...],
+        "layout": {
+            "title": {"text": "Italy Passing Network - Starting XI"},
+            "shapes": [...],
+            ...
+        }
+    }
+    ```
+    
+    **Returns:**
+        dict: Plotly figure with player nodes and passing edges
+        
+    **Raises:**
+        - HTTPException 400: Missing required columns or invalid team name
+        - HTTPException 404: Match file not found in S3
+        - HTTPException 500: Processing error
+        
+    **Features:**
+        - Starting XI detection from lineup data
+        - Node positions = average player location during match
+        - Edge thickness = number of passes between players
+        - Player names displayed at node positions
+        - StatsBomb 120×80 pitch overlay
+        - Optional horizontal flip for team orientation
+        
+    **Notes:**
+        - Requires 'location', 'pass_end_location', 'type', 'team' columns
+        - Falls back to all players if lineup data unavailable
+        - Pass recipient detection uses nearest-player heuristic
     """
     try:
         # -------- Load events CSV --------
@@ -859,11 +1090,64 @@ def passing_network_like_matplotlib(
 
 
 
-@app.get("/api/match/{filename}/important_moments")
+@app.get("/api/match/{filename}/important_moments", tags=["Match Analytics"], summary="Extract important match moments")
 def important_moments(filename: str):
     """
-    Returns a list of key moments (high xG shots, goals, own goals, penalty-winning fouls) for a selected match.
-    Fetches events file from S3 if available; falls back to local file for local dev.
+    Extract and return key moments from a match.
+    
+    Identifies significant events including high-probability shots, goals, own goals,
+    and penalty-winning fouls. Results are sorted chronologically by period and timestamp.
+    
+    **Path Parameters:**
+        - **filename** (str): S3 key of match events file (e.g., "events_3788741.csv")
+        
+    **Response Example:**
+    ```json
+    [
+        {
+            "who": "H. Kane",
+            "when": "23:45",
+            "what": "Shot",
+            "outcome": "Goal",
+            "xg": 0.324,
+            "team": "England",
+            "period": 1
+        },
+        {
+            "who": "L. Bonucci",
+            "when": "67:12",
+            "what": "Shot",
+            "outcome": "Goal",
+            "xg": 0.089,
+            "team": "Italy",
+            "period": 2
+        }
+    ]
+    ```
+    
+    **Returns:**
+        list[dict]: Array of important moment objects
+        - who (str): Player name (abbreviated)
+        - when (str): Match time (MM:SS)
+        - what (str): Event type (Shot, Own Goal Against, Foul Won)
+        - outcome (str): Result (Goal, Saved, Penalty Won, etc.)
+        - xg (float, optional): Expected goals value (0-1)
+        - team (str): Team name
+        - period (int): Match period (1, 2, 3 for ET, 4 for pens, 5 for post-match)
+        
+    **Filtering Criteria:**
+        - Shots with xG >= 0.08 or outcome = Goal
+        - All own goals against
+        - All penalty-winning fouls
+        - Events before 120:00 (excludes penalty shootouts)
+        
+    **Raises:**
+        - HTTPException 500: File processing error
+        
+    **Notes:**
+        - Falls back to local file if S3 unavailable
+        - All NaN/Inf values replaced with None for JSON compatibility
+        - Player names abbreviated (e.g., "Harry Kane" → "H. Kane")
     """
     try:
         df_events = None
@@ -944,15 +1228,80 @@ def important_moments(filename: str):
         raise HTTPException(status_code=500, detail=f"important_moments failed: {type(e).__name__}: {e}")
 
 
-@app.get("/api/match/{filename}/game_phases")
+@app.get("/api/match/{filename}/game_phases", tags=["Match Analytics"], summary="Analyze match phases and momentum")
 def game_phases(filename: str):
     """
-    Enhanced game phases with splits on:
-      - Goals (shot_outcome == 'Goal') and Own Goal For
-      - Half End → next phase starts at nearest Half Start in the next period (period+1)
-      - Red card (type == 'Foul Committed' and foul_committed_card == 'Red Card')
-
-    Also computes per-phase metrics (possession by passes, box/final-third entries, fouls/cards/shots/goals).
+    Analyze match divided into phases based on key events.
+    
+    Segments the match into distinct tactical phases triggered by goals, half-time,
+    red cards, and other significant events. Computes detailed metrics for each phase
+    including possession, field position, and event statistics.
+    
+    **Path Parameters:**
+        - **filename** (str): S3 key of match events file (e.g., "events_3788741.csv")
+        
+    **Response Example:**
+    ```json
+    {
+        "phases": [
+            {
+                "phase_id": 1,
+                "start_event": 0,
+                "end_event": 245,
+                "trigger": "Match Start",
+                "minute": "0:00",
+                "score_home": 0,
+                "score_away": 0
+            },
+            {
+                "phase_id": 2,
+                "start_event": 246,
+                "end_event": 512,
+                "trigger": "Goal - England (H. Kane)",
+                "minute": "23:45",
+                "score_home": 1,
+                "score_away": 0
+            }
+        ],
+        "phase_metrics": [
+            {
+                "phase_id": 1,
+                "home_possession": 48.5,
+                "away_possession": 51.5,
+                "home_shots": 3,
+                "away_shots": 4,
+                "home_box_entries": 12,
+                "away_box_entries": 15
+            }
+        ]
+    }
+    ```
+    
+    **Returns:**
+        dict: Object containing phases array and phase_metrics array
+        
+    **Phase Triggers:**
+        - Match start
+        - Goals (including own goals)
+        - Half-time (Half End → Half Start)
+        - Red cards
+        - Extra time periods
+        
+    **Phase Metrics:**
+        - Possession percentage (by pass count)
+        - Box entries (within 18-yard box)
+        - Final third entries
+        - Shots, goals
+        - Fouls, cards
+        
+    **Raises:**
+        - HTTPException 500: File processing error
+        
+    **Notes:**
+        - Falls back to local file if S3 unavailable
+        - Requires 'possession_team' or 'team' column
+        - Returns error object if fewer than 2 teams detected
+        - All metrics calculated per phase independently
     """
     try:
         # Load events (S3 first, fallback to local)
@@ -1408,10 +1757,49 @@ def game_phases(filename: str):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"game_phases failed: {type(e).__name__}: {e}")
 
-@app.get("/api/match/{filename}/possession_scene")
-def possession_scene(filename: str, possession: int = Query(...)):
+@app.get("/api/match/{filename}/possession_scene", tags=["Match Visualizations"], summary="Generate possession sequence visualization")
+def possession_scene(filename: str, possession: int = Query(..., description="Possession number to visualize")):
     """
-    Given a match file and possession number, return a full advanced visualization as a static PNG — all notebook logic included.
+    Generate a comprehensive possession sequence visualization with player tracking.
+    
+    Creates a detailed static image showing player positions, movement trails, and
+    event locations for a specific possession sequence using StatsBomb 360 data.
+    
+    **Path Parameters:**
+        - **filename** (str): S3 key of match events file (e.g., "events_3788741.csv")
+        
+    **Query Parameters:**
+        - **possession** (int, required): Possession sequence number to visualize
+        
+    **Response:**
+        PNG image (base64 encoded or direct binary) showing:
+        - Soccer pitch with StatsBomb coordinates
+        - Player positions from 360 freeze-frame data
+        - Movement trails and passing sequences
+        - Event markers (passes, shots, etc.)
+        - Team colors and player numbers
+        
+    **Returns:**
+        Response: PNG image file
+        
+    **Raises:**
+        - HTTPException 404: File not found or possession number invalid
+        - HTTPException 400: Missing required 360 data or invalid file format
+        - HTTPException 500: Image generation error
+        
+    **Features:**
+        - Full pitch visualization with markings
+        - Player tracking data overlay
+        - Possession flow animation
+        - Event annotations
+        - High-resolution static output
+        - Team color coding
+        
+    **Notes:**
+        - Requires corresponding frames_360_{match_id}.csv file in S3
+        - Uses matplotlib for rendering
+        - Returns PNG as base64-encoded string or binary
+        - May take several seconds for complex possessions
     """
     import ast
     import json
