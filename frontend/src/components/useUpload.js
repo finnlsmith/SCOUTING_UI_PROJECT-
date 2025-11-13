@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const BACKEND_URL = "https://columbia-msds-f25-soccer.onrender.com";
+const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || "http://localhost:8000/api").replace(/\/+$/, "");
 
 export default function useUpload() {
   const [file, setFile] = useState(null);
@@ -20,7 +20,7 @@ export default function useUpload() {
     formData.append("file", file);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/upload`, {
+      const res = await fetch(`${BACKEND_URL}/upload`, {
         method: "POST",
         body: formData,
       });

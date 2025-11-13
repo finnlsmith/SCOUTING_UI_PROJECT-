@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const BACKEND_URL = "https://columbia-msds-f25-soccer.onrender.com";
+const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || "http://localhost:8000/api").replace(/\/+$/, "");
 
 export default function useMatchData() {
   const [matches, setMatches] = useState([]);
@@ -11,7 +11,7 @@ export default function useMatchData() {
     async function fetchMatches() {
       try {
         setLoading(true);
-        const res = await fetch(`${BACKEND_URL}/api/matches`);
+        const res = await fetch(`${BACKEND_URL}/matches`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         setMatches(

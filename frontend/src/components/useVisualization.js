@@ -1,8 +1,7 @@
 import { useState, useCallback } from "react";
 import { TEAM_COLORS } from "../assets/teamColors";
 
-const BACKEND_URL = "https://columbia-msds-f25-soccer.onrender.com";
-// const BACKEND_URL = "http://localhost:8000";
+const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || "http://localhost:8000/api").replace(/\/+$/, "");
 
 async function _fetchJson(url) {
   const res = await fetch(url);
@@ -31,7 +30,7 @@ export default function useVisualization() {
     if (!matchFile) return;
     setLoading(true);
     try {
-      const url = `${BACKEND_URL}/api/match/${encodeURIComponent(matchFile)}/viz`;
+      const url = `${BACKEND_URL}/match/${encodeURIComponent(matchFile)}/viz`;
       const data = await _fetchJson(url);
       setFigData(data);
       setStats?.(data);
@@ -46,7 +45,7 @@ export default function useVisualization() {
     if (!matchFile || !team) return;
     setLoading(true);
     try {
-      const url = `${BACKEND_URL}/api/match/${encodeURIComponent(matchFile)}/viz?team=${encodeURIComponent(team)}`;
+      const url = `${BACKEND_URL}/match/${encodeURIComponent(matchFile)}/viz?team=${encodeURIComponent(team)}`;
       const data = await _fetchJson(url);
       const color = TEAM_COLORS[team] || "#1f77b4";
       const result = {
@@ -73,8 +72,8 @@ export default function useVisualization() {
     setLoading(true);
     try {
       const [homeUrl, awayUrl] = [
-        `${BACKEND_URL}/api/match/${encodeURIComponent(matchFile)}/viz?team=${encodeURIComponent(home)}`,
-        `${BACKEND_URL}/api/match/${encodeURIComponent(matchFile)}/viz?team=${encodeURIComponent(away)}`,
+        `${BACKEND_URL}/match/${encodeURIComponent(matchFile)}/viz?team=${encodeURIComponent(home)}`,
+        `${BACKEND_URL}/match/${encodeURIComponent(matchFile)}/viz?team=${encodeURIComponent(away)}`,
       ];
       const [homeData, awayData] = await Promise.all([
         _fetchJson(homeUrl),
@@ -116,7 +115,7 @@ export default function useVisualization() {
     if (!filename || !team) return;
     setLoading(true);
     try {
-      const url = `${BACKEND_URL}/api/match/${encodeURIComponent(filename)}/passing_network?team=${encodeURIComponent(team)}&min_passes=${minPasses}&flip=${flip}`;
+      const url = `${BACKEND_URL}/match/${encodeURIComponent(filename)}/passing_network?team=${encodeURIComponent(team)}&min_passes=${minPasses}&flip=${flip}`;
       const data = await _fetchJson(url);
       return data;
     } catch (err) {
@@ -132,7 +131,7 @@ export default function useVisualization() {
     setImportantMomentsLoading(true);
     setImportantMomentsError(null);
     try {
-      const url = `${BACKEND_URL}/api/match/${encodeURIComponent(matchFile)}/important_moments`;
+      const url = `${BACKEND_URL}/match/${encodeURIComponent(matchFile)}/important_moments`;
       const data = await _fetchJson(url);
       setImportantMoments(data);
     } catch (err) {

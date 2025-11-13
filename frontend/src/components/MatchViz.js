@@ -11,6 +11,7 @@ import ShotMapPlot from "./ShotMapPlot";
 // import PassingNetworkButtons from "./PassingNetworkButtons";
 
 export default function MatchViz() {
+  const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000/api').replace(/\/+$/, '');
   const { matches, loading: matchesLoading, error: matchesError, setError: setMatchesError } = useMatchData();
   const { error: uploadError, setError: setUploadError } = useUpload();
   const {
@@ -79,7 +80,7 @@ export default function MatchViz() {
     setSceneImageBase64(null);
     setSceneLoading(true);
     setSceneError(null);
-    fetch(`https://columbia-msds-f25-soccer.onrender.com/api/match/${selectedMatch}/possession_scene?possession=${m.possession}`)
+    fetch(`${BACKEND_URL}/match/${selectedMatch}/possession_scene?possession=${m.possession}`)
       .then(res => res.json())
       .then(res => {
         if (res.image_base64) {
@@ -101,7 +102,7 @@ export default function MatchViz() {
     }
     setGamePhaseLoading(true);
     setGamePhaseError(null);
-    fetch(`https://columbia-msds-f25-soccer.onrender.com/api/match/${selectedMatch}/game_phases`)
+  fetch(`${BACKEND_URL}/match/${selectedMatch}/game_phases`)
       .then(res => res.json())
       .then(res => {
         if (res.error) throw new Error(res.error);
