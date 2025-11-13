@@ -107,86 +107,6 @@ s3_client = boto3.client(
     aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
 )
 
-# @app.get('/api/matches')
-# def list_matches():
-#     try:
-#         # # 1️⃣ Get all CSV files in S3 bucket
-#         # response = s3_client.list_objects_v2(Bucket=S3_BUCKET)
-#         # if 'Contents' not in response:
-#         #     return []
-#         # files = [obj['Key'] for obj in response['Contents'] if obj['Key'].endswith('.csv')]
-
-#         # 1️⃣ Get all CSV files in S3 bucket (including subfolders)
-#         paginator = s3_client.get_paginator('list_objects_v2')
-#         pages = paginator.paginate(Bucket=S3_BUCKET, Prefix='')
-
-#         files = []
-#         for page in pages:
-#             for obj in page.get('Contents', []):
-#                 key = obj['Key']
-#                 if key.endswith('.csv'):
-#                     files.append(key)
-
-#         print(f"✅ Found {len(files)} CSVs:")
-#         for f in files[:10]:
-#             print("  ", f)
-
-#         # 2️⃣ Load matches_df.csv from S3 directly
-#         obj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
-#         # matches_df = pd.read_csv(obj['Body'])
-        
-
-#         # Read once
-#         body = obj["Body"].read()
-
-#         import io
-
-#         obj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
-
-#         # ✅ Decode bytes into text and wrap in StringIO
-#         csv_text = obj["Body"].read().decode("utf-8")
-#         print("First 200 chars:", csv_text[:200])
-
-#         matches_df = pd.read_csv(io.StringIO(csv_text))
-
-#         # 3️⃣ Build a lookup: match_id → "YYYY-MM-DD - Home vs Away"
-#         label_lookup = {}
-#         for _, row in matches_df.iterrows():
-#             match_id = str(row['match_id'])
-#             label_lookup[match_id] = f"{row['match_date']} - {row['home_team']} vs {row['away_team']}"
-
-#         # 4️⃣ Map files to readable labels
-#         formatted = []
-#         for f in files:
-#             # Extract numeric ID (e.g., 3788741)
-#             match_id = ''.join([c for c in f if c.isdigit()])
-#             label = label_lookup.get(match_id)
-#             if not label:
-#                 continue
-
-#             if f.startswith("events_"):
-#                 tag = "Events"
-#             elif f.startswith("frames_360_"):
-#                 tag = "Frames 360"
-#             else:
-#                 tag = "Other"
-
-#             formatted.append({
-#                 "file": f,
-#                 "label": f"{label} – {tag}"
-#             })
-
-#         # 5️⃣ Sort matches by date descending (for better UX)
-#         formatted = sorted(formatted, key=lambda x: x['label'], reverse=True)
-
-#         return jsonable_encoder(formatted)
-
-#     # except Exception as e:
-#     #     raise HTTPException(status_code=500, detail=str(e))
-#     except Exception as e:
-#         import traceback
-#         traceback.print_exc()  # 👈 this forces the full traceback to appear
-#         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get('/api/matches')
 def list_matches():
@@ -202,14 +122,9 @@ def list_matches():
                 if key.endswith('.csv'):
                     files.append(key)
 
-        print(f"✅ Found {len(files)} CSVs:")
-        for f in files[:10]:
-            print("  ", f)
-
         # 2️⃣ Load matches_df.csv from S3 directly
         obj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
         csv_text = obj["Body"].read().decode("utf-8")
-        print("First 200 chars:", csv_text[:200])
 
         import io
         matches_df = pd.read_csv(io.StringIO(csv_text))
@@ -353,11 +268,9 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
             # match_id from filename
             m = re.search(r"\d+", filename or "")
             match_id = int(m.group()) if m else None
-            print(f"DEBUG match_id: {match_id}")
             
             if mdf is not None and match_id is not None and "match_id" in mdf.columns:
                 row = mdf.loc[mdf["match_id"] == match_id]
-                print(f"DEBUG lookup row: {row.head(1)}")
                 if not row.empty:
                     r = row.iloc[0]
                     meta["home_team"] = r.get("home_team")
@@ -367,7 +280,6 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
                     meta["competition_stage"] = r.get("competition_stage")
 
             # compute team shot counts/xG if possible
-            print("[GUARD DEBUG] match_id:", match_id, "| mdf is not None:", mdf is not None, "| home_team:", meta["home_team"], "| away_team:", meta["away_team"])
             if match_id is not None and mdf is not None and meta["home_team"] and meta["away_team"]:
                 ev_key = f"events_{match_id}.csv"
                 ev = pd.read_csv(io.BytesIO(s3_client.get_object(Bucket=S3_BUCKET, Key=ev_key)["Body"].read()))
@@ -379,27 +291,24 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
                     for side in ("home", "away"):
                         t = meta[f"{side}_team"]
                         if t:
-                            print(f"[DEBUG] Entered xG calculation for side: {side}, team: {t}")
                             total_xg_val = 0.0
                             penalty_xg_val = 0.0
                             filtered = shot_df.copy()
                             if 'minute' in shot_df.columns and 'second' in shot_df.columns:
                                 filtered = shot_df[(shot_df['minute'] < 120) | ((shot_df['minute'] == 120) & (shot_df['second'] <= 0))].copy()
-                                print(f"[DEBUG] Filtered to {filtered.shape[0]} shots up to 120:00 for {t}")
                             else:
-                                print(f"[WARN] 'minute'/'second' columns missing for team {t}")
+                                0==0
                             if 'shot_statsbomb_xg' in filtered.columns:
                                 xg_ser = pd.to_numeric(filtered.loc[filtered["team"] == t, "shot_statsbomb_xg"], errors="coerce")
                                 total_xg_val = float(xg_ser.sum()) if not xg_ser.empty else 0.0
-                                print(f"[DEBUG] Computed total_xg_val={total_xg_val:.2f} for {t}")
+                         
                                 if 'shot_type' in filtered.columns:
                                     penalty_mask = (filtered["team"] == t) & (filtered["shot_type"].astype(str).str.lower() == 'penalty')
                                     penalty_xg_ser = pd.to_numeric(filtered.loc[penalty_mask, "shot_statsbomb_xg"], errors="coerce")
                                     penalty_xg_val = float(penalty_xg_ser.sum()) if not penalty_xg_ser.empty else 0.0
-                                    print(f"[DEBUG] Computed penalty_xg_val={penalty_xg_val:.2f} for {t}")
+                                 
                             else:
-                                print(f"[WARN] 'shot_statsbomb_xg' column missing for team {t}")
-                            print(f"[DEBUG] Setting meta[{side}_xg_sum] = '{total_xg_val:.2f} ({penalty_xg_val:.2f})'")
+                                0==0
                             meta[f"{side}_xg_sum"] = f"{total_xg_val:.2f} ({penalty_xg_val:.2f})"
 
                             # SHOTS and SHOTS ON TARGET COUNTS
@@ -407,13 +316,10 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
                             shots_on_target_mask = shots_mask & (sot if isinstance(sot, pd.Series) else False)
                             shots_count = int(shots_mask.sum())
                             shots_on_target_count = int(shots_on_target_mask.sum())
-                            print(f"[DEBUG] Computed shots_count={shots_count} for {t}")
-                            print(f"[DEBUG] Computed shots_on_target_count={shots_on_target_count} for {t}")
                             meta[f"{side}_shots"] = shots_count
                             meta[f"{side}_shots_on_target"] = shots_on_target_count
 
                     # === Additional scoreboard metrics ===
-                    # Time filter to <= 120:00 best-effort
                     ev_filtered = ev.copy()
                     if 'minute' in ev_filtered.columns and 'second' in ev_filtered.columns:
                         ev_filtered['minute_int'] = pd.to_numeric(ev_filtered['minute'], errors='coerce').fillna(0).astype(int)
@@ -524,10 +430,9 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
                         else:
                             meta['home_box_entries'] = meta['away_box_entries'] = None
                     except Exception as _e_box:
-                        print('[WARN] box entries compute failed:', _e_box)
                         meta['home_box_entries'] = meta['away_box_entries'] = None
         except Exception as e2:
-            print("⚠️ scoreboard/meta compute failed:", e2)
+            0==0
 
         # Now meta is always defined, so if team (and possibly away flip) logic can safely use it
         if team:
@@ -628,192 +533,6 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"/viz failed: {type(e).__name__}: {e}")
     
-
-# @app.get("/api/match/{filename}/passing_network")
-# def passing_network_like_matplotlib(
-#     filename: str,
-#     team: str = Query(...),
-#     min_passes: int = Query(1, ge=1),
-#     flip: bool = Query(False),
-# ):
-#     try:
-#         # Load events
-#         obj = s3_client.get_object(Bucket=S3_BUCKET, Key=filename)
-#         events = pd.read_csv(io.BytesIO(obj["Body"].read()))
-#         cols = set(events.columns)
-
-#         # Column resolution (IDs or names)
-#         required_geom = {"location", "pass_end_location"}
-#         missing_geom = required_geom - cols
-#         if missing_geom:
-#             raise HTTPException(status_code=400, detail=f"Missing columns: {', '.join(sorted(missing_geom))}")
-
-#         if "type" not in cols or "team" not in cols:
-#             raise HTTPException(status_code=400, detail="Missing required columns 'type' and/or 'team'")
-
-#         # Build source/dest ids
-#         df = events.copy()
-#         if "player_id" in cols:
-#             df["src_id"] = df["player_id"]
-#         else:
-#             df["src_name"] = df.get("player", "").astype(str)
-
-#         if "pass_recipient_id" in cols:
-#             df["dst_id"] = df["pass_recipient_id"]
-#         else:
-#             df["dst_name"] = df.get("pass_recipient", "").astype(str)
-
-#         # If ids missing, synthesize consistent ids from names
-#         if "src_id" not in df.columns or "dst_id" not in df.columns:
-#             src_names = df.get("src_name", pd.Series([], dtype=str)).astype(str)
-#             dst_names = df.get("dst_name", pd.Series([], dtype=str)).astype(str)
-#             all_names = pd.Index(src_names).append(pd.Index(dst_names)).astype(str).unique()
-#             name_to_id = {n: i for i, n in enumerate(all_names)}
-#             if "src_id" not in df.columns:
-#                 df["src_id"] = src_names.map(name_to_id)
-#             if "dst_id" not in df.columns:
-#                 df["dst_id"] = dst_names.map(name_to_id)
-
-#         # Map id -> display name (safe dict)
-#         id_to_name = {}
-#         if "player" in df.columns:
-#             id_to_name.update(
-#                 df.loc[df["team"] == team, ["src_id", "player"]]
-#                   .dropna()
-#                   .drop_duplicates("src_id")
-#                   .set_index("src_id")["player"]
-#                   .astype(str)
-#                   .to_dict()
-#             )
-#         if "pass_recipient" in df.columns:
-#             # don't overwrite existing keys
-#             add = (df.loc[df["team"] == team, ["dst_id", "pass_recipient"]]
-#                      .dropna()
-#                      .drop_duplicates("dst_id")
-#                      .set_index("dst_id")["pass_recipient"]
-#                      .astype(str)
-#                      .to_dict())
-#             for k, v in add.items():
-#                 id_to_name.setdefault(k, v)
-
-#         # Team passes (completed = outcome NaN, if present)
-#         passes = df[(df["type"] == "Pass") & (df["team"] == team)].copy()
-#         if passes.empty:
-#             raise HTTPException(status_code=404, detail=f"No passes for team '{team}'")
-
-#         if "pass_outcome" in passes.columns:
-#             passes = passes[passes["pass_outcome"].isna()].copy()
-
-#         # Geometry
-#         passes[["sx", "sy"]] = passes["location"].apply(_to_xy).to_list()
-#         passes[["ex", "ey"]] = passes["pass_end_location"].apply(_to_xy).to_list()
-
-#         # Touches = any event for team keyed by src_id (safe)
-#         touches = (
-#             df.loc[df["team"] == team, "src_id"]
-#               .value_counts()
-#               .rename_axis("player_id")
-#               .reset_index(name="touches")
-#         )
-
-#         # Average positions (start as passer + receive end)
-#         start_pos = passes.groupby("src_id")[["sx", "sy"]].mean().rename(columns={"sx": "x_s", "sy": "y_s"})
-#         recv_pos = passes.groupby("dst_id")[["ex", "ey"]].mean().rename(columns={"ex": "x_r", "ey": "y_r"})
-#         recv_pos.index.name = "src_id"
-#         avg_pos = start_pos.join(recv_pos, how="outer").reset_index(names=["player_id"])
-#         avg_pos["x"] = avg_pos[["x_s", "x_r"]].mean(axis=1, skipna=True)
-#         avg_pos["y"] = avg_pos[["y_s", "y_r"]].mean(axis=1, skipna=True)
-#         avg_pos = avg_pos[["player_id", "x", "y"]]
-
-#         # Edges
-#         edges = (
-#             passes.groupby(["src_id", "dst_id"], dropna=True)
-#                   .size().rename("count").reset_index()
-#                   .rename(columns={"src_id": "player_id", "dst_id": "pass_recipient_id"})
-#         )
-#         edges = edges[edges["count"] >= int(min_passes)]
-
-#         # Nodes table
-#         nodes = avg_pos.merge(touches, on="player_id", how="left")
-#         nodes["touches"] = nodes["touches"].fillna(0).astype(int)
-#         nodes["name"] = nodes["player_id"].map(id_to_name).fillna(nodes["player_id"].astype(str))
-
-#         if flip:
-#             nodes["x"] = 120 - nodes["x"]
-
-#         # Merge coordinates onto edges
-#         edges = edges.merge(
-#             nodes[["player_id", "x", "y"]].rename(columns={"player_id": "player_id_src", "x": "sx", "y": "sy"}),
-#             left_on="player_id", right_on="player_id_src", how="left"
-#         ).merge(
-#             nodes[["player_id", "x", "y"]].rename(columns={"player_id": "player_id_dst", "x": "ex", "y": "ey"}),
-#             left_on="pass_recipient_id", right_on="player_id_dst", how="left"
-#         )
-
-#         # ---- Build Plotly fig (ensure pure Python types) ----
-#         fig = go.Figure()
-
-#         # Edges (convert to floats explicitly)
-#         if not edges.empty:
-#             for r in edges.itertuples(index=False):
-#                 sx, sy, ex, ey = float(r.sx), float(r.sy), float(r.ex), float(r.ey)
-#                 width = float(0.5 + 0.5*np.log1p(int(r.count)))
-#                 fig.add_trace(go.Scatter(
-#                     x=[sx, ex], y=[sy, ey],
-#                     mode="lines",
-#                     line=dict(width=width, color="gray"),
-#                     opacity=0.5,
-#                     hoverinfo="text",
-#                     text=f"{id_to_name.get(r.player_id, r.player_id)} → {id_to_name.get(r.pass_recipient_id, r.pass_recipient_id)}<br>passes: {int(r.count)}",
-#                     showlegend=False,
-#                 ))
-
-#         # Nodes (size as plain list, customdata as list — NOT np.array)
-#         if not nodes.empty:
-#             # size_list = (40 + 0.1*nodes["touches"]).clip(lower=30, upper=120).astype(float).tolist()
-#             size_list = (14 + 0.045*nodes["touches"]).clip(lower=8, upper=32).astype(float).tolist()
-#             touches_list = nodes["touches"].astype(int).tolist()
-#             x_list = nodes["x"].astype(float).tolist()
-#             y_list = nodes["y"].astype(float).tolist()
-#             text_list = nodes["name"].astype(str).tolist()
-
-#             team_color = TEAM_COLORS.get(team, "#1f77b4")
-#             fig.add_trace(go.Scatter(
-#                 x=x_list, y=y_list,
-#                 mode="markers+text",
-#                 text=text_list,
-#                 textposition="top center",
-#                 marker=dict(size=size_list, line=dict(width=2, color="black"), color=team_color),
-#                 hoverinfo="text",
-#                 textfont=dict(size=11),
-#                 name="players",
-#                 customdata=[ [t] for t in touches_list ],
-#                 hovertemplate="<b>%{text}</b><br>touches: %{customdata[0]}<extra></extra>",
-#             ))
-
-#         fig = make_pitch(fig)
-#         fig.update_layout(
-#             title=f"Passing Network — {team} (size ~ touches)",
-#             xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
-#             yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
-#             plot_bgcolor="white", height=600, width=900
-#         )
-#         fig.update_yaxes(autorange="reversed")
-
-#         payload = fig.to_dict()  # already basic types
-#         payload.update({
-#             "team": team,
-#             "node_count": int(nodes.shape[0]),
-#             "edge_count": int(edges.shape[0]),
-#             "min_passes": int(min_passes),
-#         })
-#         return JSONResponse(content=jsonable_encoder(payload))
-
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         traceback.print_exc()
-#         raise HTTPException(status_code=500, detail=f"passing_network failed: {type(e).__name__}: {e}" )
 
 @app.get("/api/match/{filename}/passing_network")
 def passing_network_like_matplotlib(
@@ -1991,11 +1710,7 @@ def possession_scene(filename: str, possession: int = Query(...)):
             player = get_player(event)
             player_short = format_player_name(player)
 
-            print("Event type:", typ, "Player Fielder?:", repr(player_short))
 
-            # (... plotting code unchanged ...)
-            # [everything below here remains unchanged from your original]
-            # Own Goal logic remains unchanged
             if typ == "Own Goal Against":
                 start_x, start_y = get_xy(event.get('location'))
                 end_x, end_y = get_xy(event.get('shot_end_location')) if 'shot_end_location' in event and pd.notna(event['shot_end_location']) else (np.nan, np.nan)
@@ -2326,22 +2041,14 @@ def possession_scene(filename: str, possession: int = Query(...)):
                 return name
 
         # --- DEBUG LOGGING FOR INFO CARD DECISION ---
-        print("=== Debug: Building info card for possession_scene ===")
-        print("shot_row.shape:", getattr(shot_row, 'shape', None))
-        print("reordered_df_special.shape:", getattr(reordered_df_special, 'shape', None))
         if not reordered_df_special.empty:
-            print("type unique vals:", reordered_df_special['type'].astype(str).unique().tolist())
             type_ser = reordered_df_special['type'].astype(str).str.strip().str.lower()
-            print("type_ser (head):", type_ser.head().to_list())
             penalty_mask = type_ser == "foul won"
-            print("penalty_mask sum:", penalty_mask.sum())
             if "foul_won_penalty" in reordered_df_special.columns:
                 penalty_vals = reordered_df_special["foul_won_penalty"].astype(str).str.lower()
-                print("foul_won_penalty unique vals:", penalty_vals.unique().tolist())
                 foul_penalty_mask = (penalty_vals == "true") | (reordered_df_special["foul_won_penalty"] == True)
-                print("foul_penalty_mask sum:", foul_penalty_mask.sum())
         else:
-            print("reordered_df_special is empty!")
+            0==0
 
         # Normal info card logic continues, but add debug output at each decision
         shot_row_check = not shot_row.empty
@@ -2354,14 +2061,11 @@ def possession_scene(filename: str, possession: int = Query(...)):
                 penalty_vals = reordered_df_special["foul_won_penalty"].astype(str).str.lower()
                 foul_penalty_mask = (penalty_vals == "true") | (reordered_df_special["foul_won_penalty"] == True)
                 foul_rows = reordered_df_special[penalty_mask & foul_penalty_mask]
-                print("foul_rows shape (with penalty col):", foul_rows.shape)
             else:
                 foul_rows = reordered_df_special[penalty_mask]
-                print("'foul_won_penalty' not present; foul_rows shape:", foul_rows.shape)
                 
         if shot_row_check:
             sr = shot_row.iloc[-1]
-            print("Matched shot_row row:", dict(sr))
             who = to_f_last(sr.get('player', 'N/A'))
             xg_val = sr.get('shot_statsbomb_xg', 'N/A')
             if isinstance(xg_val, (int, float)):
@@ -2380,7 +2084,6 @@ def possession_scene(filename: str, possession: int = Query(...)):
             outcome = sr.get('shot_outcome', 'N/A')
         elif not foul_rows.empty:
             fr = foul_rows.iloc[-1]
-            print("Matched penalty-won foul_row:", dict(fr))
             who = to_f_last(fr.get('player', 'N/A'))
             info_note = '(Penalty Won)'
             shot_minute = fr.get('minute', None)
@@ -2390,7 +2093,7 @@ def possession_scene(filename: str, possession: int = Query(...)):
             outcome = 'Penalty Won'
             xg = 'N/A'
         else:
-            print("No matching shot or penalty-won row. Info card will be N/A.")
+            0==0
         if info_note is not None and who != 'N/A':
             who = f"{who} {info_note}"
 
