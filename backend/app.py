@@ -9,14 +9,14 @@ import io
 import numpy as np
 import plotly.graph_objects as go
 from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
 import traceback
 import re
 import base64
 import matplotlib.pyplot as plt
 from fastapi.encoders import jsonable_encoder
+import math
 
-#test
+
 app = FastAPI()
 
 TEAM_COLORS = {
@@ -95,7 +95,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-#testing
 
 AWS_REGION = os.getenv("AWS_REGION", "us-east-2")
 S3_BUCKET = os.getenv("S3_BUCKET_NAME", "capstone-soccer-data")
@@ -126,7 +125,6 @@ def list_matches():
         obj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
         csv_text = obj["Body"].read().decode("utf-8")
 
-        import io
         matches_df = pd.read_csv(io.StringIO(csv_text))
 
         # 3️⃣ Build a lookup: match_id → "YYYY-MM-DD - Home vs Away"
@@ -163,7 +161,6 @@ def list_matches():
         return jsonable_encoder(formatted)
 
     except Exception as e:
-        import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -852,10 +849,6 @@ def important_moments(filename: str):
     Returns a list of key moments (high xG shots, goals, own goals, penalty-winning fouls) for a selected match.
     Fetches events file from S3 if available; falls back to local file for local dev.
     """
-    import io
-    import pandas as pd
-    import numpy as np
-    import math
     try:
         df_events = None
         try:
@@ -930,7 +923,6 @@ def important_moments(filename: str):
         moments = moments.drop_duplicates()
         return result
     except Exception as e:
-        import traceback
         traceback.print_exc()
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=f"important_moments failed: {type(e).__name__}: {e}")
@@ -946,9 +938,6 @@ def game_phases(filename: str):
 
     Also computes per-phase metrics (possession by passes, box/final-third entries, fouls/cards/shots/goals).
     """
-    import io
-    import pandas as pd
-    import numpy as np
     try:
         # Load events (S3 first, fallback to local)
         try:
@@ -1408,9 +1397,8 @@ def possession_scene(filename: str, possession: int = Query(...)):
     """
     Given a match file and possession number, return a full advanced visualization as a static PNG — all notebook logic included.
     """
-    import io, math, ast, json
-    import numpy as np
-    import pandas as pd
+    import ast
+    import json
     import matplotlib.pyplot as plt
     from matplotlib.patches import Arc, Rectangle
     import matplotlib.patches as patches
@@ -2153,6 +2141,6 @@ def possession_scene(filename: str, possession: int = Query(...)):
         img_base64 = base64.b64encode(buf.read()).decode("utf-8")
         return {"image_base64": img_base64}
     except Exception as e:
-        import traceback
-        traceback.print_exc(); from fastapi import HTTPException
+        traceback.print_exc(); 
+        from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=f"possession_scene failed: {type(e).__name__}: {e}")
