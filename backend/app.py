@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Response
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import boto3
@@ -105,6 +105,22 @@ s3_client = boto3.client(
     aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
     aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
 )
+
+@app.post("/api/client-error")
+async def client_error_log(request: Request):
+    """
+    Receive client-side error reports from the frontend ErrorBoundary.
+    """
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {"error": "failed to parse client error payload"}
+    try:
+        # Log to stdout (captured by hosting provider logs)
+        print("🔴 Client Error Report:", json.dumps(payload)[:10000])
+    except Exception:
+        print("🔴 Client Error Report (unserializable payload)")
+    return {"status": "ok"}
 
 
 @app.get('/api/matches')
