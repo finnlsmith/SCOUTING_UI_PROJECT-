@@ -2,6 +2,39 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+## Environment variables (backend URL)
+
+All API requests are built from a single base URL defined by `REACT_APP_BACKEND_URL`. This value is read at build time.
+
+Required variables:
+- `REACT_APP_BACKEND_URL` — Base API URL for the FastAPI server. Include `/api`. Trailing slashes are trimmed by the app.
+
+Local development:
+```
+# frontend/.env  (or .env.local)
+REACT_APP_BACKEND_URL=http://localhost:8000/api
+```
+After changing this file, restart `npm start`.
+
+Production (Render):
+- In your Render frontend service → Environment → add
+```
+REACT_APP_BACKEND_URL=https://columbia-msds-f25-soccer.onrender.com/api
+```
+- Trigger a new deploy so the value is baked into the build.
+
+Team setup:
+- Commit an example file so others know what to set:
+```
+# frontend/.env.example
+REACT_APP_BACKEND_URL=https://your-backend.example.com/api
+```
+- Do not commit `.env` or `.env.local`.
+
+Notes:
+- Do not hardcode hosts in code; all API calls now use `process.env.REACT_APP_BACKEND_URL`.
+- If you change whether `/api` lives in the env var, update code paths accordingly. This repo expects the env var to include `/api`.
+
 ## Available Scripts
 
 In the project directory, you can run:
