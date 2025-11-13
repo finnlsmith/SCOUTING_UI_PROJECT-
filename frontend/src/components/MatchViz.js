@@ -10,8 +10,9 @@ import Scoreboard from "./Scoreboard";
 import ShotMapPlot from "./ShotMapPlot";
 // import PassingNetworkButtons from "./PassingNetworkButtons";
 
+const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000/api').replace(/\/+$/, '');
+
 export default function MatchViz() {
-  const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000/api').replace(/\/+$/, '');
   const { matches, loading: matchesLoading, error: matchesError, setError: setMatchesError } = useMatchData();
   const { error: uploadError, setError: setUploadError } = useUpload();
   const {
