@@ -27,3 +27,8 @@ node_modules/
 dist/
 build/
 .env.local
+
+# Environment variables
+.env
+.env.*
+!.env.example

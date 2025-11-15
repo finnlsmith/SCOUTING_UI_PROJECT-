@@ -1,0 +1,99 @@
+{
+  "timestamp": "2025-11-15 09:10:18",
+  "with_cache": {
+    "matches": {
+      "endpoint": "/matches",
+      "name": "Matches List",
+      "success": true,
+      "num_requests": 10,
+      "successful_requests": 10,
+      "times": {
+        "avg": 0.008377742767333985,
+        "min": 0.0073223114013671875,
+        "max": 0.009196043014526367,
+        "median": 0.00859987735748291,
+        "total": 0.08377742767333984
+      },
+      "throughput": {
+        "requests_per_second": 119.36389404305211,
+        "total_data_mb": 0.07636070251464844
+      }
+    },
+    "cache_stats": {
+      "endpoint": "/cache/stats",
+      "name": "Cache Stats",
+      "success": true,
+      "num_requests": 5,
+      "successful_requests": 5,
+      "times": {
+        "avg": 0.007052087783813476,
+        "min": 0.004914045333862305,
+        "max": 0.008185148239135742,
+        "median": 0.007352113723754883,
+        "total": 0.03526043891906738
+      },
+      "throughput": {
+        "requests_per_second": 141.80197845739826,
+        "total_data_mb": 0.0005865097045898438
+      }
+    },
+    "final_cache_stats": {
+      "hits": 21,
+      "misses": 5,
+      "total": 26,
+      "hit_rate": 80.76923076923077,
+      "backend": "memory",
+      "size": 2,
+      "maxsize": 1000,
+      "ttl_default": 600
+    }
+  },
+  "without_cache": {
+    "matches": {
+      "endpoint": "/matches",
+      "name": "Matches List (No Cache)",
+      "success": true,
+      "num_requests": 10,
+      "successful_requests": 10,
+      "times": {
+        "avg": 0.4573633909225464,
+        "min": 0.4102749824523926,
+        "max": 0.5219902992248535,
+        "median": 0.45021700859069824,
+        "total": 4.573633909225464
+      },
+      "throughput": {
+        "requests_per_second": 2.1864452202501448,
+        "total_data_mb": 0
+      }
+    },
+    "cache_stats": {
+      "endpoint": "/cache/stats",
+      "name": "Cache Stats",
+      "success": true,
+      "num_requests": 5,
+      "successful_requests": 5,
+      "times": {
+        "avg": 0.004147911071777343,
+        "min": 0.0036830902099609375,
+        "max": 0.004711151123046875,
+        "median": 0.004172086715698242,
+        "total": 0.02073955535888672
+      },
+      "throughput": {
+        "requests_per_second": 241.0852071550099,
+        "total_data_mb": 0.000591278076171875
+      }
+    }
+  },
+  "comparison": {
+    "matches": {
+      "with_cache_avg": 0.008377742767333985,
+      "without_cache_avg": 0.4573633909225464,
+      "improvement_percent": 98.16825243698773,
+      "speedup": 54.59267533324985,
+      "time_saved_per_request": 0.4489856481552124,
+      "time_saved_total": 4.489856481552124
+    }
+  }
+}

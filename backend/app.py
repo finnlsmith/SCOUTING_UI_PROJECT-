@@ -15,6 +15,23 @@ import base64
 import matplotlib.pyplot as plt
 from fastapi.encoders import jsonable_encoder
 import math
+import asyncio
+import logging
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # python-dotenv not installed, try to load .env manually
+    env_path = os.path.join(os.path.dirname(__file__), '.env')
+    if os.path.exists(env_path):
+        with open(env_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    os.environ[key.strip()] = value.strip()
 
 
 # API versioning and metadata configuration
@@ -65,6 +82,30 @@ app = FastAPI(
         "name": "MIT",
     },
 )
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+@app.on_event("startup")
+async def startup_event():
+    """Warm up cache on startup by pre-loading common data"""
+    try:
+        from cache import cache, async_s3
+        
+        logger.info("🔥 Starting cache warmup...")
+        
+        # Warm up matches_df.csv (most frequently accessed)
+        try:
+            matches_df = await async_s3.get_dataframe("matches_df.csv", cache_type="matches_df")
+            if matches_df is not None:
+                logger.info("✅ Cache warmed: matches_df.csv")
+        except Exception as e:
+            logger.warning(f"⚠️ Cache warmup failed for matches_df.csv: {e}")
+        
+        logger.info("✅ Cache warmup complete")
+    except Exception as e:
+        logger.warning(f"⚠️ Cache warmup error: {e}")
 
 TEAM_COLORS = {
     "Albania": "#E41F26",
@@ -203,8 +244,52 @@ async def client_error_log(request: Request):
     return {"status": "ok"}
 
 
+@app.post("/api/cache/clear", tags=["System"], summary="Clear all cache entries")
+def clear_cache():
+    """
+    Clear all entries from the cache and reset metrics.
+    
+    **Use Cases:**
+    - Testing performance without cache
+    - Forcing fresh data fetch
+    - Debugging cache issues
+    
+    **Returns:**
+        dict: Confirmation message and stats
+    """
+    from cache import cache
+    cache.clear()
+    return {"message": "Cache cleared successfully", "stats": cache.get_stats()}
+
+
+@app.get("/api/cache/stats", tags=["System"], summary="Get cache statistics")
+def cache_stats():
+    """
+    Get cache statistics including hit/miss rates and cache size.
+    
+    **Response Example:**
+    ```json
+    {
+        "backend": "memory",
+        "hits": 45,
+        "misses": 12,
+        "total": 57,
+        "hit_rate": 78.95,
+        "size": 23,
+        "maxsize": 1000,
+        "ttl_default": 600
+    }
+    ```
+    
+    **Returns:**
+        dict: Cache statistics
+    """
+    from cache import cache
+    return cache.get_stats()
+
+
 @app.get('/api/matches', tags=["Matches"], summary="List all available matches")
-def list_matches():
+async def list_matches():
     """
     Retrieve a list of all available match data files from S3 storage.
     
@@ -238,24 +323,27 @@ def list_matches():
         - Only CSV files are included
         - Requires AWS credentials configured server-side
         - Match labels are generated from matches_df.csv metadata
+        - Results are cached for 15 minutes
     """
+    from cache import cache, async_s3
+    
+    cache_key = "api:matches:list"
+    
+    # Check cache first
+    cached_result = cache.get(cache_key, cache_type="matches_list")
+    if cached_result is not None:
+        return cached_result
+    
     try:
+        # Cache miss - fetch from S3
         # 1️⃣ Get all CSV files in S3 bucket (including subfolders)
-        paginator = s3_client.get_paginator('list_objects_v2')
-        pages = paginator.paginate(Bucket=S3_BUCKET, Prefix='')
+        files = await async_s3.list_objects(prefix='')
+        files = [f for f in files if f.endswith('.csv')]
 
-        files = []
-        for page in pages:
-            for obj in page.get('Contents', []):
-                key = obj['Key']
-                if key.endswith('.csv'):
-                    files.append(key)
-
-        # 2️⃣ Load matches_df.csv from S3 directly
-        obj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
-        csv_text = obj["Body"].read().decode("utf-8")
-
-        matches_df = pd.read_csv(io.StringIO(csv_text))
+        # 2️⃣ Load matches_df.csv from S3 (with caching)
+        matches_df = await async_s3.get_dataframe("matches_df.csv", cache_type="matches_df")
+        if matches_df is None:
+            raise HTTPException(status_code=500, detail="Failed to load matches_df.csv")
 
         # 3️⃣ Build a lookup: match_id → "YYYY-MM-DD - Home vs Away"
         label_lookup = {
@@ -288,8 +376,15 @@ def list_matches():
         # 5️⃣ Sort matches by date descending (for better UX)
         formatted = sorted(formatted, key=lambda x: x['label'], reverse=True)
 
-        return jsonable_encoder(formatted)
+        result = jsonable_encoder(formatted)
+        
+        # Cache the result
+        cache.set(cache_key, result, cache_type="matches_list")
+        
+        return result
 
+    except HTTPException:
+        raise
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -369,7 +464,7 @@ def _to_xy(val):
     return (np.nan, np.nan)
 
 @app.get("/api/match/{filename}/viz", tags=["Match Visualizations"], summary="Generate shot map visualization")
-def get_match_viz(filename: str, team: str | None = Query(default=None, description="Filter by specific team name")):
+async def get_match_viz(filename: str, team: str | None = Query(default=None, description="Filter by specific team name")):
     """
     Generate an interactive shot map visualization for a match.
     
@@ -413,14 +508,23 @@ def get_match_viz(filename: str, team: str | None = Query(default=None, descript
         - Requires valid events CSV with 'type' and 'location' columns
         - xG column (shot_statsbomb_xg) is optional
         - Team colors auto-assigned from predefined palette
+        - Results are cached for 10 minutes
     """
+    from cache import cache, async_s3
+    
+    # Build cache key including team filter
+    cache_key = f"viz:{filename}:{team or 'all'}:plotly"
+    
+    # Check cache first
+    cached_result = cache.get(cache_key, cache_type="plotly_viz")
+    if cached_result is not None:
+        return JSONResponse(content=jsonable_encoder(cached_result))
+    
     try:
-        # --- fetch CSV (404 if not found)
-        try:
-            obj = s3_client.get_object(Bucket=S3_BUCKET, Key=filename)
-        except s3_client.exceptions.NoSuchKey:
+        # --- fetch CSV (404 if not found) - use async with caching
+        df = await async_s3.get_dataframe(filename, cache_type="events_df")
+        if df is None:
             raise HTTPException(status_code=404, detail=f"S3 key not found: {filename}")
-        df = pd.read_csv(io.BytesIO(obj["Body"].read()))
 
         # --- minimum columns
         for col in ("type", "location"):
@@ -460,12 +564,8 @@ def get_match_viz(filename: str, team: str | None = Query(default=None, descript
             'home_ok_chances': None, 'away_ok_chances': None,
         }
         try:
-            # try matches_df lookup
-            try:
-                mobj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
-                mdf = pd.read_csv(mobj["Body"])
-            except Exception:
-                mdf = None
+            # try matches_df lookup (use cached version)
+            mdf = await async_s3.get_dataframe("matches_df.csv", cache_type="matches_df")
 
             # match_id from filename
             m = re.search(r"\d+", filename or "")
@@ -481,10 +581,12 @@ def get_match_viz(filename: str, team: str | None = Query(default=None, descript
                     meta["away_score"] = int(r.get("away_score")) if pd.notna(r.get("away_score")) else None
                     meta["competition_stage"] = r.get("competition_stage")
 
-            # compute team shot counts/xG if possible
+            # compute team shot counts/xG if possible (use cached events_df)
             if match_id is not None and mdf is not None and meta["home_team"] and meta["away_team"]:
                 ev_key = f"events_{match_id}.csv"
-                ev = pd.read_csv(io.BytesIO(s3_client.get_object(Bucket=S3_BUCKET, Key=ev_key)["Body"].read()))
+                ev = await async_s3.get_dataframe(ev_key, cache_type="events_df")
+                if ev is None:
+                    ev = pd.DataFrame()  # Fallback to empty DataFrame
                 if {"type", "team"} <= set(ev.columns):
                     shot_df = ev[ev["type"] == "Shot"].copy()
                     # on target mask
@@ -726,6 +828,10 @@ def get_match_viz(filename: str, team: str | None = Query(default=None, descript
         # combine payload
         payload = fig.to_dict()
         payload.update(meta)
+        
+        # Cache the result
+        cache.set(cache_key, payload, cache_type="plotly_viz")
+        
         return JSONResponse(content=jsonable_encoder(payload))
 
     except HTTPException:
@@ -737,7 +843,7 @@ def get_match_viz(filename: str, team: str | None = Query(default=None, descript
     
 
 @app.get("/api/match/{filename}/passing_network", tags=["Match Visualizations"], summary="Generate passing network visualization")
-def passing_network_like_matplotlib(
+async def passing_network_like_matplotlib(
     filename: str,
     team: str = Query(..., description="Team name to generate passing network for"),
     min_passes: int = Query(1, ge=1, description="Minimum passes between players to display"),
@@ -791,10 +897,21 @@ def passing_network_like_matplotlib(
         - Falls back to all players if lineup data unavailable
         - Pass recipient detection uses nearest-player heuristic
     """
+    from cache import cache, async_s3
+    
+    # Build cache key including all parameters
+    cache_key = f"passnet:{filename}:{team}:{min_passes}:{flip}:plotly"
+    
+    # Check cache first
+    cached_result = cache.get(cache_key, cache_type="passing_network")
+    if cached_result is not None:
+        return JSONResponse(content=jsonable_encoder(cached_result))
+    
     try:
-        # -------- Load events CSV --------
-        obj = s3_client.get_object(Bucket=S3_BUCKET, Key=filename)
-        events = pd.read_csv(io.BytesIO(obj["Body"].read()))
+        # -------- Load events CSV with caching --------
+        events = await async_s3.get_dataframe(filename, cache_type="events_df")
+        if events is None:
+            raise HTTPException(status_code=404, detail=f"S3 key not found: {filename}")
         cols = set(events.columns)
 
         # Minimum required geometry columns
@@ -848,7 +965,7 @@ def passing_network_like_matplotlib(
         # -------- Load lineups (best-effort) & build Starting XI whitelist --------
         starting_ids, starting_names = set(), set()
 
-        def _try_load_lineups():
+        async def _try_load_lineups():
             candidates = []
             if match_id:
                 candidates += [
@@ -860,13 +977,14 @@ def passing_network_like_matplotlib(
 
             for key in candidates:
                 try:
-                    o = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
-                    return pd.read_csv(io.BytesIO(o["Body"].read()))
+                    df = await async_s3.get_dataframe(key, cache_type="events_df")
+                    if df is not None:
+                        return df
                 except Exception:
                     continue
             return None
 
-        lineups_df = _try_load_lineups()
+        lineups_df = await _try_load_lineups()
 
         if lineups_df is not None and "positions" in lineups_df.columns:
             lu = lineups_df.copy()
@@ -1080,6 +1198,10 @@ def passing_network_like_matplotlib(
             "starting_xi_filter_applied": bool(starting_id_whitelist),
             "match_id": match_id if match_id is not None else None,
         })
+        
+        # Cache the result
+        cache.set(cache_key, payload, cache_type="passing_network")
+        
         return JSONResponse(content=jsonable_encoder(payload))
 
     except HTTPException:
@@ -1091,7 +1213,7 @@ def passing_network_like_matplotlib(
 
 
 @app.get("/api/match/{filename}/important_moments", tags=["Match Analytics"], summary="Extract important match moments")
-def important_moments(filename: str):
+async def important_moments(filename: str):
     """
     Extract and return key moments from a match.
     
@@ -1146,16 +1268,28 @@ def important_moments(filename: str):
         
     **Notes:**
         - Falls back to local file if S3 unavailable
-        - All NaN/Inf values replaced with None for JSON compatibility
-        - Player names abbreviated (e.g., "Harry Kane" → "H. Kane")
+    - All NaN/Inf values replaced with None for JSON compatibility
+    - Player names abbreviated (e.g., "Harry Kane" → "H. Kane")
+    - Results are cached for 10 minutes
     """
+    from cache import cache, async_s3
+    
+    cache_key = f"moments:{filename}:json"
+    
+    # Check cache first
+    cached_result = cache.get(cache_key, cache_type="important_moments")
+    if cached_result is not None:
+        return cached_result
+    
     try:
-        df_events = None
-        try:
-            obj = s3_client.get_object(Bucket=S3_BUCKET, Key=filename)
-            df_events = pd.read_csv(io.BytesIO(obj["Body"].read()))
-        except Exception as e:
-            df_events = pd.read_csv(filename)
+        # Load events with caching
+        df_events = await async_s3.get_dataframe(filename, cache_type="events_df")
+        if df_events is None:
+            # Fallback to local file if S3 fails
+            try:
+                df_events = pd.read_csv(filename)
+            except Exception:
+                raise HTTPException(status_code=404, detail=f"Could not load {filename}")
         shots = df_events[df_events["type"] == "Shot"].copy()
         if "shot_statsbomb_xg" in shots.columns:
             shots["xg"] = pd.to_numeric(shots["shot_statsbomb_xg"], errors="coerce")
@@ -1221,15 +1355,20 @@ def important_moments(filename: str):
             moments = moments.groupby('possession', as_index=False).last()
         # Remove FULLY duplicate rows after grouping to ensure no duplicate moments are returned
         moments = moments.drop_duplicates()
+        
+        # Cache the result
+        cache.set(cache_key, result, cache_type="important_moments")
+        
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         traceback.print_exc()
-        from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=f"important_moments failed: {type(e).__name__}: {e}")
 
 
 @app.get("/api/match/{filename}/game_phases", tags=["Match Analytics"], summary="Analyze match phases and momentum")
-def game_phases(filename: str):
+async def game_phases(filename: str):
     """
     Analyze match divided into phases based on key events.
     
@@ -1302,14 +1441,26 @@ def game_phases(filename: str):
         - Requires 'possession_team' or 'team' column
         - Returns error object if fewer than 2 teams detected
         - All metrics calculated per phase independently
+        - Results are cached for 10 minutes
     """
+    from cache import cache, async_s3
+    
+    cache_key = f"phases:{filename}:json"
+    
+    # Check cache first
+    cached_result = cache.get(cache_key, cache_type="game_phases")
+    if cached_result is not None:
+        return JSONResponse(content=jsonable_encoder(cached_result))
+    
     try:
-        # Load events (S3 first, fallback to local)
-        try:
-            obj = s3_client.get_object(Bucket=S3_BUCKET, Key=filename)
-            events = pd.read_csv(io.BytesIO(obj["Body"].read()))
-        except Exception:
-            events = pd.read_csv(filename)
+        # Load events with caching
+        events = await async_s3.get_dataframe(filename, cache_type="events_df")
+        if events is None:
+            # Fallback to local file if S3 fails
+            try:
+                events = pd.read_csv(filename)
+            except Exception:
+                raise HTTPException(status_code=404, detail=f"Could not load {filename}")
 
         # Identify teams
         team_names = events.get('possession_team', pd.Series([], dtype=str)).dropna().unique()
@@ -1747,12 +1898,19 @@ def game_phases(filename: str):
                     'score_at_end': score_end_counts,
                 })
 
-        return JSONResponse(content=jsonable_encoder({
+        result = {
             'home_team': home_team,
             'away_team': away_team,
             'phases': phases,
             'phase_metrics': phase_metrics,
-        }))
+        }
+        
+        # Cache the result
+        cache.set(cache_key, result, cache_type="game_phases")
+        
+        return JSONResponse(content=jsonable_encoder(result))
+    except HTTPException:
+        raise
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"game_phases failed: {type(e).__name__}: {e}")

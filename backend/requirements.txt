@@ -6,3 +6,6 @@ numpy
 python-multipart
 boto3
 matplotlib
+cachetools==5.3.2
+aioboto3==12.3.0
+python-dotenv
