@@ -12,6 +12,9 @@ from fastapi.responses import JSONResponse
 import traceback
 import re
 import base64
+# Set matplotlib backend to Agg (non-GUI) to prevent threading issues on macOS
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from fastapi.encoders import jsonable_encoder
 import math
@@ -1916,7 +1919,7 @@ async def game_phases(filename: str):
         raise HTTPException(status_code=500, detail=f"game_phases failed: {type(e).__name__}: {e}")
 
 @app.get("/api/match/{filename}/possession_scene", tags=["Match Visualizations"], summary="Generate possession sequence visualization")
-def possession_scene(filename: str, possession: int = Query(..., description="Possession number to visualize")):
+async def possession_scene(filename: str, possession: int = Query(..., description="Possession number to visualize")):
     """
     Generate a comprehensive possession sequence visualization with player tracking.
     
@@ -2017,11 +2020,11 @@ def possession_scene(filename: str, possession: int = Query(..., description="Po
         return None
     # 2. Load the requested possession event data
     try:
-        try:
-            obj = s3_client.get_object(Bucket=S3_BUCKET, Key=filename)
-            events = pd.read_csv(io.BytesIO(obj["Body"].read()))
-        except Exception:
-            events = pd.read_csv(filename)
+        from cache import async_s3
+        # Use async S3 client with caching
+        events = await async_s3.get_dataframe(filename, cache_type="events_df")
+        if events is None:
+            raise HTTPException(status_code=404, detail=f"Failed to load events file: {filename}")
         # --- Extract the single possession's events ---
         possession_df = events[events["possession"] == possession].copy()
         if possession_df.shape[0] < 1:
