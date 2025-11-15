@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+pandas
+plotly
+numpy
+python-multipart
+boto3
+matplotlib

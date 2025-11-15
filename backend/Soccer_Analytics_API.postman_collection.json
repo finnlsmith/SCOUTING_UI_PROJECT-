@@ -1,0 +1,307 @@
+{
+	"info": {
+		"_postman_id": "columbia-soccer-api-v1",
+		"name": "Columbia MSDS Soccer Analytics API",
+		"description": "Complete API collection for testing Euro 2020 match analytics endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "columbia-msds"
+	},
+	"item": [
+		{
+			"name": "System",
+			"item": [
+				{
+					"name": "Log Client Error",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"message\": \"Test error message\",\n  \"stack\": \"Error: Test error\\n    at Component...\",\n  \"componentStack\": \"    in TestComponent\\n    in App\",\n  \"url\": \"http://localhost:3000/test\",\n  \"userAgent\": \"PostmanRuntime/7.x\",\n  \"time\": \"2024-01-15T10:30:00.000Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/client-error",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"client-error"
+							]
+						},
+						"description": "Test endpoint for logging client-side errors"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Matches",
+			"item": [
+				{
+					"name": "List All Matches",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/matches",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"matches"
+							]
+						},
+						"description": "Retrieve list of all available match files from S3"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Visualizations",
+			"item": [
+				{
+					"name": "Shot Map - All Teams",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/match/{{sample_match_file}}/viz",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"match",
+								"{{sample_match_file}}",
+								"viz"
+							]
+						},
+						"description": "Generate shot map for all teams in a match"
+					},
+					"response": []
+				},
+				{
+					"name": "Shot Map - Single Team",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/match/{{sample_match_file}}/viz?team=Italy",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"match",
+								"{{sample_match_file}}",
+								"viz"
+							],
+							"query": [
+								{
+									"key": "team",
+									"value": "Italy",
+									"description": "Filter by team name"
+								}
+							]
+						},
+						"description": "Generate shot map filtered for a specific team"
+					},
+					"response": []
+				},
+				{
+					"name": "Passing Network",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/match/{{sample_match_file}}/passing_network?team=Italy&min_passes=1&flip=false",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"match",
+								"{{sample_match_file}}",
+								"passing_network"
+							],
+							"query": [
+								{
+									"key": "team",
+									"value": "Italy",
+									"description": "Team name (required)"
+								},
+								{
+									"key": "min_passes",
+									"value": "1",
+									"description": "Minimum passes between players"
+								},
+								{
+									"key": "flip",
+									"value": "false",
+									"description": "Flip pitch horizontally"
+								}
+							]
+						},
+						"description": "Generate passing network for a team with Starting XI filtering"
+					},
+					"response": []
+				},
+				{
+					"name": "Possession Scene",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/match/{{sample_match_file}}/possession_scene?possession=42",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"match",
+								"{{sample_match_file}}",
+								"possession_scene"
+							],
+							"query": [
+								{
+									"key": "possession",
+									"value": "42",
+									"description": "Possession number to visualize"
+								}
+							]
+						},
+						"description": "Generate detailed possession sequence visualization with 360 tracking data"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Analytics",
+			"item": [
+				{
+					"name": "Important Moments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/match/{{sample_match_file}}/important_moments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"match",
+								"{{sample_match_file}}",
+								"important_moments"
+							]
+						},
+						"description": "Extract key moments (high xG shots, goals, penalties) from a match"
+					},
+					"response": []
+				},
+				{
+					"name": "Game Phases",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/match/{{sample_match_file}}/game_phases",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"match",
+								"{{sample_match_file}}",
+								"game_phases"
+							]
+						},
+						"description": "Analyze match divided into tactical phases with metrics"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Data Upload",
+			"item": [
+				{
+					"name": "Upload CSV",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": [],
+									"description": "Select a CSV file to upload"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"upload"
+							]
+						},
+						"description": "Upload a CSV file and receive automated visualization"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Documentation",
+			"item": [
+				{
+					"name": "OpenAPI Spec",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/openapi.json",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"openapi.json"
+							]
+						},
+						"description": "Retrieve the OpenAPI 3.0 specification"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "sample_match_file",
+			"value": "events_3788741.csv",
+			"type": "string",
+			"description": "Italy vs England final - update with any valid match file"
+		}
+	]
+}
+
