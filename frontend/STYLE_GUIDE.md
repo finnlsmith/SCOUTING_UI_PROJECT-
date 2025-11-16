@@ -639,26 +639,70 @@ export default function Button({ variant = "default", children, ...props }) {
 
 ---
 
-## Future Enhancements
+## Theme Switching
 
-### Theme Switching (Not Yet Implemented)
+### Implementation
 
-The CSS variable structure is ready for theme switching. Future implementation could include:
+Theme switching is fully implemented using React Context and CSS variables:
 
-1. **Theme Provider** - React Context for theme management
-2. **Dark/Light Mode Toggle** - UI control to switch themes
-3. **Theme Variants** - Additional CSS variable sets in `variables.css`:
-   ```css
-   [data-theme="light"] {
-     --color-bg-primary: #ffffff;
-     --color-text-primary: #0F0E26;
-   }
-   
-   [data-theme="dark"] {
-     --color-bg-primary: #0F0E26;
-     --color-text-primary: #ffffff;
-   }
-   ```
+1. **Theme Provider** (`src/contexts/ThemeContext.js`) - React Context for theme management
+2. **Theme Toggle Component** (`src/components/ThemeToggle/`) - UI control to switch themes
+3. **CSS Theme Variables** - Theme-specific color variables in `variables.css`
+
+### Usage
+
+The theme toggle is available in the Sidebar component. Users can switch between light and dark modes, and their preference is saved to localStorage.
+
+```jsx
+import { useTheme } from '../../contexts/ThemeContext';
+
+function MyComponent() {
+  const { theme, toggleTheme, isDark, isLight } = useTheme();
+  
+  return (
+    <div>
+      <p>Current theme: {theme}</p>
+      <button onClick={toggleTheme}>Toggle Theme</button>
+    </div>
+  );
+}
+```
+
+### Theme Toggle Component
+
+The `ThemeToggle` component displays a button with a sun/moon icon and can be placed anywhere in your app:
+
+```jsx
+import ThemeToggle from "./components/ThemeToggle";
+
+<ThemeToggle />
+```
+
+### Theme Variables
+
+Both themes use the same CSS variable names, but with different values:
+
+```css
+/* Dark theme (default) */
+[data-theme="dark"] {
+  --color-bg-primary: #0F0E26;
+  --color-text-primary: white;
+  /* ... other dark theme colors */
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --color-bg-primary: #ffffff;
+  --color-text-primary: #0F0E26;
+  /* ... other light theme colors */
+}
+```
+
+The theme is applied by setting `data-theme="dark"` or `data-theme="light"` on the `<html>` element, which is handled automatically by the ThemeProvider.
+
+### Persistence
+
+User theme preference is automatically saved to `localStorage` and restored on page load. The default theme is `dark` if no preference is saved.
 
 ---
 

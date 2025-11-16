@@ -11,7 +11,7 @@ import "./App.css";
 
 function App() {
   return (
-    <div className="App" style={{ backgroundColor: "var(--color-bg-primary)", minHeight: "100vh" }}>
+    <div className="App" style={{ backgroundColor: "var(--color-bg-primary)", minHeight: "100vh", transition: "background-color var(--transition-base)" }}>
       <Routes>
         <Route path="/" element={<Layout><LandingPage /></Layout>}/>
         <Route path="/tournaments" element={<Layout><TournamentsPage /></Layout>}/>
