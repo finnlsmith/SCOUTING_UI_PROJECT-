@@ -27,3 +27,9 @@
   text-decoration: underline;
 }
 
+.themeToggleWrapper {
+  position: fixed;
+  top: 12px;
+  right: 18px;
+  z-index: 2000;
+}

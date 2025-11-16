@@ -2,7 +2,6 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import trilemmaLogo from "../../assets/trilemma.jpeg";
 import sincereLogo from "../../assets/sincereFC.jpeg";
-import ThemeToggle from "../ThemeToggle";
 import styles from "./Sidebar.module.css";
 
 export default function Sidebar() {
@@ -38,11 +37,6 @@ export default function Sidebar() {
             Tournaments
           </Link>
         </nav>
-      </div>
-
-      {/* --- Theme Toggle --- */}
-      <div className={styles.themeToggleSection}>
-        <ThemeToggle />
       </div>
 
       {/* --- Bottom Logos Section --- */}
