@@ -50,6 +50,9 @@ No rate limits currently enforced.
 For issues or questions, contact the development team.
 """
 
+from dotenv import load_dotenv
+load_dotenv()
+
 app = FastAPI(
     title=API_TITLE,
     description=API_DESCRIPTION,
@@ -136,7 +139,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://columbia-msds-f25-soccer.onrender.com", 
-        "http://localhost:3000", 
+        "http://localhost:3000",
         "https://columbia-msds-f25-soccer-frontend.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],

@@ -1,0 +1,43 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  margin: 0;
+  padding: 0;
+  transform: translateY(-40px);
+}
+
+.title {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-2xl);
+  margin-bottom: 42px;
+}
+
+.buttonContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.comingSoon {
+  color: #bbb;
+  margin-top: var(--spacing-lg);
+}
+
+.tournamentImage {
+  position: absolute;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: auto;
+  opacity: 0.9;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+

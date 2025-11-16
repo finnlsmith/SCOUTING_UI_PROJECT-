@@ -1,0 +1,90 @@
+.sidebar {
+  width: 220px;
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  min-height: 100vh;
+  padding: var(--spacing-xl);
+  box-sizing: border-box;
+  border-right: 1.5px solid #000;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.title {
+  font-weight: var(--font-weight-extrabold);
+  font-size: var(--font-size-xl);
+  margin-bottom: 30px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 6px;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.link {
+  display: block;
+  background-color: var(--color-button-nav);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+  padding: 12px 20px;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-lg);
+  text-decoration: none;
+  transition: var(--transition-base);
+}
+
+.link:hover {
+  opacity: 0.9;
+}
+
+.linkActive {
+  composes: link;
+  background-color: var(--color-button-nav-active);
+}
+
+.linkDisabled {
+  composes: link;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.bottomSection {
+  border-top: 1px solid #333;
+  padding-top: 15px;
+  text-align: center;
+}
+
+.poweredBy {
+  font-size: var(--font-size-xs);
+  opacity: 0.7;
+  margin-bottom: 10px;
+}
+
+.logoContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.logo {
+  width: 90px;
+  height: auto;
+  cursor: pointer;
+  transition: opacity var(--transition-base);
+}
+
+.logoSmall {
+  composes: logo;
+  width: 55px;
+}
+
+.logo:hover {
+  opacity: 0.8;
+}
+

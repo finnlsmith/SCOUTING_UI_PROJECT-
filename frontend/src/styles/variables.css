@@ -1,0 +1,81 @@
+/* Global CSS Variables for theming and maintainability */
+:root {
+  /* Colors */
+  --color-bg-primary: #0F0E26;
+  --color-bg-secondary: #1c1b3a;
+  --color-bg-card: #f8fafc;
+  --color-bg-card-alt: #f9fafb;
+  --color-bg-white: #fff;
+  --color-bg-error: #ffe7e7;
+  
+  --color-text-primary: white;
+  --color-text-secondary: #4b5563;
+  --color-text-tertiary: #666;
+  --color-text-dark: #0F0E26;
+  --color-text-heading: #1e293b;
+  --color-text-error: #b40000;
+  --color-text-link: #a9a9ff;
+  
+  --color-border-light: #e5e5e6;
+  --color-border-medium: #e5e7eb;
+  --color-border-dark: #dadce0;
+  --color-border-error: #ffbdbd;
+  
+  --color-button-primary: #003cd1;
+  --color-button-secondary: #777;
+  --color-button-nav: #3b5998;
+  --color-button-nav-active: #4e6fa4;
+  
+  --color-highlight: #def;
+  --color-shadow-light: rgba(0, 0, 0, 0.05);
+  --color-shadow-medium: rgba(0, 0, 0, 0.1);
+  --color-shadow-dark: rgba(0, 0, 0, 0.2);
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 40px;
+  --spacing-3xl: 48px;
+  --spacing-4xl: 60px;
+  
+  /* Typography */
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-base: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
+  --font-size-4xl: 38px;
+  --font-size-5xl: 44px;
+  
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  
+  /* Border Radius */
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 15px;
+  --radius-2xl: 16px;
+  --radius-3xl: 22px;
+  
+  /* Shadows */
+  --shadow-sm: 0 2px 6px var(--color-shadow-light);
+  --shadow-md: 0 2px 12px rgba(0, 0, 0, 0);
+  --shadow-lg: 0 2px 16px rgba(0, 0, 1, 0.01);
+  --shadow-xl: 0 3px 18px rgba(136, 136, 136, 0.05);
+  --shadow-button: 3px 4px 0 rgba(0, 0, 0, 0.02);
+  --shadow-button-lg: 0 4px 24px rgba(0, 0, 0, 0.01);
+  
+  /* Transitions */
+  --transition-fast: 0.14s;
+  --transition-base: 0.2s;
+}
+
