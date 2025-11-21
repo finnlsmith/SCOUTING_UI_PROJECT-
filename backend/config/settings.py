@@ -63,9 +63,10 @@ For issues or questions, contact the development team.
 # CORS configuration
 # -----------------------------
 CORS_ORIGINS = [
+    "https://columbia-msds-f25-soccer-frontend.onrender.com",
     "https://columbia-msds-f25-soccer.onrender.com",
     "http://localhost:3000",
-    "https://columbia-msds-f25-soccer-frontend.onrender.com",
+    "http://localhost:5173",
 ]
 
 
