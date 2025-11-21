@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { TEAM_COLORS } from "../assets/teamColors";
+import { TEAM_COLORS } from "../../assets/teamColors";
 
 const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || "http://localhost:8000/api").replace(/\/+$/, "");
 

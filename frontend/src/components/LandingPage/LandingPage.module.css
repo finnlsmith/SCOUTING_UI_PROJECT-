@@ -1,0 +1,33 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg-primary);
+  transform: translateY(-40px);
+}
+
+.logo {
+  width: 200px;
+  height: 200px;
+  margin-bottom: var(--spacing-xl);
+}
+
+.title {
+  font-weight: var(--font-weight-extrabold);
+  font-size: var(--font-size-4xl);
+  margin-bottom: 44px;
+  letter-spacing: 1px;
+  color: var(--color-text-primary);
+}
+
+.buttonContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+

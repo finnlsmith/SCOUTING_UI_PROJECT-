@@ -1,0 +1,44 @@
+.container {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  min-height: 100vh;
+  padding: 80px 120px;
+  font-family: sans-serif;
+  text-align: left;
+}
+
+.title {
+  font-weight: var(--font-weight-extrabold);
+  font-size: 34px;
+  margin-bottom: 40px;
+  text-align: left;
+}
+
+.content {
+  max-width: 850px;
+  line-height: 1.7;
+  font-size: var(--font-size-lg);
+}
+
+.logosSection {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 80px;
+  margin-top: 100px;
+  margin-bottom: 40px;
+}
+
+.logo {
+  width: 120px;
+  height: auto;
+  object-fit: contain;
+  filter: brightness(0.9);
+}
+
+.logoLarge {
+  composes: logo;
+  width: 200px;
+  filter: brightness(0.95);
+}
+
