@@ -43,7 +43,7 @@ except Exception as e:
     logger.info("✅ Using in-memory cache backend")
 
 # Always export these
-from .s3_client import async_s3, AsyncS3Client
+from .s3_client import s3, S3Client
 from .config import CACHE_TTL, DEFAULT_CACHE_MAXSIZE
 
 # Export classes for reference
@@ -52,7 +52,7 @@ from .redis_cache import RedisCache
 
 __all__ = [
     'cache',
-    'async_s3',
+    's3',
     'InMemoryCache',
     'RedisCache',
     'AsyncS3Client',
