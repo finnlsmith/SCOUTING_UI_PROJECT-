@@ -13,48 +13,90 @@ router = APIRouter(tags=["Matches"])
 logger = logging.getLogger(__name__)
 
 
+# @router.get("/api/matches", summary="List all available matches")
+# async def list_matches():
+#     """
+#     List available matches using the precomputed matches_df.csv in S3.
+
+#     Expects a file `matches_df.csv` in the S3 bucket defined by S3_BUCKET.
+#     Returns the rows as a list of dicts.
+#     """
+#     try:
+#         # Fetch matches_df.csv from S3
+#         obj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
+#     except Exception as e:
+#         logger.exception("Failed to load matches_df.csv from S3")
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"Failed to load matches from S3: {e}",
+#         )
+
+#     try:
+#         # Read CSV into DataFrame
+#         df = pd.read_csv(io.BytesIO(obj["Body"].read()))
+
+#         # Optional: sort or filter here if needed
+#         # df = df.sort_values(["tournament", "match_date"])
+
+#         # Return list of dicts
+#         # return df.to_dict(orient="records")
+#         df = df.replace([float("inf"), float("-inf")], pd.NA)
+
+#         # Convert to Python-native types safely
+#         clean = df.where(pd.notnull(df), None)
+
+#         return clean.to_dict(orient="records")
+
+
+
+#     except Exception as e:
+#         logger.exception("Failed to parse matches_df.csv")
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"Failed to parse matches file: {e}",
+#         )
+
 @router.get("/api/matches", summary="List all available matches")
 async def list_matches():
     """
-    List available matches using the precomputed matches_df.csv in S3.
-
-    Expects a file `matches_df.csv` in the S3 bucket defined by S3_BUCKET.
-    Returns the rows as a list of dicts.
+    Return matches in the exact structure expected by the frontend:
+    {
+        "file": "events_3788741.csv",
+        "label": "2021-07-11 - Italy vs England – Events"
+    }
     """
     try:
-        # Fetch matches_df.csv from S3
         obj = s3_client.get_object(Bucket=S3_BUCKET, Key="matches_df.csv")
     except Exception as e:
         logger.exception("Failed to load matches_df.csv from S3")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to load matches from S3: {e}",
-        )
+        raise HTTPException(500, f"Failed to load matches from S3: {e}")
 
     try:
-        # Read CSV into DataFrame
         df = pd.read_csv(io.BytesIO(obj["Body"].read()))
 
-        # Optional: sort or filter here if needed
-        # df = df.sort_values(["tournament", "match_date"])
+        results = []
 
-        # Return list of dicts
-        # return df.to_dict(orient="records")
-        df = df.replace([float("inf"), float("-inf")], pd.NA)
+        for _, row in df.iterrows():
+            match_id = str(row["match_id"])
+            label = f"{row['match_date']} - {row['home_team']} vs {row['away_team']}"
 
-        # Convert to Python-native types safely
-        clean = df.where(pd.notnull(df), None)
+            # The frontend expects event and frame files for each match
+            results.append({
+                "file": f"events_{match_id}.csv",
+                "label": f"{label} – Events"
+            })
 
-        return clean.to_dict(orient="records")
+            results.append({
+                "file": f"frames_360_{match_id}.csv",
+                "label": f"{label} – Frames 360"
+            })
 
-
+        return results
 
     except Exception as e:
         logger.exception("Failed to parse matches_df.csv")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to parse matches file: {e}",
-        )
+        raise HTTPException(500, f"Failed to parse matches file: {e}")
+
 
 
 @router.post(

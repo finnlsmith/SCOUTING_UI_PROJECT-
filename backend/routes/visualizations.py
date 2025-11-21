@@ -537,7 +537,7 @@ async def passing_network_like_matplotlib(
                     f"lineups{match_id}.csv",
                     f"{match_id}_lineups.csv",
                 ]
-            candidates += ["lineups.csv", "match_lineups.csv"]
+            candidates += ["lineups_df.csv", "lineups.csv", "match_lineups.csv"]
 
             for key in candidates:
                 try:
@@ -553,9 +553,19 @@ async def passing_network_like_matplotlib(
         if lineups_df is not None and "positions" in lineups_df.columns:
             lu = lineups_df.copy()
             lu["positions_parsed"] = lu["positions"].apply(_parse_positions_cell)
+            # mask_start = lu["positions_parsed"].apply(
+            #     lambda lst: any(isinstance(d, dict) and d.get("start_reason") == "Starting XI" for d in lst)
+            # )
             mask_start = lu["positions_parsed"].apply(
-                lambda lst: any(isinstance(d, dict) and d.get("start_reason") == "Starting XI" for d in lst)
+                lambda lst: any(
+                    isinstance(d, dict) and (
+                        d.get("start_reason") == "Starting XI"
+                        or d.get("starting_reason") == "Starting XI"
+                    )
+                    for d in (lst or [])
+                )
             )
+
             starters = lu[mask_start].copy()
 
             # Prefer player_id if present, else fallback to player names
@@ -694,6 +704,8 @@ async def passing_network_like_matplotlib(
 
         if flip:
             nodes["x"] = 120 - nodes["x"]
+
+        
 
         # -------- Merge node coords onto edges --------
         edges = edges.merge(
