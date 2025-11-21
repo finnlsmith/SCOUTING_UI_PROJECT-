@@ -4,18 +4,25 @@ This module provides intelligent caching for the Soccer Analytics API, reducing 
 
 ## Overview
 
-The cache system implements **in-memory TTL (Time-To-Live) caching** using `cachetools.TTLCache` to store frequently accessed data and computed visualizations. This dramatically improves API response times and reduces AWS S3 costs by avoiding redundant data fetches.
+The cache system uses **Redis (Upstash)** for production caching, with automatic fallback to in-memory cache if Redis is unavailable.
+
+**Note:** We initially implemented an in-memory cache as a proof of concept, which validated the caching strategy with 98%+ performance improvements. We then migrated to Redis for production scalability, shared cache across instances, and persistence.
 
 ## Type of Caching
 
-### Implementation: In-Memory TTL Cache
+### Current Implementation: Redis Cache
 
-We implemented **in-memory caching with automatic expiration** using:
-- **Library:** `cachetools.TTLCache` (Python)
-- **Storage:** In-process memory (fast, no network overhead)
-- **Expiration:** Time-based (TTL) - items automatically expire after configured time
-- **Size Limit:** 1000 items maximum (LRU eviction when full)
-- **Backend:** Single-process memory (designed for easy Redis migration)
+**Production Backend:** Redis (Upstash)
+- **Provider:** Upstash (free tier: 64 MB, 10K commands/day)
+- **Connection:** SSL-enabled (rediss://)
+- **Serialization:** JSON for simple types, Pickle for DataFrames
+- **TTL:** Per-key expiration (5-15 minutes)
+- **Persistence:** Cache survives server restarts
+- **Multi-instance:** Shared cache across all API instances
+
+### Fallback: In-Memory Cache
+
+If Redis is unavailable, the system automatically falls back to in-memory caching using `cachetools.TTLCache`.
 
 ### Why This Approach?
 
@@ -130,31 +137,31 @@ We implemented **in-memory caching with automatic expiration** using:
 
 ## How It's Actually Helping
 
-### Performance Metrics (Real Test Results)
+### Performance Metrics (Redis Cache - Current Implementation)
 
 **Response Time Improvement:**
-- **Without Cache:** 457.36ms average
-- **With Cache:** 8.38ms average
-- **Improvement:** **98.2% faster** ⚡
-- **Speedup:** **54.59x faster**
+- **Without Cache:** 430ms average
+- **With Redis:** 46ms average
+- **Improvement:** **89.3% faster** ⚡
+- **Speedup:** **9.35x faster**
 
 **Throughput:**
-- **Without Cache:** 2.19 requests/second
-- **With Cache:** 119.36 requests/second
-- **Improvement:** **54.5x more requests** handled
+- **Without Cache:** 2.33 requests/second
+- **With Redis:** 21.74 requests/second
+- **Improvement:** **9.3x more requests** handled
 
 **Cache Effectiveness:**
-- **Hit Rate:** 80.77% (excellent for production)
-- **Time Saved:** 448.99ms per request
-- **Total Savings:** 4.49 seconds for 10 requests
+- **Hit Rate:** 90.91% (excellent for production)
+- **Time Saved:** 384ms per request
+- **Memory Usage:** 0.01 MB / 64 MB (0.01%)
 
 ### Real-World Impact
 
-**Example: Matches List Endpoint**
+**Example: Matches List Endpoint (Redis)**
 ```
-First Request (Cache MISS):  471.67ms  ← Fetching from S3
-Second Request (Cache HIT):    4.70ms   ← Served from cache
-Improvement: 100.37x faster!
+First Request (Cache MISS):  524ms  ← Fetching from S3
+Second Request (Cache HIT):   38ms   ← Served from Redis cache
+Improvement: 13.8x faster!
 ```
 
 **Cost Savings:**
@@ -167,14 +174,15 @@ Improvement: 100.37x faster!
 - **After:** Users get responses in 4-8ms (cached)
 - **Perception:** API feels "instant" vs "slow"
 
-### Production Performance
+### Production Performance (Redis)
 
-Based on actual testing:
-- ✅ **98%+ improvement** in response times
-- ✅ **80%+ cache hit rate** in normal usage
-- ✅ **54x throughput increase**
-- ✅ **Consistent sub-10ms** response times for cached data
-- ✅ **Significant cost reduction** on AWS S3 operations
+Based on actual testing with Redis:
+- ✅ **89-92% improvement** in response times
+- ✅ **90%+ cache hit rate** in normal usage
+- ✅ **9-14x throughput increase**
+- ✅ **Consistent 35-50ms** response times for cached data
+- ✅ **Significant cost reduction** on AWS S3 operations (~90% fewer calls)
+- ✅ **Minimal memory usage** (0.01% of 64 MB limit)
 
 ### Monitoring
 
@@ -183,15 +191,17 @@ Cache statistics are available via:
 GET /api/cache/stats
 ```
 
-Returns:
+Returns (Redis):
 ```json
 {
   "hits": 45,
   "misses": 12,
   "hit_rate": 78.95,
-  "size": 23,
-  "maxsize": 1000,
-  "backend": "memory"
+  "backend": "redis",
+  "size": 1,
+  "memory_used_mb": 0.5,
+  "memory_max_mb": 64.0,
+  "memory_usage_percent": 0.78
 }
 ```
 
@@ -199,24 +209,24 @@ Returns:
 
 ```
 cache/
-├── __init__.py          # Module exports (cache, async_s3, etc.)
-├── config.py            # Cache configuration (TTL, sizes)
-├── core.py              # InMemoryCache implementation
-├── s3_client.py         # Async S3 client with caching
-├── tests/               # Test suite
+├── __init__.py              # Auto-selects Redis or in-memory fallback
+├── config.py                # Cache configuration (TTL, sizes)
+├── redis_cache.py           # RedisCache implementation (current)
+├── core.py                  # InMemoryCache implementation (fallback)
+├── s3_client.py             # Async S3 client with caching
+├── test_redis_connection.py # Redis connection test
+├── test_redis_cache.py      # Redis cache implementation test
+├── tests/                   # Test suite
 │   ├── test_cache.py
 │   ├── test_async_s3.py
 │   ├── test_s3_connection.py
-│   └── test_performance.py
-├── scripts/             # Utility scripts
-│   ├── setup_cache.sh
-│   ├── quick_test.sh
-│   └── start_and_test.sh
-└── docs/                # Documentation
-    ├── CACHE_SETUP_GUIDE.md
-    ├── CACHE_README.md
-    ├── CACHE_TEST_RESULTS.md
-    └── QUICK_START.md
+│   ├── quick_performance_test.py
+│   └── compare_cache_performance.py
+└── docs/                    # Documentation (Redis-focused)
+    ├── README.md                    # Documentation index
+    ├── REDIS_QUICK_START.md         # 3-minute setup guide
+    ├── REDIS_SETUP_GUIDE.md         # Complete setup guide
+    └── REDIS_PERFORMANCE_METRICS.md # Performance results
 ```
 
 ## Usage
@@ -261,22 +271,30 @@ Run tests from the backend directory:
 
 ```bash
 cd backend
-python cache/tests/test_cache.py
-python cache/tests/test_async_s3.py
-python cache/tests/test_performance.py
+source ../venv-backend/bin/activate
+
+# Test Redis connection
+python cache/test_redis_connection.py
+
+# Test Redis cache implementation
+python cache/test_redis_cache.py
+
+# Performance tests
+python cache/tests/quick_performance_test.py
+python cache/tests/compare_cache_performance.py
 ```
 
-## Scripts
+## Documentation
 
-All scripts are in `cache/scripts/`:
+See `cache/docs/README.md` for complete documentation:
 
-- `setup_cache.sh`: Automated setup and installation
-- `quick_test.sh`: Quick cache verification
-- `start_and_test.sh`: Start server and run performance tests
+- **REDIS_QUICK_START.md** - 3-minute setup guide
+- **REDIS_SETUP_GUIDE.md** - Complete Redis setup
+- **REDIS_PERFORMANCE_METRICS.md** - Performance test results
 
 ## Performance Testing
 
-We've created comprehensive performance tests to measure cache effectiveness:
+We've created comprehensive performance tests to measure Redis cache effectiveness:
 
 ### Quick Test
 ```bash
@@ -290,102 +308,31 @@ python cache/tests/quick_performance_test.py
 python cache/tests/compare_cache_performance.py
 ```
 
-See `cache/docs/PERFORMANCE_METRICS.md` for detailed results.
+See `cache/docs/REDIS_PERFORMANCE_METRICS.md` for detailed results.
 
-## Next Steps: Redis Migration
+## Migration History
 
-### Current Status: Proof of Concept
+### Phase 1: In-Memory Cache (Proof of Concept)
 
-The current in-memory cache implementation was built as a **proof of concept** to validate the caching strategy and measure performance improvements. The results have been excellent (98%+ improvement), demonstrating that caching is a critical optimization for this API.
+We initially implemented an in-memory cache using `cachetools.TTLCache` to validate the caching strategy. Results were excellent:
+- **98%+ improvement** in response times
+- **54x speedup** for cached requests
+- **80%+ cache hit rate**
 
-### Why Migrate to Redis?
+This proved caching was critical for performance.
 
-While the in-memory cache works perfectly for single-instance deployments, **Redis is the next step** for production scalability:
+### Phase 2: Redis Migration (Current)
 
-1. **Multi-Instance Support**
-   - Load-balanced deployments need shared cache
-   - In-memory cache is per-process (not shared)
-   - Redis provides centralized cache for all instances
+Migrated to Redis (Upstash) for production:
+- ✅ **Multi-instance support** - Shared cache across all API instances
+- ✅ **Persistence** - Cache survives server restarts
+- ✅ **Better scalability** - Handles larger datasets
+- ✅ **Advanced monitoring** - Redis INFO metrics
+- ✅ **Per-key TTL** - More granular expiration than in-memory
 
-2. **Persistence**
-   - In-memory cache is lost on server restart
-   - Redis can persist cache to disk
-   - Faster recovery after deployments
-
-3. **Scalability**
-   - Redis can handle much larger cache sizes
-   - Better memory management
-   - Supports distributed caching
-
-4. **Advanced Features**
-   - Pub/sub for cache invalidation
-   - Atomic operations
-   - Better monitoring and metrics
-   - Cluster support for high availability
-
-### Migration Plan
-
-The architecture was **designed from the start** to make Redis migration seamless:
-
-**Step 1: Create Redis Cache Implementation**
-```python
-# cache/redis_cache.py
-class RedisCache:
-    def __init__(self):
-        self.redis_client = redis.Redis(...)
-    
-    def get(self, key: str, cache_type: str = "default"):
-        # Same interface as InMemoryCache
-        ...
-    
-    def set(self, key: str, value: Any, cache_type: str = "default"):
-        # Same interface as InMemoryCache
-        ...
-```
-
-**Step 2: Update Module Exports**
-```python
-# cache/__init__.py
-from .redis_cache import cache, RedisCache  # Instead of InMemoryCache
-```
-
-**Step 3: No Changes Needed in `app.py`**
-- Same `cache.get()` and `cache.set()` calls
-- Same cache types and TTLs
-- Zero code changes in application logic
-
-### Redis Configuration
-
-**Recommended Setup:**
-- **Deployment:** Managed Redis (AWS ElastiCache, Redis Cloud, etc.)
-- **Memory:** Start with 1-2GB, scale as needed
-- **Persistence:** RDB snapshots + AOF for durability
-- **High Availability:** Redis Sentinel or Cluster mode
-
-**TTL Strategy:**
-- Keep same TTL values from `config.py`
-- Redis supports per-key TTL (better than TTLCache's global TTL)
-- Can implement more granular expiration policies
-
-### Expected Benefits of Redis
-
-1. **Shared Cache:** All API instances share the same cache
-2. **Better Hit Rates:** Cache survives restarts and deployments
-3. **Monitoring:** Better observability with Redis metrics
-4. **Scalability:** Handle larger datasets and more concurrent users
-5. **Reliability:** High availability with Redis Sentinel/Cluster
-
-### Migration Checklist
-
-- [ ] Set up Redis instance (managed or self-hosted)
-- [ ] Install `redis-py` and `hiredis` packages
-- [ ] Create `RedisCache` class with same interface
-- [ ] Update `cache/__init__.py` to use Redis
-- [ ] Test with same performance test suite
-- [ ] Deploy and monitor cache hit rates
-- [ ] Remove in-memory cache code (optional)
+**Performance:** 89-92% improvement, 9-14x speedup, 90%+ hit rate
 
 ### Current Status
 
-✅ **In-memory cache is working excellently** for single-instance deployments with 98%+ performance improvement. This validates the caching strategy and provides a clear path forward for Redis migration when scaling to multiple instances.
+✅ **Redis cache is production-ready** and performing excellently. The system automatically falls back to in-memory cache if Redis is unavailable, ensuring reliability.
 
