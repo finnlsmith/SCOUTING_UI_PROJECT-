@@ -40,8 +40,13 @@ async def list_matches():
 
         # Return list of dicts
         # return df.to_dict(orient="records")
-        clean = df.replace([float("inf"), float("-inf")], pd.NA).fillna(None)
+        df = df.replace([float("inf"), float("-inf")], pd.NA)
+
+        # Convert to Python-native types safely
+        clean = df.where(pd.notnull(df), None)
+
         return clean.to_dict(orient="records")
+
 
 
     except Exception as e:
