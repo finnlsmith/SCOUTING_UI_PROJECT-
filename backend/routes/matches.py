@@ -39,7 +39,10 @@ async def list_matches():
         # df = df.sort_values(["tournament", "match_date"])
 
         # Return list of dicts
-        return df.to_dict(orient="records")
+        # return df.to_dict(orient="records")
+        clean = df.replace([float("inf"), float("-inf")], pd.NA).fillna(None)
+        return clean.to_dict(orient="records")
+
 
     except Exception as e:
         logger.exception("Failed to parse matches_df.csv")
