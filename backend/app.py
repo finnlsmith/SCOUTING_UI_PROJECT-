@@ -43,13 +43,13 @@ app = FastAPI(
 async def startup_event():
     """Warm up cache on startup by pre-loading common data"""
     try:
-        from cache import cache, async_s3
+        from cache import cache, s3
 
         logger.info("🔥 Starting cache warmup...")
 
         # Warm up matches_df.csv (most frequently accessed)
         try:
-            matches_df = await async_s3.get_dataframe(
+            matches_df = await s3.get_dataframe(
                 "matches_df.csv",
                 cache_type="matches_df",
             )
