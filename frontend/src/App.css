@@ -2,9 +2,10 @@ body, html, #root {
   margin: 0;
   padding: 0;
   height: 100%;
-  background-color: #0F0E26; /* unified dark background */
-  color: white; /* default text color */
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
   font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+  transition: background-color var(--transition-base), color var(--transition-base);
 }
 
 .App {

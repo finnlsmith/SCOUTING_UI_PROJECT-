@@ -1,4 +1,5 @@
 import React from "react";
+import styles from "./MatchSelector.module.css";
 
 export default function MatchSelector({
   matches,
@@ -8,7 +9,7 @@ export default function MatchSelector({
 }) {
   return (
     <select
-      style={{ width: '100%', padding: '8px', fontSize: '15px', borderRadius: 5, border: '1.1px solid #aaa', background: '#fff', marginBottom: 7 }}
+      className={styles.select}
       value={selectedMatch}
       onChange={e => onChange(e.target.value)}
       disabled={matchesLoading}

@@ -1,0 +1,32 @@
+.container {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  min-height: 100vh;
+  padding: 80px 120px;
+  font-family: sans-serif;
+  text-align: left;
+}
+
+.title {
+  font-weight: var(--font-weight-extrabold);
+  font-size: 34px;
+  margin-bottom: 40px;
+  text-align: left;
+}
+
+.content {
+  max-width: 850px;
+  line-height: 1.7;
+  font-size: var(--font-size-lg);
+}
+
+.link {
+  color: #4DA8FF;
+  text-decoration: none;
+  font-weight: var(--font-weight-semibold);
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+

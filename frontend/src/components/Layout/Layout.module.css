@@ -1,0 +1,35 @@
+.container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.content {
+  flex: 1;
+  color: var(--color-text-primary);
+  padding: var(--spacing-2xl) var(--spacing-4xl);
+}
+
+.footer {
+  text-align: center;
+  margin-top: -80px;
+  padding-top: 15px;
+  font-size: var(--font-size-sm);
+  opacity: 0.85;
+}
+
+.footerLink {
+  color: var(--color-text-link);
+  text-decoration: none;
+  margin-right: var(--spacing-xl);
+}
+
+.footerLink:hover {
+  text-decoration: underline;
+}
+
+.themeToggleWrapper {
+  position: fixed;
+  top: 12px;
+  right: 18px;
+  z-index: 2000;
+}

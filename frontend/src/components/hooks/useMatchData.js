@@ -11,8 +11,13 @@ export default function useMatchData() {
     async function fetchMatches() {
       try {
         setLoading(true);
-        const res = await fetch(`${BACKEND_URL}/matches`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        setError("");
+        const url = `${BACKEND_URL}/matches`;
+        console.log("Fetching matches from:", url);
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
         const data = await res.json();
         setMatches(
           data.map((m, i) => ({
@@ -23,7 +28,9 @@ export default function useMatchData() {
           }))
         );
       } catch (err) {
-        setError("Failed to load matches");
+        console.error("Error fetching matches:", err);
+        const errorMessage = err.message || "Failed to load matches";
+        setError(`Failed to load matches: ${errorMessage}. Make sure the backend is running on ${BACKEND_URL.replace('/api', '')}`);
       } finally {
         setLoading(false);
       }

@@ -1,0 +1,20 @@
+.select {
+  width: 100%;
+  padding: var(--spacing-sm);
+  font-size: var(--font-size-base);
+  border-radius: var(--radius-sm);
+  border: 1.1px solid #aaa;
+  background: var(--color-bg-white);
+  margin-bottom: 7px;
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--color-button-primary);
+}
+
+.select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
