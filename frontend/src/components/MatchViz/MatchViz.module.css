@@ -1,0 +1,436 @@
+.container {
+  padding: var(--spacing-2xl) 0 70px;
+  color: var(--color-text-primary);
+  min-height: 100vh;
+}
+
+.content {
+  max-width: 1310px;
+  margin: 0 auto;
+}
+
+.tournamentTitle {
+  font-size: var(--font-size-5xl);
+  font-weight: var(--font-weight-extrabold);
+  margin-bottom: 19px;
+  letter-spacing: 1px;
+}
+
+.matchSelection {
+  margin-bottom: 30px;
+}
+
+.sectionTitle {
+  font-size: 27px;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 11px;
+}
+
+.matchSelectorWrapper {
+  max-width: 350px;
+  margin-bottom: 22px;
+  margin: 0 auto;
+}
+
+.mainRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3xl);
+  margin-bottom: 54px;
+}
+
+.matchFacts {
+  flex: 1;
+  min-width: 295px;
+}
+
+.matchFactsTitle {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.matchFactsCard {
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-2xl);
+  background: var(--color-bg-card);
+  padding: 17px;
+  min-height: 230px;
+  max-width: 350px;
+  margin: 0 auto;
+}
+
+.shotMaps {
+  flex: 2;
+  min-width: 340px;
+  text-align: center;
+}
+
+.shotMapsTitle {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--spacing-lg);
+}
+
+.flipSidesContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 14px;
+  gap: 28px;
+}
+
+.flipSidesLabel {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-normal);
+}
+
+.flipSidesCheckbox {
+  transform: scale(1.4);
+  vertical-align: middle;
+  margin-right: 7px;
+}
+
+.buttonGroup {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-lg);
+  margin-bottom: 13px;
+}
+
+.button {
+  font-size: 17px;
+  padding: 9px 18px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid #222;
+  font-weight: var(--font-weight-medium);
+  background: var(--color-bg-white);
+  box-shadow: var(--shadow-button);
+  min-width: 148px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.button:hover {
+  transform: translateY(-1px);
+  box-shadow: 4px 5px 0 rgba(0, 0, 0, 0.03);
+}
+
+.buttonBoth {
+  composes: button;
+  min-width: 170px;
+}
+
+.resetButton {
+  font-size: var(--font-size-base);
+  padding: 6px 20px;
+  border-radius: var(--radius-md);
+  border: 1.3px solid #bbb;
+  background: var(--color-bg-white);
+  font-weight: var(--font-weight-medium);
+  margin: 0 var(--spacing-xs);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.resetButton:hover {
+  background: #f5f5f5;
+}
+
+.resetButtonContainer {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+  margin-bottom: -12px;
+}
+
+.shotMapPlot {
+  margin: var(--spacing-lg) auto 0;
+  width: 330px;
+  display: flex;
+  justify-content: center;
+}
+
+.passingNetwork {
+  flex: 1.42;
+  min-width: 295px;
+}
+
+.passingNetworkTitle {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.passingNetworkButtons {
+  display: flex;
+  justify-content: center;
+  gap: 11px;
+  margin-bottom: 15px;
+}
+
+.passingNetworkButton {
+  composes: button;
+  min-width: 155px;
+}
+
+.passingNetworkPlot {
+  margin: var(--spacing-lg) auto 0;
+  max-width: 540px;
+}
+
+.keyMoments {
+  margin-top: 11px;
+}
+
+.keyMomentsTitle {
+  font-size: 29px;
+  font-weight: var(--font-weight-medium);
+  margin-bottom: 5px;
+  text-align: left;
+}
+
+.showScenesLabel {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-normal);
+  margin-left: 18px;
+}
+
+.showScenesCheckbox {
+  transform: scale(1.32);
+  margin-right: 3px;
+  vertical-align: middle;
+}
+
+.momentsContainer {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 19px;
+  flex-wrap: nowrap;
+}
+
+.momentsTable {
+  width: 396px;
+  min-width: 220px;
+  max-width: 396px;
+}
+
+.momentsTableElement {
+  width: 99%;
+  font-size: 1.13rem;
+  border-collapse: collapse;
+  margin-bottom: 5px;
+  margin-top: var(--spacing-sm);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-lg);
+}
+
+.tableHeader {
+  background: #f5f5f7;
+  color: var(--color-text-dark);
+}
+
+.tableHeaderCell {
+  border: 1px solid var(--color-border-light);
+  padding: 3px 7px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.tableRow {
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.tableRowSelected {
+  composes: tableRow;
+  background: var(--color-highlight);
+  font-weight: var(--font-weight-semibold);
+}
+
+.tableCell {
+  border: 1px solid #eee;
+  padding: 2.5px 7px;
+}
+
+.sceneViewer {
+  flex: 1;
+  min-width: 430px;
+  margin-left: var(--spacing-lg);
+  border-radius: var(--radius-3xl);
+  background: var(--color-bg-white);
+  box-shadow: 0 1.5px 16px rgba(187, 184, 184, 0.5);
+  padding: 14px 18px 24px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sceneNav {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  gap: 13px;
+}
+
+.sceneNavButton {
+  font-size: 26px;
+  font-weight: var(--font-weight-semibold);
+  width: 48px;
+  height: 44px;
+  border-radius: 7px;
+  background: var(--color-bg-white);
+  border: 1.5px solid #111;
+  color: #111;
+  margin: 0 9px;
+  box-shadow: 2px 2px 0 rgba(68, 68, 68, 0.2);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.sceneNavButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 3px 3px 0 rgba(68, 68, 68, 0.3);
+}
+
+.sceneNavButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.sceneNavLabel {
+  font-size: 19px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.sceneStatus {
+  min-height: 42px;
+  margin: 10px 0 var(--spacing-lg);
+  color: #ad031c;
+  font-weight: var(--font-weight-medium);
+}
+
+.sceneImage {
+  max-width: 96%;
+  margin: 10px auto;
+  border: 2px solid #888;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.01);
+}
+
+.gamePhases {
+  margin: 52px 0 0;
+  max-width: 980px;
+}
+
+.gamePhasesTitle {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-medium);
+  color: #f9f9ff;
+  margin-bottom: 3px;
+}
+
+.gamePhasesLoading {
+  color: #aaa;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-normal);
+}
+
+.gamePhasesError {
+  color: red;
+  font-size: var(--font-size-lg);
+}
+
+.gamePhasesEmpty {
+  color: #aaa;
+  font-size: 21px;
+  font-weight: var(--font-weight-normal);
+  margin-top: 11px;
+  margin-bottom: 26px;
+}
+
+.gamePhasesList {
+  margin-top: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.gamePhaseCard {
+  background: var(--color-bg-card-alt);
+  border: 2px solid var(--color-border-dark);
+  border-radius: 11px;
+  padding: var(--spacing-xl) var(--spacing-lg);
+  box-shadow: var(--shadow-xl);
+  min-height: 60px;
+}
+
+.gamePhaseTitle {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+}
+
+.gamePhaseTime {
+  margin: var(--spacing-sm) 0;
+  font-size: 15px;
+  color: var(--color-text-secondary);
+}
+
+.gamePhaseScore {
+  font-size: 15px;
+}
+
+.gamePhaseGoalInfo {
+  margin-top: 6px;
+  font-size: var(--font-size-sm);
+  color: #357;
+}
+
+.gamePhaseBreakReasons {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+}
+
+.metricsContainer {
+  margin-top: 12px;
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.metricCard {
+  background: var(--color-bg-white);
+  border: 1px solid #e8e8ec;
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+
+.metricLabel {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  margin-bottom: 6px;
+}
+
+.metricValue {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-dark);
+}
+
+.loadingText {
+  color: var(--color-text-secondary);
+}
+
+.errorText {
+  color: red;
+}
+
+.emptyText {
+  color: var(--color-text-secondary);
+}
+

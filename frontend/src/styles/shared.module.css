@@ -1,0 +1,118 @@
+/* Shared utility classes for common patterns */
+
+.button {
+  font-size: var(--font-size-lg);
+  padding: 9px 18px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid #222;
+  font-weight: var(--font-weight-medium);
+  background: var(--color-bg-white);
+  box-shadow: var(--shadow-button);
+  min-width: 148px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.button:hover {
+  transform: translateY(-1px);
+  box-shadow: 4px 5px 0 rgba(0, 0, 0, 0.03);
+}
+
+.button:active {
+  transform: translateY(0);
+}
+
+.buttonPrimary {
+  composes: button;
+  background: var(--color-button-primary);
+  color: var(--color-text-primary);
+  border: none;
+  padding: 20px 70px;
+  border-radius: var(--radius-xl);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: var(--shadow-button-lg);
+  min-width: auto;
+}
+
+.buttonSecondary {
+  composes: button;
+  background: var(--color-button-secondary);
+  color: var(--color-text-primary);
+  border: none;
+  padding: 20px 70px;
+  border-radius: var(--radius-xl);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: var(--shadow-button-lg);
+  min-width: auto;
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.buttonReset {
+  font-size: var(--font-size-base);
+  padding: 6px 20px;
+  border-radius: var(--radius-md);
+  border: 1.3px solid #bbb;
+  background: var(--color-bg-white);
+  font-weight: var(--font-weight-medium);
+  margin: 0 var(--spacing-xs);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.buttonReset:hover {
+  background: #f5f5f5;
+}
+
+.buttonNav {
+  display: block;
+  background-color: var(--color-button-nav);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+  padding: 12px 20px;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-lg);
+  text-decoration: none;
+  transition: var(--transition-base);
+}
+
+.buttonNavActive {
+  composes: buttonNav;
+  background-color: var(--color-button-nav-active);
+}
+
+.card {
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-2xl);
+  background: var(--color-bg-card);
+  padding: var(--spacing-md);
+}
+
+.cardAlt {
+  composes: card;
+  background: var(--color-bg-card-alt);
+  border: 2px solid var(--color-border-dark);
+  box-shadow: var(--shadow-xl);
+}
+
+.heading1 {
+  font-size: var(--font-size-5xl);
+  font-weight: var(--font-weight-extrabold);
+  margin-bottom: 19px;
+  letter-spacing: 1px;
+}
+
+.heading2 {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--spacing-lg);
+}
+
+.heading3 {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-medium);
+}
+
