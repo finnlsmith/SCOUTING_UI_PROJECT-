@@ -3,7 +3,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import styles from "./ThemeToggle.module.css";
 
 export default function ThemeToggle() {
-  const { theme, toggleTheme, isDark } = useTheme();
+  const { toggleTheme, isDark } = useTheme(); // removed unused `theme`
 
   return (
     <button
@@ -23,4 +23,3 @@ export default function ThemeToggle() {
     </button>
   );
 }
-
