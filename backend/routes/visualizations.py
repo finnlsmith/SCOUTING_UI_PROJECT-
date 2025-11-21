@@ -72,7 +72,7 @@ async def get_match_viz(filename: str, team: str | None = Query(default=None, de
         - Team colors auto-assigned from predefined palette
         - Results are cached for 10 minutes
     """
-    from cache import cache, async_s3
+    from cache import cache, s3
     
     # Build cache key including team filter
     cache_key = f"viz:{filename}:{team or 'all'}:plotly"
@@ -84,7 +84,7 @@ async def get_match_viz(filename: str, team: str | None = Query(default=None, de
     
     try:
         # --- fetch CSV (404 if not found) - use async with caching
-        df = await async_s3.get_dataframe(filename, cache_type="events_df")
+        df = s3.get_dataframe(filename, cache_type="events_df")
         if df is None:
             raise HTTPException(status_code=404, detail=f"S3 key not found: {filename}")
 
@@ -127,7 +127,7 @@ async def get_match_viz(filename: str, team: str | None = Query(default=None, de
         }
         try:
             # try matches_df lookup (use cached version)
-            mdf = await async_s3.get_dataframe("matches_df.csv", cache_type="matches_df")
+            mdf = s3.get_dataframe("matches_df.csv", cache_type="matches_df")
 
             # match_id from filename
             m = re.search(r"\d+", filename or "")
@@ -146,7 +146,7 @@ async def get_match_viz(filename: str, team: str | None = Query(default=None, de
             # compute team shot counts/xG if possible (use cached events_df)
             if match_id is not None and mdf is not None and meta["home_team"] and meta["away_team"]:
                 ev_key = f"events_{match_id}.csv"
-                ev = await async_s3.get_dataframe(ev_key, cache_type="events_df")
+                ev = s3.get_dataframe(ev_key, cache_type="events_df")
                 if ev is None:
                     ev = pd.DataFrame()  # Fallback to empty DataFrame
                 if {"type", "team"} <= set(ev.columns):
@@ -461,7 +461,7 @@ async def passing_network_like_matplotlib(
         - Falls back to all players if lineup data unavailable
         - Pass recipient detection uses nearest-player heuristic
     """
-    from cache import cache, async_s3
+    from cache import cache, s3
     
     # Build cache key including all parameters
     cache_key = f"passnet:{filename}:{team}:{min_passes}:{flip}:plotly"
@@ -473,7 +473,7 @@ async def passing_network_like_matplotlib(
     
     try:
         # -------- Load events CSV with caching --------
-        events = await async_s3.get_dataframe(filename, cache_type="events_df")
+        events = s3.get_dataframe(filename, cache_type="events_df")
         if events is None:
             raise HTTPException(status_code=404, detail=f"S3 key not found: {filename}")
         cols = set(events.columns)
@@ -541,7 +541,7 @@ async def passing_network_like_matplotlib(
 
             for key in candidates:
                 try:
-                    df = await async_s3.get_dataframe(key, cache_type="events_df")
+                    df = s3.get_dataframe(key, cache_type="events_df")
                     if df is not None:
                         return df
                 except Exception:
@@ -838,7 +838,7 @@ async def important_moments(filename: str):
     - Player names abbreviated (e.g., "Harry Kane" → "H. Kane")
     - Results are cached for 10 minutes
     """
-    from cache import cache, async_s3
+    from cache import cache, s3
     
     cache_key = f"moments:{filename}:json"
     
@@ -849,7 +849,7 @@ async def important_moments(filename: str):
     
     try:
         # Load events with caching
-        df_events = await async_s3.get_dataframe(filename, cache_type="events_df")
+        df_events = s3.get_dataframe(filename, cache_type="events_df")
         if df_events is None:
             # Fallback to local file if S3 fails
             try:
@@ -1011,7 +1011,7 @@ async def game_phases(filename: str):
         - All metrics calculated per phase independently
         - Results are cached for 10 minutes
     """
-    from cache import cache, async_s3
+    from cache import cache, s3
     
     cache_key = f"phases:{filename}:json"
     
@@ -1022,7 +1022,7 @@ async def game_phases(filename: str):
     
     try:
         # Load events with caching
-        events = await async_s3.get_dataframe(filename, cache_type="events_df")
+        events = s3.get_dataframe(filename, cache_type="events_df")
         if events is None:
             # Fallback to local file if S3 fails
             try:
@@ -1588,9 +1588,9 @@ async def possession_scene(filename: str, possession: int = Query(..., descripti
         return None
     # 2. Load the requested possession event data
     try:
-        from cache import async_s3
+        from cache import s3
         # Use async S3 client with caching
-        events = await async_s3.get_dataframe(filename, cache_type="events_df")
+        events = s3.get_dataframe(filename, cache_type="events_df")
         if events is None:
             raise HTTPException(status_code=404, detail=f"Failed to load events file: {filename}")
         # --- Extract the single possession's events ---
