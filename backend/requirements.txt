@@ -1,8 +1,115 @@
-fastapi
-uvicorn
-pandas
-plotly
-numpy
-python-multipart
-boto3
-matplotlib
+# ============================================
+# Columbia MSDS Soccer Analytics
+# Comprehensive Requirements
+# ============================================
+# All dependencies for notebooks AND backend API
+# Tested with Python 3.10+ / 3.11
+
+# Core Data Science Stack
+# -----------------------
+numpy==2.2.6
+pandas==2.3.3
+matplotlib==3.10.6
+scipy==1.15.1
+
+# Jupyter Notebook Environment
+# -----------------------------
+ipykernel==6.30.1
+ipython==8.37.0
+jupyter==1.1.1
+jupyter_client==8.6.3
+jupyter_core==5.8.1
+notebook==7.3.2
+nbconvert==7.16.4
+nbformat==5.10.4
+
+# FastAPI Backend Dependencies
+# -----------------------------
+fastapi==0.115.6
+uvicorn==0.34.0
+python-multipart==0.0.20
+python-dotenv==1.0.1
+boto3==1.35.93
+botocore==1.35.93
+plotly==5.24.1
+
+# Image Processing
+# ----------------
+Pillow==11.3.0
+
+# Matplotlib Dependencies
+# -----------------------
+contourpy==1.3.2
+cycler==0.12.1
+fonttools==4.60.1
+kiwisolver==1.4.9
+matplotlib-inline==0.1.7
+pyparsing==3.2.5
+
+# Jupyter/IPython Dependencies
+# -----------------------------
+appnope==0.1.4            # macOS only (safe on other platforms)
+asttokens==3.0.0
+comm==0.2.3
+debugpy==1.8.17
+decorator==5.2.1
+exceptiongroup==1.3.0
+executing==2.2.1
+jedi==0.19.2
+nest-asyncio==1.6.0
+packaging==25.0
+parso==0.8.5
+pexpect==4.9.0
+platformdirs==4.4.0
+prompt_toolkit==3.0.52
+psutil==7.1.0
+ptyprocess==0.7.0
+pure_eval==0.2.3
+Pygments==2.19.2
+pyzmq==27.1.0
+stack-data==0.6.3
+tornado==6.5.2
+traitlets==5.14.3
+wcwidth==0.2.14
+
+# Utility Libraries
+# -----------------
+python-dateutil==2.9.0.post0
+pytz==2025.2
+tzdata==2025.2
+six==1.17.0
+typing_extensions==4.15.0
+
+# FastAPI/Uvicorn Dependencies
+# -----------------------------
+starlette==0.41.3
+anyio==4.8.0
+sniffio==1.3.1
+idna==3.10
+h11==0.14.0
+click==8.1.8
+
+# AWS SDK Dependencies (boto3)
+# -----------------------------
+jmespath==1.0.1
+s3transfer==0.10.4
+urllib3==2.3.0
+
+# Plotly Dependencies
+# -------------------
+tenacity==9.0.0
+
+# Notes:
+# ------
+# - All versions pinned for reproducibility
+# - Compatible with Python 3.10 and 3.11
+# - Includes dependencies for:
+#   * Jupyter notebooks (data analysis)
+#   * FastAPI backend (API server)
+#   * AWS S3 integration (data storage)
+#   * Plotly visualizations (interactive charts)
+#   * Matplotlib (static charts)
+#   * PIL/Pillow (image processing)
+# - Install with: pip install -r requirements.txt
+# - For backend only, all necessary packages included
+# - For notebooks only, all necessary packages included
