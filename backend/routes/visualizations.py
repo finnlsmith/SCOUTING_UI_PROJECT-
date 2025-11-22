@@ -425,7 +425,7 @@ async def get_match_viz(filename: str, team: str | None = Query(default=None, de
                 np.bool_: bool,
             }
         )
-        print("DEBUG-META:", meta)
+        # print("DEBUG-META:", meta)
 
         return JSONResponse(content=safe_payload)
 
@@ -564,13 +564,7 @@ async def passing_network_like_matplotlib(
 
         async def _try_load_lineups():
             candidates = []
-            if match_id:
-                candidates += [
-                    f"lineups_{match_id}.csv",
-                    f"lineups{match_id}.csv",
-                    f"{match_id}_lineups.csv",
-                ]
-            candidates += ["lineups_df.csv", "lineups.csv", "match_lineups.csv"]
+            candidates += ["lineups_df.csv"] #, "lineups.csv", "match_lineups.csv"]
 
             for key in candidates:
                 try:
