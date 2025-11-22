@@ -401,8 +401,15 @@ async def get_match_viz(filename: str, team: str | None = Query(default=None, de
         fig.update_yaxes(autorange="reversed")
 
         # combine payload
-        payload = fig.to_dict()
-        payload.update(meta)
+        # payload = fig.to_dict()
+        # payload.update(meta)
+        import plotly.utils as pu
+
+        # Convert plotly Figure → JSON-safe dict
+        plotly_json = json.loads(json.dumps(fig, cls=pu.PlotlyJSONEncoder))
+
+        # Merge plot + metadata
+        payload = {**plotly_json, **meta}
         
         # Cache the result
         cache.set(cache_key, payload, cache_type="plotly_viz")
@@ -418,6 +425,7 @@ async def get_match_viz(filename: str, team: str | None = Query(default=None, de
                 np.bool_: bool,
             }
         )
+        print("DEBUG-META:", meta)
 
         return JSONResponse(content=safe_payload)
 
