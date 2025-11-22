@@ -80,8 +80,20 @@ async def get_match_viz(filename: str, team: str | None = Query(default=None, de
     
     # Check cache first
     cached_result = cache.get(cache_key, cache_type="plotly_viz")
+    # if cached_result is not None:
+    #     return JSONResponse(content=jsonable_encoder(cached_result))
     if cached_result is not None:
-        return JSONResponse(content=jsonable_encoder(cached_result))
+        safe_cached = jsonable_encoder(
+            cached_result,
+            custom_encoder={
+                pd.Timestamp: lambda v: v.isoformat(),
+                np.integer: int,
+                np.floating: float,
+                np.bool_: bool,
+            }
+        )
+        return JSONResponse(content=safe_cached)
+
     
     try:
         # --- fetch CSV (404 if not found) - use async with caching
@@ -395,7 +407,19 @@ async def get_match_viz(filename: str, team: str | None = Query(default=None, de
         # Cache the result
         cache.set(cache_key, payload, cache_type="plotly_viz")
         
-        return JSONResponse(content=jsonable_encoder(payload))
+        # return JSONResponse(content=jsonable_encoder(payload))
+        # Make payload fully JSON-safe (handles numpy, pandas, plotly objects)
+        safe_payload = jsonable_encoder(
+            payload,
+            custom_encoder={
+                pd.Timestamp: lambda v: v.isoformat(),
+                np.integer: int,
+                np.floating: float,
+                np.bool_: bool,
+            }
+        )
+
+        return JSONResponse(content=safe_payload)
 
     except HTTPException:
         raise
