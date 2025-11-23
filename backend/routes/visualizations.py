@@ -2067,18 +2067,19 @@ async def possession_scene(filename: str, possession: int = Query(..., descripti
 
             if typ == "Clearance":
                 start_x, start_y = get_xy(event.get('location'))
-                end_x, end_y = get_xy(event.get('clearance_end_location'))
                 start_y_flipped = flip_y(start_y)
-                end_y_flipped = flip_y(end_y)
-                if not (np.isnan(start_x) or np.isnan(end_x)):
+                if not np.isnan(start_x):
                     if team_is_shot_team(event, shot_team):
-                        ax.plot([start_x, end_x], [start_y_flipped, end_y_flipped], color='green', linestyle=':', lw=2.3, alpha=0.96, zorder=7)
-                        txt_color = 'green'
+                        ax.text(start_x, start_y_flipped, "C", fontsize=12, ha='center', va='center', color='green', fontweight='bold', zorder=12)
                     else:
-                        ax.plot([start_x, end_x], [start_y_flipped, end_y_flipped], color='red', linestyle=':', lw=2.3, alpha=0.96, zorder=7)
-                        txt_color = 'red'
-                    if player_short:
-                        ax.text(start_x, start_y_flipped, player_short, fontsize=7, color=txt_color, verticalalignment='bottom', horizontalalignment='right', zorder=40)
+                        ax.text(start_x, start_y_flipped, "C", fontsize=12, ha='center', va='center', color='red', fontweight='bold', zorder=12)
+                continue
+
+            if typ == "Error":
+                start_x, start_y = get_xy(event.get('location'))
+                start_y_flipped = flip_y(start_y)
+                if not np.isnan(start_x):
+                    ax.text(start_x, start_y_flipped, "E", fontsize=12, ha='center', va='center', color='#FF1493', fontweight='bold', zorder=12)
                 continue
 
             if typ == "Shot":
@@ -2103,7 +2104,7 @@ async def possession_scene(filename: str, possession: int = Query(..., descripti
                         circ = plt.Circle((end_x, end_y_flipped), 1.5, fill=False, edgecolor='red', lw=2.5, zorder=15)
                         ax.add_patch(circ)
                     elif outcome == 'saved':
-                        ax.text(end_x, end_y_flipped, "🚫", fontsize=18, ha='center', va='center', color='red', zorder=15)
+                        ax.text(end_x, end_y_flipped, "SAVE", fontsize=12, ha='center', va='center', color='red', fontweight='bold', zorder=15)
                     shot_num = shot_numbers.get(i)
                     shot_player = shot_player_names.get(i, player)
                     shot_player_short = format_player_name(shot_player)
