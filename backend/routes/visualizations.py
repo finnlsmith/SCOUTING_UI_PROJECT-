@@ -1932,7 +1932,7 @@ async def possession_scene(filename: str, possession: int = Query(..., descripti
                 end_x, end_y = get_xy(event.get('pass_end_location'))
                 start_x_flipped = flip_x(start_x)
                 end_x_flipped = flip_x(end_x)
-                start_y_flipped = flip_y(start_y)
+                start_y_flipped = start_y
                 end_y_flipped = end_y
                 pass_type = event.get('pass_type', None)
                 if not (np.isnan(start_x_flipped) or np.isnan(end_x_flipped)):
@@ -2040,11 +2040,14 @@ async def possession_scene(filename: str, possession: int = Query(..., descripti
                     if team_is_shot_team(event, shot_team):
                         ax.plot(x, y_flipped, marker='o', color='green', markersize=15, markeredgewidth=2, markeredgecolor='black', zorder=6)
                         txt_color = 'green'
+                        if player_short:
+                            ax.text(x, y_flipped, player_short, fontsize=7, color=txt_color, verticalalignment='center', horizontalalignment='center', zorder=40, fontweight='semibold')
                     else:
-                        ax.plot(x, y_flipped, marker='o', color='red', markersize=15, markeredgewidth=2, markeredgecolor='black', zorder=6)
+                        x_flipped = flip_x(x)
+                        ax.plot(x_flipped, y, marker='o', color='red', markersize=15, markeredgewidth=2, markeredgecolor='black', zorder=6)
                         txt_color = 'red'
-                    if player_short:
-                        ax.text(x, y_flipped, player_short, fontsize=7, color=txt_color, verticalalignment='center', horizontalalignment='center', zorder=40, fontweight='semibold')
+                        if player_short:
+                            ax.text(x_flipped, y, player_short, fontsize=7, color=txt_color, verticalalignment='center', horizontalalignment='center', zorder=40, fontweight='semibold')
                 continue
 
             if typ == "Pressure":
