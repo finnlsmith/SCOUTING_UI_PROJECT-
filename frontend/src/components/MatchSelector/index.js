@@ -17,11 +17,11 @@ export default function MatchSelector({
       <option value="">-- Choose a match --</option>
       {matches
       // 1) Filter out "Frames 360"
-      .filter(m => !m.name.includes("Frames 360"))
+      .filter(m => !m.label.includes("Frames 360"))
 
       // 2) Render cleaned text
       .map(m => {
-        const cleanedLabel = (m.label || m.name).replace(/ - Events$/, "");
+        const cleanedLabel = (m.label || m.name).replace(/ – Events$/, "");
         return (
           <option key={m.file} value={m.file}>
             {cleanedLabel}
