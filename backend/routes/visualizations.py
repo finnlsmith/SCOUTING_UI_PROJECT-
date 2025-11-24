@@ -2070,19 +2070,29 @@ async def possession_scene(filename: str, possession: int = Query(..., descripti
 
             if typ == "Clearance":
                 start_x, start_y = get_xy(event.get('location'))
-                start_y_flipped = flip_y(start_y)
-                if not np.isnan(start_x):
+                start_x_flipped = flip_x(start_x)
+                # Note: now flip_x is applied to start_x, and y is not flipped
+                if not np.isnan(start_x_flipped):
                     if team_is_shot_team(event, shot_team):
-                        ax.text(start_x, start_y_flipped, "C", fontsize=12, ha='center', va='center', color='green', fontweight='bold', zorder=12)
+                        ax.text(start_x_flipped, start_y, "C", fontsize=8, ha='center', va='center', color='green', fontweight='bold', zorder=12)
+                        if player_short:
+                            ax.text(start_x_flipped, start_y + 2.0, player_short, fontsize=7, color='green',
+                                    ha='center', va='bottom', zorder=14)
                     else:
-                        ax.text(start_x, start_y_flipped, "C", fontsize=12, ha='center', va='center', color='red', fontweight='bold', zorder=12)
+                        ax.text(start_x_flipped, start_y, "C", fontsize=8, ha='center', va='center', color='red', fontweight='bold', zorder=12)
+                        if player_short:
+                            ax.text(start_x_flipped, start_y + 2.0, player_short, fontsize=7, color='red',
+                                    ha='center', va='bottom', zorder=14)
                 continue
 
             if typ == "Error":
                 start_x, start_y = get_xy(event.get('location'))
-                start_y_flipped = flip_y(start_y)
-                if not np.isnan(start_x):
-                    ax.text(start_x, start_y_flipped, "E", fontsize=12, ha='center', va='center', color='#FF1493', fontweight='bold', zorder=12)
+                start_x_flipped = flip_x(start_x)
+                if not np.isnan(start_x_flipped):
+                    ax.text(start_x_flipped, start_y, "E", fontsize=8, ha='center', va='center', color='#FF1493', fontweight='bold', zorder=12)
+                    if player_short:
+                        ax.text(start_x_flipped, start_y + 2.0, player_short, fontsize=7, color='#FF1493',
+                                ha='center', va='bottom', zorder=14)
                 continue
 
             if typ == "Shot":
