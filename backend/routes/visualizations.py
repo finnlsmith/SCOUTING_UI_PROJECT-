@@ -1382,21 +1382,40 @@ async def game_phases(filename: str):
 
                 # Box entries dedup (by possession across carries and passes)
                 home_poss_box, away_poss_box = set(), set()
+                home_box_locations, away_box_locations = [], []
+                
                 if not carry_phase.empty and 'possession' in carry_phase.columns:
                     cb = carry_phase[(carry_phase['in_box']) & carry_phase['team'].notna()]
-                    for _, r in cb[['team', 'possession']].iterrows():
+                    for _, r in cb[['team', 'possession', 'point']].iterrows():
+                        poss_num = int(r['possession'])
                         if r['team'] == home_team:
-                            home_poss_box.add(int(r['possession']))
+                            if poss_num not in home_poss_box:
+                                home_poss_box.add(poss_num)
+                                if r['point']:
+                                    home_box_locations.append({'x': r['point'][0], 'y': r['point'][1], 'type': 'carry'})
                         elif r['team'] == away_team:
-                            away_poss_box.add(int(r['possession']))
+                            if poss_num not in away_poss_box:
+                                away_poss_box.add(poss_num)
+                                if r['point']:
+                                    away_box_locations.append({'x': r['point'][0], 'y': r['point'][1], 'type': 'carry'})
+                
                 if not pass_phase.empty and 'possession' in pass_phase.columns:
                     pb = pass_phase[(pass_phase['in_box']) & pass_phase['team'].notna()]
-                    for _, r in pb[['team', 'possession']].iterrows():
+                    for _, r in pb[['team', 'possession', 'point']].iterrows():
+                        poss_num = int(r['possession'])
                         if r['team'] == home_team:
-                            home_poss_box.add(int(r['possession']))
+                            if poss_num not in home_poss_box:
+                                home_poss_box.add(poss_num)
+                                if r['point']:
+                                    home_box_locations.append({'x': r['point'][0], 'y': r['point'][1], 'type': 'pass'})
                         elif r['team'] == away_team:
-                            away_poss_box.add(int(r['possession']))
+                            if poss_num not in away_poss_box:
+                                away_poss_box.add(poss_num)
+                                if r['point']:
+                                    away_box_locations.append({'x': r['point'][0], 'y': r['point'][1], 'type': 'pass'})
+                
                 box_entries_dedup = {home_team: len(home_poss_box), away_team: len(away_poss_box)}
+                box_entry_locations = {home_team: home_box_locations, away_team: away_box_locations}
 
                 # Fouls and cards
                 fouls = ev_phase[ev_phase['type'] == 'Foul Committed'].copy() if 'type' in ev_phase.columns else pd.DataFrame()
@@ -1485,8 +1504,10 @@ async def game_phases(filename: str):
                 score_start_counts = score_at_time(sm, ss)
                 score_end_counts = score_at_time(em, es)
 
-                # ===== SHOT MAP DATA PER TEAM =====
+                # ===== SHOT MAP DATA PER TEAM (including red cards and own goals) =====
                 shot_map_data = {home_team: [], away_team: []}
+                
+                # Add shots
                 if not shots.empty and {'location', 'team', 'shot_outcome'}.issubset(shots.columns):
                     for _, shot_row in shots.iterrows():
                         shot_team_name = shot_row.get('team')
@@ -1528,7 +1549,71 @@ async def game_phases(filename: str):
                             'xg': round(xg_val, 3),
                             'outcome': outcome,
                             'color': color,
-                            'player': str(shot_row.get('player', ''))
+                            'player': str(shot_row.get('player', '')),
+                            'event_type': 'shot'
+                        })
+                
+                # Add Red Cards
+                if not fouls.empty and 'foul_committed_card' in fouls.columns:
+                    red_cards_phase = fouls[fouls['foul_committed_card'] == 'Red Card']
+                    if not red_cards_phase.empty and 'location' in red_cards_phase.columns:
+                        for _, rc_row in red_cards_phase.iterrows():
+                            rc_team_name = rc_row.get('team')
+                            if rc_team_name not in [home_team, away_team]:
+                                continue
+                            
+                            loc = rc_row.get('location')
+                            if isinstance(loc, str):
+                                try:
+                                    loc = json.loads(loc)
+                                except:
+                                    try:
+                                        from ast import literal_eval
+                                        loc = literal_eval(loc)
+                                    except:
+                                        continue
+                            
+                            if not isinstance(loc, (list, tuple)) or len(loc) < 2:
+                                continue
+                            
+                            x, y = float(loc[0]), float(loc[1])
+                            shot_map_data[rc_team_name].append({
+                                'x': x,
+                                'y': y,
+                                'color': 'red',
+                                'player': str(rc_row.get('player', '')),
+                                'event_type': 'red_card'
+                            })
+                
+                # Add Own Goals For
+                own_goals_phase = ev_phase[ev_phase['type'] == 'Own Goal For'] if 'type' in ev_phase.columns else pd.DataFrame()
+                if not own_goals_phase.empty and 'location' in own_goals_phase.columns:
+                    for _, og_row in own_goals_phase.iterrows():
+                        og_team_name = og_row.get('team')
+                        if og_team_name not in [home_team, away_team]:
+                            continue
+                        
+                        loc = og_row.get('location')
+                        if isinstance(loc, str):
+                            try:
+                                loc = json.loads(loc)
+                            except:
+                                try:
+                                    from ast import literal_eval
+                                    loc = literal_eval(loc)
+                                except:
+                                    continue
+                        
+                        if not isinstance(loc, (list, tuple)) or len(loc) < 2:
+                            continue
+                        
+                        x, y = float(loc[0]), float(loc[1])
+                        shot_map_data[og_team_name].append({
+                            'x': x,
+                            'y': y,
+                            'color': 'purple',
+                            'player': str(og_row.get('player', '')),
+                            'event_type': 'own_goal'
                         })
 
                 phase_metrics.append({
@@ -1540,6 +1625,7 @@ async def game_phases(filename: str):
                     'end_second': es,
                     'possession_pct_by_passes': possession_stats,
                     'box_entries': box_entries_dedup,
+                    'box_entry_locations': box_entry_locations,
                     'final_third_entries': final_third_entries_dedup,
                     'fouls': fouls_per_team,
                     'cards': cards_per_team,

@@ -420,12 +420,12 @@ export default function MatchViz() {
                               </div>
                             </div>
                             
-                            {/* Shot Maps for each team */}
+                            {/* Key Event Maps (shots, cards, own goals) */}
                             {m.shot_map_data && (
                               <div className={styles.shotMapsContainer}>
-                                <h3 className={styles.shotMapsTitle}>Shot Maps</h3>
+                                <h3 className={styles.shotMapsTitle}>Key Event Maps (shots, cards, own goals)</h3>
                                 <div className={styles.shotMapsGrid}>
-                                  {/* Home team shot map */}
+                                  {/* Home team event map */}
                                   <div className={styles.shotMapCard}>
                                     <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.home}</div>
                                     <svg viewBox="0 0 120 80" className={styles.shotMapSvg}>
@@ -437,25 +437,53 @@ export default function MatchViz() {
                                       <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
                                       <rect x="102" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
                                       
-                                      {/* Plot shots */}
-                                      {(m.shot_map_data[gamePhaseTeams.home] || []).map((shot, shotIdx) => (
-                                        <circle
-                                          key={shotIdx}
-                                          cx={shot.x}
-                                          cy={80 - shot.y}
-                                          r="2.5"
-                                          fill={shot.color}
-                                          stroke="black"
-                                          strokeWidth="0.3"
-                                          opacity="0.85"
-                                        >
-                                          <title>{`${shot.player}\nxG: ${shot.xg}\n${shot.outcome}`}</title>
-                                        </circle>
-                                      ))}
+                                      {/* Plot events */}
+                                      {(m.shot_map_data[gamePhaseTeams.home] || []).map((event, eventIdx) => {
+                                        if (event.event_type === 'red_card') {
+                                          return (
+                                            <rect
+                                              key={eventIdx}
+                                              x={event.x - 2.5}
+                                              y={80 - event.y - 2.5}
+                                              width="5"
+                                              height="5"
+                                              fill={event.color}
+                                              stroke="black"
+                                              strokeWidth="0.5"
+                                              opacity="0.9"
+                                            >
+                                              <title>{`${event.player}\nRed Card`}</title>
+                                            </rect>
+                                          );
+                                        } else if (event.event_type === 'own_goal') {
+                                          return (
+                                            <g key={eventIdx}>
+                                              <line x1={event.x - 3} y1={80 - event.y - 3} x2={event.x + 3} y2={80 - event.y + 3} stroke={event.color} strokeWidth="1.5" />
+                                              <line x1={event.x - 3} y1={80 - event.y + 3} x2={event.x + 3} y2={80 - event.y - 3} stroke={event.color} strokeWidth="1.5" />
+                                              <title>{`${event.player}\nOwn Goal For`}</title>
+                                            </g>
+                                          );
+                                        } else {
+                                          return (
+                                            <circle
+                                              key={eventIdx}
+                                              cx={event.x}
+                                              cy={80 - event.y}
+                                              r="2.5"
+                                              fill={event.color}
+                                              stroke="black"
+                                              strokeWidth="0.3"
+                                              opacity="0.85"
+                                            >
+                                              <title>{`${event.player}\nxG: ${event.xg}\n${event.outcome}`}</title>
+                                            </circle>
+                                          );
+                                        }
+                                      })}
                                     </svg>
                                   </div>
                                   
-                                  {/* Away team shot map */}
+                                  {/* Away team event map */}
                                   <div className={styles.shotMapCard}>
                                     <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.away}</div>
                                     <svg viewBox="0 0 120 80" className={styles.shotMapSvg}>
@@ -467,21 +495,49 @@ export default function MatchViz() {
                                       <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
                                       <rect x="102" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
                                       
-                                      {/* Plot shots */}
-                                      {(m.shot_map_data[gamePhaseTeams.away] || []).map((shot, shotIdx) => (
-                                        <circle
-                                          key={shotIdx}
-                                          cx={shot.x}
-                                          cy={80 - shot.y}
-                                          r="2.5"
-                                          fill={shot.color}
-                                          stroke="black"
-                                          strokeWidth="0.3"
-                                          opacity="0.85"
-                                        >
-                                          <title>{`${shot.player}\nxG: ${shot.xg}\n${shot.outcome}`}</title>
-                                        </circle>
-                                      ))}
+                                      {/* Plot events */}
+                                      {(m.shot_map_data[gamePhaseTeams.away] || []).map((event, eventIdx) => {
+                                        if (event.event_type === 'red_card') {
+                                          return (
+                                            <rect
+                                              key={eventIdx}
+                                              x={event.x - 2.5}
+                                              y={80 - event.y - 2.5}
+                                              width="5"
+                                              height="5"
+                                              fill={event.color}
+                                              stroke="black"
+                                              strokeWidth="0.5"
+                                              opacity="0.9"
+                                            >
+                                              <title>{`${event.player}\nRed Card`}</title>
+                                            </rect>
+                                          );
+                                        } else if (event.event_type === 'own_goal') {
+                                          return (
+                                            <g key={eventIdx}>
+                                              <line x1={event.x - 3} y1={80 - event.y - 3} x2={event.x + 3} y2={80 - event.y + 3} stroke={event.color} strokeWidth="1.5" />
+                                              <line x1={event.x - 3} y1={80 - event.y + 3} x2={event.x + 3} y2={80 - event.y - 3} stroke={event.color} strokeWidth="1.5" />
+                                              <title>{`${event.player}\nOwn Goal For`}</title>
+                                            </g>
+                                          );
+                                        } else {
+                                          return (
+                                            <circle
+                                              key={eventIdx}
+                                              cx={event.x}
+                                              cy={80 - event.y}
+                                              r="2.5"
+                                              fill={event.color}
+                                              stroke="black"
+                                              strokeWidth="0.3"
+                                              opacity="0.85"
+                                            >
+                                              <title>{`${event.player}\nxG: ${event.xg}\n${event.outcome}`}</title>
+                                            </circle>
+                                          );
+                                        }
+                                      })}
                                     </svg>
                                   </div>
                                 </div>
@@ -490,6 +546,80 @@ export default function MatchViz() {
                                   <span><span className={styles.legendDot} style={{backgroundColor: 'yellow'}}></span> High xG (≥0.27)</span>
                                   <span><span className={styles.legendDot} style={{backgroundColor: 'orange'}}></span> Med xG (0.08-0.27)</span>
                                   <span><span className={styles.legendDot} style={{backgroundColor: 'black'}}></span> Low xG (&lt;0.08)</span>
+                                  <span><span className={styles.legendSquare}></span> Red Card</span>
+                                  <span><span className={styles.legendX}></span> Own Goal For</span>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Box Entry Maps for each team */}
+                            {m.box_entry_locations && (
+                              <div className={styles.shotMapsContainer}>
+                                <h3 className={styles.shotMapsTitle}>Box Entry Maps</h3>
+                                <div className={styles.shotMapsGrid}>
+                                  {/* Home team box entry map */}
+                                  <div className={styles.shotMapCard}>
+                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.home}</div>
+                                    <svg viewBox="0 0 120 80" className={styles.shotMapSvg}>
+                                      {/* Pitch outline */}
+                                      <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
+                                      {/* Half line */}
+                                      <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
+                                      {/* Penalty box - highlighted */}
+                                      <rect x="102" y="18" width="18" height="44" fill="rgba(255, 200, 200, 0.3)" stroke="#888" strokeWidth="0.8" />
+                                      <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      
+                                      {/* Plot box entries */}
+                                      {(m.box_entry_locations[gamePhaseTeams.home] || []).map((entry, entryIdx) => (
+                                        <circle
+                                          key={entryIdx}
+                                          cx={entry.x}
+                                          cy={80 - entry.y}
+                                          r="2"
+                                          fill={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
+                                          stroke="black"
+                                          strokeWidth="0.3"
+                                          opacity="0.75"
+                                        >
+                                          <title>{entry.type === 'pass' ? 'Pass into box' : 'Carry into box'}</title>
+                                        </circle>
+                                      ))}
+                                    </svg>
+                                  </div>
+                                  
+                                  {/* Away team box entry map */}
+                                  <div className={styles.shotMapCard}>
+                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.away}</div>
+                                    <svg viewBox="0 0 120 80" className={styles.shotMapSvg}>
+                                      {/* Pitch outline */}
+                                      <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
+                                      {/* Half line */}
+                                      <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
+                                      {/* Penalty box - highlighted */}
+                                      <rect x="102" y="18" width="18" height="44" fill="rgba(255, 200, 200, 0.3)" stroke="#888" strokeWidth="0.8" />
+                                      <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      
+                                      {/* Plot box entries */}
+                                      {(m.box_entry_locations[gamePhaseTeams.away] || []).map((entry, entryIdx) => (
+                                        <circle
+                                          key={entryIdx}
+                                          cx={entry.x}
+                                          cy={80 - entry.y}
+                                          r="2"
+                                          fill={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
+                                          stroke="black"
+                                          strokeWidth="0.3"
+                                          opacity="0.75"
+                                        >
+                                          <title>{entry.type === 'pass' ? 'Pass into box' : 'Carry into box'}</title>
+                                        </circle>
+                                      ))}
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className={styles.shotMapLegend}>
+                                  <span><span className={styles.legendDot} style={{backgroundColor: '#2196F3'}}></span> Pass into box</span>
+                                  <span><span className={styles.legendDot} style={{backgroundColor: '#FF9800'}}></span> Carry into box</span>
                                 </div>
                               </div>
                             )}
