@@ -1941,7 +1941,7 @@ async def possession_scene(filename: str, possession: int = Query(..., descripti
                     if player_short:
                         ax.text(start_x_flipped, start_y_flipped, player_short, fontsize=7,
                                 color='red', verticalalignment='top', horizontalalignment='right', zorder=40)
-                    if (isinstance_type, str) and pass_type.strip().lower() == "corner":
+                    if (isinstance(pass_type, str) and pass_type.strip().lower() == "corner"):
                         ax.text(start_x_flipped, start_y_flipped + 2.2, "Corner", fontsize=7, color='#9467bd',
                                 ha='center', va='bottom', fontweight='bold', zorder=42)
                 continue
