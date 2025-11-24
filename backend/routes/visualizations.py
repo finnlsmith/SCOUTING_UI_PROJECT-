@@ -1485,6 +1485,52 @@ async def game_phases(filename: str):
                 score_start_counts = score_at_time(sm, ss)
                 score_end_counts = score_at_time(em, es)
 
+                # ===== SHOT MAP DATA PER TEAM =====
+                shot_map_data = {home_team: [], away_team: []}
+                if not shots.empty and {'location', 'team', 'shot_outcome'}.issubset(shots.columns):
+                    for _, shot_row in shots.iterrows():
+                        shot_team_name = shot_row.get('team')
+                        if shot_team_name not in [home_team, away_team]:
+                            continue
+                        
+                        # Extract location
+                        loc = shot_row.get('location')
+                        if isinstance(loc, str):
+                            try:
+                                loc = json.loads(loc)
+                            except:
+                                try:
+                                    from ast import literal_eval
+                                    loc = literal_eval(loc)
+                                except:
+                                    continue
+                        
+                        if not isinstance(loc, (list, tuple)) or len(loc) < 2:
+                            continue
+                        
+                        x, y = float(loc[0]), float(loc[1])
+                        xg_val = float(shot_row.get('xg', 0)) if pd.notna(shot_row.get('xg')) else 0.0
+                        outcome = str(shot_row.get('shot_outcome', '')).lower()
+                        
+                        # Determine color based on rules
+                        if outcome == 'goal':
+                            color = 'green'
+                        elif 0.08 <= xg_val < 0.27:
+                            color = 'orange'
+                        elif xg_val >= 0.27:
+                            color = 'yellow'
+                        else:
+                            color = 'black'
+                        
+                        shot_map_data[shot_team_name].append({
+                            'x': x,
+                            'y': y,
+                            'xg': round(xg_val, 3),
+                            'outcome': outcome,
+                            'color': color,
+                            'player': str(shot_row.get('player', ''))
+                        })
+
                 phase_metrics.append({
                     'phase_idx': ph['phase_idx'],
                     'start_minute': sm,
@@ -1503,6 +1549,7 @@ async def game_phases(filename: str):
                     'goals': goals_per_team,
                     'score_at_start': score_start_counts,
                     'score_at_end': score_end_counts,
+                    'shot_map_data': shot_map_data,
                 })
 
         result = {

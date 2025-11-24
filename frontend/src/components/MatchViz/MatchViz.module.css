@@ -370,6 +370,7 @@
 .gamePhaseTitle {
   font-weight: var(--font-weight-bold);
   font-size: var(--font-size-lg);
+  color: black;
 }
 
 .gamePhaseTime {
@@ -380,6 +381,7 @@
 
 .gamePhaseScore {
   font-size: 15px;
+  color: black;
 }
 
 .gamePhaseGoalInfo {
@@ -432,5 +434,72 @@
 
 .emptyText {
   color: var(--color-text-secondary);
+}
+
+/* Shot Maps in Phase Cards */
+.shotMapsContainer {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 2px solid #e0e0e0;
+}
+
+.shotMapsTitle {
+  font-size: 18px;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 14px;
+  color: black;
+}
+
+.shotMapsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.shotMapCard {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.shotMapTeamLabel {
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 8px;
+  text-align: center;
+  color: black;
+}
+
+.shotMapSvg {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.shotMapLegend {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  font-size: 13px;
+  color: #333;
+  flex-wrap: wrap;
+}
+
+.shotMapLegend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 1px solid black;
 }
 

@@ -419,6 +419,80 @@ export default function MatchViz() {
                                 <div className={styles.metricValue}>End: {gamePhaseTeams.home} {m.score_at_end?.[gamePhaseTeams.home] ?? 0} - {m.score_at_end?.[gamePhaseTeams.away] ?? 0} {gamePhaseTeams.away}</div>
                               </div>
                             </div>
+                            
+                            {/* Shot Maps for each team */}
+                            {m.shot_map_data && (
+                              <div className={styles.shotMapsContainer}>
+                                <h3 className={styles.shotMapsTitle}>Shot Maps</h3>
+                                <div className={styles.shotMapsGrid}>
+                                  {/* Home team shot map */}
+                                  <div className={styles.shotMapCard}>
+                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.home}</div>
+                                    <svg viewBox="0 0 120 80" className={styles.shotMapSvg}>
+                                      {/* Pitch outline */}
+                                      <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
+                                      {/* Half line */}
+                                      <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
+                                      {/* Goal areas */}
+                                      <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      <rect x="102" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      
+                                      {/* Plot shots */}
+                                      {(m.shot_map_data[gamePhaseTeams.home] || []).map((shot, shotIdx) => (
+                                        <circle
+                                          key={shotIdx}
+                                          cx={shot.x}
+                                          cy={80 - shot.y}
+                                          r="2.5"
+                                          fill={shot.color}
+                                          stroke="black"
+                                          strokeWidth="0.3"
+                                          opacity="0.85"
+                                        >
+                                          <title>{`${shot.player}\nxG: ${shot.xg}\n${shot.outcome}`}</title>
+                                        </circle>
+                                      ))}
+                                    </svg>
+                                  </div>
+                                  
+                                  {/* Away team shot map */}
+                                  <div className={styles.shotMapCard}>
+                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.away}</div>
+                                    <svg viewBox="0 0 120 80" className={styles.shotMapSvg}>
+                                      {/* Pitch outline */}
+                                      <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
+                                      {/* Half line */}
+                                      <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
+                                      {/* Goal areas */}
+                                      <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      <rect x="102" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      
+                                      {/* Plot shots */}
+                                      {(m.shot_map_data[gamePhaseTeams.away] || []).map((shot, shotIdx) => (
+                                        <circle
+                                          key={shotIdx}
+                                          cx={shot.x}
+                                          cy={80 - shot.y}
+                                          r="2.5"
+                                          fill={shot.color}
+                                          stroke="black"
+                                          strokeWidth="0.3"
+                                          opacity="0.85"
+                                        >
+                                          <title>{`${shot.player}\nxG: ${shot.xg}\n${shot.outcome}`}</title>
+                                        </circle>
+                                      ))}
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className={styles.shotMapLegend}>
+                                  <span><span className={styles.legendDot} style={{backgroundColor: 'green'}}></span> Goal</span>
+                                  <span><span className={styles.legendDot} style={{backgroundColor: 'yellow'}}></span> High xG (≥0.27)</span>
+                                  <span><span className={styles.legendDot} style={{backgroundColor: 'orange'}}></span> Med xG (0.08-0.27)</span>
+                                  <span><span className={styles.legendDot} style={{backgroundColor: 'black'}}></span> Low xG (&lt;0.08)</span>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })()}
