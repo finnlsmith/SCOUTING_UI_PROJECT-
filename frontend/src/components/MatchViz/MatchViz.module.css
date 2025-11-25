@@ -538,3 +538,10 @@
   transform: translateY(-50%) rotate(-45deg);
 }
 
+.legendLine {
+  width: 20px;
+  height: 3px;
+  display: inline-block;
+  border: none;
+}
+
