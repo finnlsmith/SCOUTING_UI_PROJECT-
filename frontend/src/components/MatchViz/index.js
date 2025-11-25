@@ -385,6 +385,21 @@ export default function MatchViz() {
                               </thead>
                               <tbody>
                                 <tr className={styles.phaseMetricsRow}>
+                                  <td className={styles.phaseMetricsLabelCell}>Goals</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.goals?.[gamePhaseTeams.home] ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.goals?.[gamePhaseTeams.away] ?? 0}</td>
+                                </tr>
+                                <tr className={styles.phaseMetricsRow}>
+                                  <td className={styles.phaseMetricsLabelCell}>Shots (total)</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.home]?.total ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.away]?.total ?? 0}</td>
+                                </tr>
+                                <tr className={styles.phaseMetricsRow}>
+                                  <td className={styles.phaseMetricsLabelCell}>Shots on Target</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.home]?.on_target ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.away]?.on_target ?? 0}</td>
+                                </tr>
+                                <tr className={styles.phaseMetricsRow}>
                                   <td className={styles.phaseMetricsLabelCell}>Possession %</td>
                                   <td className={styles.phaseMetricsValueCell}>{m.possession_pct_by_passes?.[gamePhaseTeams.home] ?? 0}%</td>
                                   <td className={styles.phaseMetricsValueCell}>{m.possession_pct_by_passes?.[gamePhaseTeams.away] ?? 0}%</td>
@@ -405,54 +420,19 @@ export default function MatchViz() {
                                   <td className={styles.phaseMetricsValueCell}>{m.fouls?.[gamePhaseTeams.away] ?? 0}</td>
                                 </tr>
                                 <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Yellow Cards</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.cards?.[gamePhaseTeams.home]?.yellow ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.cards?.[gamePhaseTeams.away]?.yellow ?? 0}</td>
+                                  <td className={styles.phaseMetricsLabelCell}>Cards (Yellow / Red)</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.cards?.[gamePhaseTeams.home]?.yellow ?? 0} / {m.cards?.[gamePhaseTeams.home]?.red ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.cards?.[gamePhaseTeams.away]?.yellow ?? 0} / {m.cards?.[gamePhaseTeams.away]?.red ?? 0}</td>
                                 </tr>
                                 <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Red Cards</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.cards?.[gamePhaseTeams.home]?.red ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.cards?.[gamePhaseTeams.away]?.red ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>OK Chances (0.08–&lt;0.27 xG)</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.home]?.ok ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.away]?.ok ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Good Chances (≥0.27 xG)</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.home]?.good ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.away]?.good ?? 0}</td>
+                                  <td className={styles.phaseMetricsLabelCell}>Chances (OK / Good)</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.home]?.ok ?? 0} / {m.chances?.[gamePhaseTeams.home]?.good ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.away]?.ok ?? 0} / {m.chances?.[gamePhaseTeams.away]?.good ?? 0}</td>
                                 </tr>
                                 <tr className={styles.phaseMetricsRow}>
                                   <td className={styles.phaseMetricsLabelCell}>Penalties</td>
                                   <td className={styles.phaseMetricsValueCell}>{m.penalties?.[gamePhaseTeams.home] ?? 0}</td>
                                   <td className={styles.phaseMetricsValueCell}>{m.penalties?.[gamePhaseTeams.away] ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Goals</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.goals?.[gamePhaseTeams.home] ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.goals?.[gamePhaseTeams.away] ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Shots (total)</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.home]?.total ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.away]?.total ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Shots on Target</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.home]?.on_target ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.away]?.on_target ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Score (Start)</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.score_at_start?.[gamePhaseTeams.home] ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.score_at_start?.[gamePhaseTeams.away] ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Score (End)</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.score_at_end?.[gamePhaseTeams.home] ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.score_at_end?.[gamePhaseTeams.away] ?? 0}</td>
                                 </tr>
                               </tbody>
                             </table>
