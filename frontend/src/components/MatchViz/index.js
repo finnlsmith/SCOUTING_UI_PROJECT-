@@ -433,9 +433,18 @@ export default function MatchViz() {
                                       <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
                                       {/* Half line */}
                                       <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
-                                      {/* Goal areas */}
+                                      {/* Penalty boxes (18-yard) */}
                                       <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
                                       <rect x="102" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* 6-yard boxes */}
+                                      <rect x="0" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      <rect x="114" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* Penalty spots */}
+                                      <circle cx="12" cy="40" r="0.8" fill="#888" />
+                                      <circle cx="108" cy="40" r="0.8" fill="#888" />
+                                      {/* Goal indicators */}
+                                      <rect x="0" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
+                                      <rect x="119.5" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
                                       
                                       {/* Plot events */}
                                       {(m.shot_map_data[gamePhaseTeams.home] || []).map((event, eventIdx) => {
@@ -491,9 +500,18 @@ export default function MatchViz() {
                                       <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
                                       {/* Half line */}
                                       <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
-                                      {/* Goal areas */}
+                                      {/* Penalty boxes (18-yard) */}
                                       <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
                                       <rect x="102" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* 6-yard boxes */}
+                                      <rect x="0" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      <rect x="114" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* Penalty spots */}
+                                      <circle cx="12" cy="40" r="0.8" fill="#888" />
+                                      <circle cx="108" cy="40" r="0.8" fill="#888" />
+                                      {/* Goal indicators */}
+                                      <rect x="0" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
+                                      <rect x="119.5" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
                                       
                                       {/* Plot events */}
                                       {(m.shot_map_data[gamePhaseTeams.away] || []).map((event, eventIdx) => {
@@ -565,9 +583,18 @@ export default function MatchViz() {
                                       <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
                                       {/* Half line */}
                                       <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
-                                      {/* Penalty box - highlighted */}
+                                      {/* Penalty boxes - attacking box highlighted */}
                                       <rect x="102" y="18" width="18" height="44" fill="rgba(255, 200, 200, 0.3)" stroke="#888" strokeWidth="0.8" />
                                       <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* 6-yard boxes */}
+                                      <rect x="0" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      <rect x="114" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* Penalty spots */}
+                                      <circle cx="12" cy="40" r="0.8" fill="#888" />
+                                      <circle cx="108" cy="40" r="0.8" fill="#888" />
+                                      {/* Goal indicators */}
+                                      <rect x="0" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
+                                      <rect x="119.5" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
                                       
                                       {/* Plot box entries */}
                                       {(m.box_entry_locations[gamePhaseTeams.home] || []).map((entry, entryIdx) => (
@@ -606,9 +633,18 @@ export default function MatchViz() {
                                       <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
                                       {/* Half line */}
                                       <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
-                                      {/* Penalty box - highlighted */}
+                                      {/* Penalty boxes - attacking box highlighted */}
                                       <rect x="102" y="18" width="18" height="44" fill="rgba(255, 200, 200, 0.3)" stroke="#888" strokeWidth="0.8" />
                                       <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* 6-yard boxes */}
+                                      <rect x="0" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      <rect x="114" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* Penalty spots */}
+                                      <circle cx="12" cy="40" r="0.8" fill="#888" />
+                                      <circle cx="108" cy="40" r="0.8" fill="#888" />
+                                      {/* Goal indicators */}
+                                      <rect x="0" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
+                                      <rect x="119.5" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
                                       
                                       {/* Plot box entries */}
                                       {(m.box_entry_locations[gamePhaseTeams.away] || []).map((entry, entryIdx) => (
