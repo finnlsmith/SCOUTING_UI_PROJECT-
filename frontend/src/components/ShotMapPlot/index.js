@@ -1,8 +1,9 @@
 import React from "react";
 import Plot from "react-plotly.js";
+import { PlotSkeleton } from "../LoadingSkeleton";
 
 export default function ShotMapPlot({ displayFig, flipSides, plotLoading, smaller, customSize }) {
-  if (plotLoading) return <p style={{marginTop:12}}>Loading…</p>;
+  if (plotLoading) return <PlotSkeleton />;
   if (!displayFig || !displayFig.data || !displayFig.layout) {
     return null;
   }

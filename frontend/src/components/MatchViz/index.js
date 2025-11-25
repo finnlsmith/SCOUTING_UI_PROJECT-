@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import useMatchData from "../hooks/useMatchData";
 import useUpload from "../hooks/useUpload";
 import useVisualization from "../hooks/useVisualization";
@@ -7,9 +7,12 @@ import ErrorBanner from "../ErrorBanner";
 import MatchSelector from "../MatchSelector";
 import Scoreboard from "../Scoreboard";
 // import ShotMapButtons from "../ShotMapButtons";
-import ShotMapPlot from "../ShotMapPlot";
 // import PassingNetworkButtons from "../PassingNetworkButtons";
+import { PlotSkeleton } from "../LoadingSkeleton";
 import styles from "./MatchViz.module.css";
+
+// Dynamically import heavy component for code splitting
+const ShotMapPlot = lazy(() => import("../ShotMapPlot"));
 
 const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000/api').replace(/\/+$/, '');
 
@@ -235,7 +238,9 @@ export default function MatchViz() {
                 </div>
                 {shotMapFigData && (
                   <div className={styles.shotMapPlot}>
-                    <ShotMapPlot displayFig={shotMapFigData} flipSides={flipSides} plotLoading={plotLoading} smaller />
+                    <Suspense fallback={<PlotSkeleton />}>
+                      <ShotMapPlot displayFig={shotMapFigData} flipSides={flipSides} plotLoading={plotLoading} smaller />
+                    </Suspense>
                   </div>
                 )}
               </div>
@@ -263,7 +268,9 @@ export default function MatchViz() {
                 </div>
                 {passNetFigData && (
                   <div className={styles.passingNetworkPlot}>
-                    <ShotMapPlot displayFig={passNetFigData} flipSides={flipSides} plotLoading={plotLoading} customSize={{ width: 540, height: 380 }} />
+                    <Suspense fallback={<PlotSkeleton />}>
+                      <ShotMapPlot displayFig={passNetFigData} flipSides={flipSides} plotLoading={plotLoading} customSize={{ width: 540, height: 380 }} />
+                    </Suspense>
                   </div>
                 )}
               </div>
