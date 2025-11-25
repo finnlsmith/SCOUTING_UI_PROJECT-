@@ -571,18 +571,29 @@ export default function MatchViz() {
                                       
                                       {/* Plot box entries */}
                                       {(m.box_entry_locations[gamePhaseTeams.home] || []).map((entry, entryIdx) => (
-                                        <circle
-                                          key={entryIdx}
-                                          cx={entry.x}
-                                          cy={80 - entry.y}
-                                          r="2"
-                                          fill={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
-                                          stroke="black"
-                                          strokeWidth="0.3"
-                                          opacity="0.75"
-                                        >
-                                          <title>{entry.type === 'pass' ? 'Pass into box' : 'Carry into box'}</title>
-                                        </circle>
+                                        <g key={entryIdx}>
+                                          <line
+                                            x1={entry.x1}
+                                            y1={80 - entry.y1}
+                                            x2={entry.x2}
+                                            y2={80 - entry.y2}
+                                            stroke={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
+                                            strokeWidth="1.5"
+                                            strokeDasharray={entry.type === 'pass' ? '2,2' : '0'}
+                                            opacity="0.7"
+                                          />
+                                          <circle
+                                            cx={entry.x2}
+                                            cy={80 - entry.y2}
+                                            r="2"
+                                            fill={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
+                                            stroke="black"
+                                            strokeWidth="0.3"
+                                            opacity="0.75"
+                                          >
+                                            <title>{entry.type === 'pass' ? 'Pass into box' : 'Carry into box'}</title>
+                                          </circle>
+                                        </g>
                                       ))}
                                     </svg>
                                   </div>
@@ -601,25 +612,36 @@ export default function MatchViz() {
                                       
                                       {/* Plot box entries */}
                                       {(m.box_entry_locations[gamePhaseTeams.away] || []).map((entry, entryIdx) => (
-                                        <circle
-                                          key={entryIdx}
-                                          cx={entry.x}
-                                          cy={80 - entry.y}
-                                          r="2"
-                                          fill={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
-                                          stroke="black"
-                                          strokeWidth="0.3"
-                                          opacity="0.75"
-                                        >
-                                          <title>{entry.type === 'pass' ? 'Pass into box' : 'Carry into box'}</title>
-                                        </circle>
+                                        <g key={entryIdx}>
+                                          <line
+                                            x1={120 - entry.x1}
+                                            y1={80 - entry.y1}
+                                            x2={120 - entry.x2}
+                                            y2={80 - entry.y2}
+                                            stroke={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
+                                            strokeWidth="1.5"
+                                            strokeDasharray={entry.type === 'pass' ? '2,2' : '0'}
+                                            opacity="0.7"
+                                          />
+                                          <circle
+                                            cx={120 - entry.x2}
+                                            cy={80 - entry.y2}
+                                            r="2"
+                                            fill={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
+                                            stroke="black"
+                                            strokeWidth="0.3"
+                                            opacity="0.75"
+                                          >
+                                            <title>{entry.type === 'pass' ? 'Pass into box' : 'Carry into box'}</title>
+                                          </circle>
+                                        </g>
                                       ))}
                                     </svg>
                                   </div>
                                 </div>
                                 <div className={styles.shotMapLegend}>
-                                  <span><span className={styles.legendDot} style={{backgroundColor: '#2196F3'}}></span> Pass into box</span>
-                                  <span><span className={styles.legendDot} style={{backgroundColor: '#FF9800'}}></span> Carry into box</span>
+                                  <span><span className={styles.legendLine} style={{backgroundColor: '#2196F3', borderStyle: 'dashed'}}></span> Pass into box</span>
+                                  <span><span className={styles.legendLine} style={{backgroundColor: '#FF9800'}}></span> Carry into box</span>
                                 </div>
                               </div>
                             )}

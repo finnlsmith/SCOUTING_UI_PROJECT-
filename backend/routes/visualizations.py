@@ -1334,6 +1334,7 @@ async def game_phases(filename: str):
                 carry_phase = ev_phase[ev_phase['type'] == 'Carry'].copy() if 'type' in ev_phase.columns else pd.DataFrame()
                 if not carry_phase.empty and 'carry_end_location' in carry_phase.columns:
                     carry_phase['point'] = carry_phase['carry_end_location'].apply(to_point)
+                    carry_phase['start_point'] = carry_phase['location'].apply(to_point) if 'location' in carry_phase.columns else None
                     carry_phase['in_box'] = carry_phase['point'].apply(lambda pt: point_in_rect(pt, penalty_box_rect))
                     carry_phase['in_final_third'] = carry_phase['point'].apply(lambda pt: point_in_rect(pt, final_third_rect))
                 else:
@@ -1352,6 +1353,7 @@ async def game_phases(filename: str):
                     pass_phase = pd.DataFrame()
                 if not pass_phase.empty and 'pass_end_location' in pass_phase.columns:
                     pass_phase['point'] = pass_phase['pass_end_location'].apply(to_point)
+                    pass_phase['start_point'] = pass_phase['location'].apply(to_point) if 'location' in pass_phase.columns else None
                     pass_phase['in_box'] = pass_phase['point'].apply(lambda pt: point_in_rect(pt, penalty_box_rect))
                     pass_phase['in_final_third'] = pass_phase['point'].apply(lambda pt: point_in_rect(pt, final_third_rect))
                 else:
@@ -1386,33 +1388,49 @@ async def game_phases(filename: str):
                 
                 if not carry_phase.empty and 'possession' in carry_phase.columns:
                     cb = carry_phase[(carry_phase['in_box']) & carry_phase['team'].notna()]
-                    for _, r in cb[['team', 'possession', 'point']].iterrows():
+                    for _, r in cb[['team', 'possession', 'start_point', 'point']].iterrows():
                         poss_num = int(r['possession'])
                         if r['team'] == home_team:
                             if poss_num not in home_poss_box:
                                 home_poss_box.add(poss_num)
-                                if r['point']:
-                                    home_box_locations.append({'x': r['point'][0], 'y': r['point'][1], 'type': 'carry'})
+                                if r['start_point'] and r['point']:
+                                    home_box_locations.append({
+                                        'x1': r['start_point'][0], 'y1': r['start_point'][1],
+                                        'x2': r['point'][0], 'y2': r['point'][1],
+                                        'type': 'carry'
+                                    })
                         elif r['team'] == away_team:
                             if poss_num not in away_poss_box:
                                 away_poss_box.add(poss_num)
-                                if r['point']:
-                                    away_box_locations.append({'x': r['point'][0], 'y': r['point'][1], 'type': 'carry'})
+                                if r['start_point'] and r['point']:
+                                    away_box_locations.append({
+                                        'x1': r['start_point'][0], 'y1': r['start_point'][1],
+                                        'x2': r['point'][0], 'y2': r['point'][1],
+                                        'type': 'carry'
+                                    })
                 
                 if not pass_phase.empty and 'possession' in pass_phase.columns:
                     pb = pass_phase[(pass_phase['in_box']) & pass_phase['team'].notna()]
-                    for _, r in pb[['team', 'possession', 'point']].iterrows():
+                    for _, r in pb[['team', 'possession', 'start_point', 'point']].iterrows():
                         poss_num = int(r['possession'])
                         if r['team'] == home_team:
                             if poss_num not in home_poss_box:
                                 home_poss_box.add(poss_num)
-                                if r['point']:
-                                    home_box_locations.append({'x': r['point'][0], 'y': r['point'][1], 'type': 'pass'})
+                                if r['start_point'] and r['point']:
+                                    home_box_locations.append({
+                                        'x1': r['start_point'][0], 'y1': r['start_point'][1],
+                                        'x2': r['point'][0], 'y2': r['point'][1],
+                                        'type': 'pass'
+                                    })
                         elif r['team'] == away_team:
                             if poss_num not in away_poss_box:
                                 away_poss_box.add(poss_num)
-                                if r['point']:
-                                    away_box_locations.append({'x': r['point'][0], 'y': r['point'][1], 'type': 'pass'})
+                                if r['start_point'] and r['point']:
+                                    away_box_locations.append({
+                                        'x1': r['start_point'][0], 'y1': r['start_point'][1],
+                                        'x2': r['point'][0], 'y2': r['point'][1],
+                                        'type': 'pass'
+                                    })
                 
                 box_entries_dedup = {home_team: len(home_poss_box), away_team: len(away_poss_box)}
                 box_entry_locations = {home_team: home_box_locations, away_team: away_box_locations}
