@@ -370,6 +370,7 @@
 .gamePhaseTitle {
   font-weight: var(--font-weight-bold);
   font-size: var(--font-size-lg);
+  color: black;
 }
 
 .gamePhaseTime {
@@ -380,6 +381,7 @@
 
 .gamePhaseScore {
   font-size: 15px;
+  color: black;
 }
 
 .gamePhaseGoalInfo {
@@ -422,6 +424,60 @@
   color: var(--color-text-dark);
 }
 
+/* Phase Metrics Table */
+.phaseMetricsTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-bg-white);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.phaseMetricsTable thead {
+  background: #f5f5f7;
+}
+
+.phaseMetricsHeaderCell {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: var(--font-weight-bold);
+  font-size: 15px;
+  color: var(--color-text-dark);
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.phaseMetricsHeaderCell:first-child {
+  width: 40%;
+}
+
+.phaseMetricsRow {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.phaseMetricsRow:hover {
+  background: #fafafa;
+}
+
+.phaseMetricsRow:last-child {
+  border-bottom: none;
+}
+
+.phaseMetricsLabelCell {
+  padding: 10px 16px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.phaseMetricsValueCell {
+  padding: 10px 16px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-dark);
+  text-align: left;
+  font-size: 14px;
+}
+
 .loadingText {
   color: var(--color-text-secondary);
 }
@@ -432,5 +488,114 @@
 
 .emptyText {
   color: var(--color-text-secondary);
+}
+
+/* Shot Maps in Phase Cards */
+.shotMapsContainer {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 2px solid #e0e0e0;
+}
+
+.shotMapsTitle {
+  font-size: 18px;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 14px;
+  color: black;
+}
+
+.shotMapsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.shotMapCard {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.shotMapTeamLabel {
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 8px;
+  text-align: center;
+  color: black;
+}
+
+.shotMapSvg {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.shotMapLegend {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  font-size: 13px;
+  color: #333;
+  flex-wrap: wrap;
+}
+
+.shotMapLegend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 1px solid black;
+}
+
+.legendSquare {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  background-color: red;
+  border: 1px solid black;
+}
+
+.legendX {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  position: relative;
+}
+
+.legendX::before,
+.legendX::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background-color: purple;
+  top: 50%;
+  left: 0;
+  transform-origin: center;
+}
+
+.legendX::before {
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.legendX::after {
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+.legendLine {
+  width: 20px;
+  height: 3px;
+  display: inline-block;
+  border: none;
 }
 

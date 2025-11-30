@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import useMatchData from "../hooks/useMatchData";
 import useUpload from "../hooks/useUpload";
 import useVisualization from "../hooks/useVisualization";
@@ -7,9 +7,12 @@ import ErrorBanner from "../ErrorBanner";
 import MatchSelector from "../MatchSelector";
 import Scoreboard from "../Scoreboard";
 // import ShotMapButtons from "../ShotMapButtons";
-import ShotMapPlot from "../ShotMapPlot";
 // import PassingNetworkButtons from "../PassingNetworkButtons";
+import { PlotSkeleton } from "../LoadingSkeleton";
 import styles from "./MatchViz.module.css";
+
+// Dynamically import heavy component for code splitting
+const ShotMapPlot = lazy(() => import("../ShotMapPlot"));
 
 const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000/api').replace(/\/+$/, '');
 
@@ -235,7 +238,9 @@ export default function MatchViz() {
                 </div>
                 {shotMapFigData && (
                   <div className={styles.shotMapPlot}>
-                    <ShotMapPlot displayFig={shotMapFigData} flipSides={flipSides} plotLoading={plotLoading} smaller />
+                    <Suspense fallback={<PlotSkeleton />}>
+                      <ShotMapPlot displayFig={shotMapFigData} flipSides={flipSides} plotLoading={plotLoading} smaller />
+                    </Suspense>
                   </div>
                 )}
               </div>
@@ -263,7 +268,9 @@ export default function MatchViz() {
                 </div>
                 {passNetFigData && (
                   <div className={styles.passingNetworkPlot}>
-                    <ShotMapPlot displayFig={passNetFigData} flipSides={flipSides} plotLoading={plotLoading} customSize={{ width: 540, height: 380 }} />
+                    <Suspense fallback={<PlotSkeleton />}>
+                      <ShotMapPlot displayFig={passNetFigData} flipSides={flipSides} plotLoading={plotLoading} customSize={{ width: 540, height: 380 }} />
+                    </Suspense>
                   </div>
                 )}
               </div>
@@ -375,50 +382,379 @@ export default function MatchViz() {
                         if (!m) return null;
                         return (
                           <div className={styles.metricsContainer}>
-                            <div className={styles.metricsGrid}>
-                              <div className={styles.metricCard}>
-                                <div className={styles.metricLabel}>Possession</div>
-                                <div className={styles.metricValue}>{gamePhaseTeams.home}: {m.possession_pct_by_passes?.[gamePhaseTeams.home] ?? 0}%</div>
-                                <div className={styles.metricValue}>{gamePhaseTeams.away}: {m.possession_pct_by_passes?.[gamePhaseTeams.away] ?? 0}%</div>
-                              </div>
-                              <div className={styles.metricCard}>
-                                <div className={styles.metricLabel}>Box Entries</div>
-                                <div className={styles.metricValue}>{gamePhaseTeams.home}: {m.box_entries?.[gamePhaseTeams.home] ?? 0}</div>
-                                <div className={styles.metricValue}>{gamePhaseTeams.away}: {m.box_entries?.[gamePhaseTeams.away] ?? 0}</div>
-                              </div>
-                              <div className={styles.metricCard}>
-                                <div className={styles.metricLabel}>Final Third Entries</div>
-                                <div className={styles.metricValue}>{gamePhaseTeams.home}: {m.final_third_entries?.[gamePhaseTeams.home] ?? 0}</div>
-                                <div className={styles.metricValue}>{gamePhaseTeams.away}: {m.final_third_entries?.[gamePhaseTeams.away] ?? 0}</div>
-                              </div>
-                              <div className={styles.metricCard}>
-                                <div className={styles.metricLabel}>Fouls / Cards</div>
-                                <div className={styles.metricValue}>{gamePhaseTeams.home}: {m.fouls?.[gamePhaseTeams.home] ?? 0} fouls, Yellow: {m.cards?.[gamePhaseTeams.home]?.yellow ?? 0} / Red: {m.cards?.[gamePhaseTeams.home]?.red ?? 0}</div>
-                                <div className={styles.metricValue}>{gamePhaseTeams.away}: {m.fouls?.[gamePhaseTeams.away] ?? 0} fouls, Yellow {m.cards?.[gamePhaseTeams.away]?.yellow ?? 0} / Red {m.cards?.[gamePhaseTeams.away]?.red ?? 0}</div>
-                              </div>
-                              <div className={styles.metricCard}>
-                                <div className={styles.metricLabel}>
-                                  Chances (OK = 0.08–&lt;0.27 xG, Good = ≥0.27 xG)
+                            <table className={styles.phaseMetricsTable}>
+                              <thead>
+                                <tr>
+                                  <th className={styles.phaseMetricsHeaderCell}>Statistic</th>
+                                  <th className={styles.phaseMetricsHeaderCell}>{gamePhaseTeams.home}</th>
+                                  <th className={styles.phaseMetricsHeaderCell}>{gamePhaseTeams.away}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr className={styles.phaseMetricsRow}>
+                                  <td className={styles.phaseMetricsLabelCell}>Goals</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.goals?.[gamePhaseTeams.home] ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.goals?.[gamePhaseTeams.away] ?? 0}</td>
+                                </tr>
+                                <tr className={styles.phaseMetricsRow}>
+                                  <td className={styles.phaseMetricsLabelCell}>Shots (total)</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.home]?.total ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.away]?.total ?? 0}</td>
+                                </tr>
+                                <tr className={styles.phaseMetricsRow}>
+                                  <td className={styles.phaseMetricsLabelCell}>Shots on Target</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.home]?.on_target ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.away]?.on_target ?? 0}</td>
+                                </tr>
+                                <tr className={styles.phaseMetricsRow}>
+                                  <td className={styles.phaseMetricsLabelCell}>Possession %</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.possession_pct_by_passes?.[gamePhaseTeams.home] ?? 0}%</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.possession_pct_by_passes?.[gamePhaseTeams.away] ?? 0}%</td>
+                                </tr>
+                                <tr className={styles.phaseMetricsRow}>
+                                  <td className={styles.phaseMetricsLabelCell}>Box Entries</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.box_entries?.[gamePhaseTeams.home] ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.box_entries?.[gamePhaseTeams.away] ?? 0}</td>
+                                </tr>
+                                <tr className={styles.phaseMetricsRow}>
+                                  <td className={styles.phaseMetricsLabelCell}>Final Third Entries</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.final_third_entries?.[gamePhaseTeams.home] ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.final_third_entries?.[gamePhaseTeams.away] ?? 0}</td>
+                                </tr>
+                                <tr className={styles.phaseMetricsRow}>
+                                  <td className={styles.phaseMetricsLabelCell}>Fouls</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.fouls?.[gamePhaseTeams.home] ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.fouls?.[gamePhaseTeams.away] ?? 0}</td>
+                                </tr>
+                                <tr className={styles.phaseMetricsRow}>
+                                  <td className={styles.phaseMetricsLabelCell}>Cards (Yellow / Red)</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.cards?.[gamePhaseTeams.home]?.yellow ?? 0} / {m.cards?.[gamePhaseTeams.home]?.red ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.cards?.[gamePhaseTeams.away]?.yellow ?? 0} / {m.cards?.[gamePhaseTeams.away]?.red ?? 0}</td>
+                                </tr>
+                                <tr className={styles.phaseMetricsRow}>
+                                  <td className={styles.phaseMetricsLabelCell}>Chances (OK / Good)</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.home]?.ok ?? 0} / {m.chances?.[gamePhaseTeams.home]?.good ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.away]?.ok ?? 0} / {m.chances?.[gamePhaseTeams.away]?.good ?? 0}</td>
+                                </tr>
+                                <tr className={styles.phaseMetricsRow}>
+                                  <td className={styles.phaseMetricsLabelCell}>Penalties</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.penalties?.[gamePhaseTeams.home] ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.penalties?.[gamePhaseTeams.away] ?? 0}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                            
+                            {/* Key Event Maps (shots, cards, own goals) */}
+                            {m.shot_map_data && (
+                              <div className={styles.shotMapsContainer}>
+                                <h3 className={styles.shotMapsTitle}>Key Event Maps (shots, cards, own goals)</h3>
+                                <div className={styles.shotMapsGrid}>
+                                  {/* Home team event map */}
+                                  <div className={styles.shotMapCard}>
+                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.home}</div>
+                                    <svg viewBox="0 0 120 80" className={styles.shotMapSvg}>
+                                      {/* Pitch outline */}
+                                      <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
+                                      {/* Half line */}
+                                      <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
+                                      {/* Penalty boxes (18-yard) */}
+                                      <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      <rect x="102" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* 6-yard boxes */}
+                                      <rect x="0" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      <rect x="114" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* Penalty spots */}
+                                      <circle cx="12" cy="40" r="0.8" fill="#888" />
+                                      <circle cx="108" cy="40" r="0.8" fill="#888" />
+                                      {/* Goal indicators */}
+                                      <rect x="0" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
+                                      <rect x="119.5" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
+                                      
+                                      {/* Plot events */}
+                                      {(m.shot_map_data[gamePhaseTeams.home] || []).map((event, eventIdx) => {
+                                        if (event.event_type === 'red_card') {
+                                          return (
+                                            <rect
+                                              key={eventIdx}
+                                              x={event.x - 2.5}
+                                              y={80 - event.y - 2.5}
+                                              width="5"
+                                              height="5"
+                                              fill={event.color}
+                                              stroke="black"
+                                              strokeWidth="0.5"
+                                              opacity="0.9"
+                                            >
+                                              <title>{`${event.player}\nRed Card`}</title>
+                                            </rect>
+                                          );
+                                        } else if (event.event_type === 'own_goal') {
+                                          return (
+                                            <g key={eventIdx}>
+                                              <line x1={event.x - 3} y1={80 - event.y - 3} x2={event.x + 3} y2={80 - event.y + 3} stroke={event.color} strokeWidth="1.5" />
+                                              <line x1={event.x - 3} y1={80 - event.y + 3} x2={event.x + 3} y2={80 - event.y - 3} stroke={event.color} strokeWidth="1.5" />
+                                              <title>{`${event.player}\nOwn Goal For`}</title>
+                                            </g>
+                                          );
+                                        } else {
+                                          // Shot event - render circle with optional outcome indicators
+                                          const isBlocked = event.outcome === 'Blocked';
+                                          const isOffTarget = event.outcome === 'Off T' || event.outcome === 'Wayward';
+                                          
+                                          return (
+                                            <g key={eventIdx}>
+                                              <circle
+                                                cx={event.x}
+                                                cy={80 - event.y}
+                                                r="2.5"
+                                                fill={event.color}
+                                                stroke="black"
+                                                strokeWidth="0.3"
+                                                opacity="0.85"
+                                              >
+                                                <title>{`${event.player}\nxG: ${event.xg}\n${event.outcome}`}</title>
+                                              </circle>
+                                              
+                                              {/* Red X for blocked shots */}
+                                              {isBlocked && (
+                                                <>
+                                                  <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="red" strokeWidth="1" />
+                                                  <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="red" strokeWidth="1" />
+                                                </>
+                                              )}
+                                              
+                                              {/* Red unfilled circle for off target shots */}
+                                              {isOffTarget && (
+                                                <circle
+                                                  cx={event.x}
+                                                  cy={80 - event.y}
+                                                  r="4"
+                                                  fill="none"
+                                                  stroke="red"
+                                                  strokeWidth="0.8"
+                                                />
+                                              )}
+                                            </g>
+                                          );
+                                        }
+                                      })}
+                                    </svg>
+                                  </div>
+                                  
+                                  {/* Away team event map */}
+                                  <div className={styles.shotMapCard}>
+                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.away}</div>
+                                    <svg viewBox="0 0 120 80" className={styles.shotMapSvg}>
+                                      {/* Pitch outline */}
+                                      <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
+                                      {/* Half line */}
+                                      <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
+                                      {/* Penalty boxes (18-yard) */}
+                                      <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      <rect x="102" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* 6-yard boxes */}
+                                      <rect x="0" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      <rect x="114" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* Penalty spots */}
+                                      <circle cx="12" cy="40" r="0.8" fill="#888" />
+                                      <circle cx="108" cy="40" r="0.8" fill="#888" />
+                                      {/* Goal indicators */}
+                                      <rect x="0" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
+                                      <rect x="119.5" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
+                                      
+                                      {/* Plot events */}
+                                      {(m.shot_map_data[gamePhaseTeams.away] || []).map((event, eventIdx) => {
+                                        if (event.event_type === 'red_card') {
+                                          return (
+                                            <rect
+                                              key={eventIdx}
+                                              x={event.x - 2.5}
+                                              y={80 - event.y - 2.5}
+                                              width="5"
+                                              height="5"
+                                              fill={event.color}
+                                              stroke="black"
+                                              strokeWidth="0.5"
+                                              opacity="0.9"
+                                            >
+                                              <title>{`${event.player}\nRed Card`}</title>
+                                            </rect>
+                                          );
+                                        } else if (event.event_type === 'own_goal') {
+                                          return (
+                                            <g key={eventIdx}>
+                                              <line x1={event.x - 3} y1={80 - event.y - 3} x2={event.x + 3} y2={80 - event.y + 3} stroke={event.color} strokeWidth="1.5" />
+                                              <line x1={event.x - 3} y1={80 - event.y + 3} x2={event.x + 3} y2={80 - event.y - 3} stroke={event.color} strokeWidth="1.5" />
+                                              <title>{`${event.player}\nOwn Goal For`}</title>
+                                            </g>
+                                          );
+                                        } else {
+                                          // Shot event - render circle with optional outcome indicators
+                                          const isBlocked = event.outcome === 'Blocked';
+                                          const isOffTarget = event.outcome === 'Off T' || event.outcome === 'Wayward';
+                                          
+                                          return (
+                                            <g key={eventIdx}>
+                                              <circle
+                                                cx={event.x}
+                                                cy={80 - event.y}
+                                                r="2.5"
+                                                fill={event.color}
+                                                stroke="black"
+                                                strokeWidth="0.3"
+                                                opacity="0.85"
+                                              >
+                                                <title>{`${event.player}\nxG: ${event.xg}\n${event.outcome}`}</title>
+                                              </circle>
+                                              
+                                              {/* Red X for blocked shots */}
+                                              {isBlocked && (
+                                                <>
+                                                  <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="red" strokeWidth="1" />
+                                                  <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="red" strokeWidth="1" />
+                                                </>
+                                              )}
+                                              
+                                              {/* Red unfilled circle for off target shots */}
+                                              {isOffTarget && (
+                                                <circle
+                                                  cx={event.x}
+                                                  cy={80 - event.y}
+                                                  r="4"
+                                                  fill="none"
+                                                  stroke="red"
+                                                  strokeWidth="0.8"
+                                                />
+                                              )}
+                                            </g>
+                                          );
+                                        }
+                                      })}
+                                    </svg>
+                                  </div>
                                 </div>
-                                <div className={styles.metricValue}>{gamePhaseTeams.home}: OK {m.chances?.[gamePhaseTeams.home]?.ok ?? 0}, Good {m.chances?.[gamePhaseTeams.home]?.good ?? 0} (Pens: {m.penalties?.[gamePhaseTeams.home] ?? 0})</div>
-                                <div className={styles.metricValue}>{gamePhaseTeams.away}: OK {m.chances?.[gamePhaseTeams.away]?.ok ?? 0}, Good {m.chances?.[gamePhaseTeams.away]?.good ?? 0} (Pens: {m.penalties?.[gamePhaseTeams.away] ?? 0})</div>
+                                <div className={styles.shotMapLegend}>
+                                  <span><span className={styles.legendDot} style={{backgroundColor: 'green'}}></span> Goal</span>
+                                  <span><span className={styles.legendDot} style={{backgroundColor: 'yellow'}}></span> High xG (≥0.27)</span>
+                                  <span><span className={styles.legendDot} style={{backgroundColor: 'orange'}}></span> Med xG (0.08-0.27)</span>
+                                  <span><span className={styles.legendDot} style={{backgroundColor: 'black'}}></span> Low xG (&lt;0.08)</span>
+                                  <span><span className={styles.legendSquare}></span> Red Card</span>
+                                  <span><span className={styles.legendX}></span> Own Goal For</span>
+                                </div>
                               </div>
-                              <div className={styles.metricCard}>
-                                <div className={styles.metricLabel}>Goals</div>
-                                <div className={styles.metricValue}>{gamePhaseTeams.home}: {m.goals?.[gamePhaseTeams.home] ?? 0}</div>
-                                <div className={styles.metricValue}>{gamePhaseTeams.away}: {m.goals?.[gamePhaseTeams.away] ?? 0}</div>
+                            )}
+                            
+                            {/* Box Entry Maps for each team */}
+                            {m.box_entry_locations && (
+                              <div className={styles.shotMapsContainer}>
+                                <h3 className={styles.shotMapsTitle}>Box Entry Maps</h3>
+                                <div className={styles.shotMapsGrid}>
+                                  {/* Home team box entry map */}
+                                  <div className={styles.shotMapCard}>
+                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.home}</div>
+                                    <svg viewBox="0 0 120 80" className={styles.shotMapSvg}>
+                                      {/* Pitch outline */}
+                                      <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
+                                      {/* Half line */}
+                                      <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
+                                      {/* Penalty boxes - attacking box highlighted */}
+                                      <rect x="102" y="18" width="18" height="44" fill="rgba(255, 200, 200, 0.3)" stroke="#888" strokeWidth="0.8" />
+                                      <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* 6-yard boxes */}
+                                      <rect x="0" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      <rect x="114" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* Penalty spots */}
+                                      <circle cx="12" cy="40" r="0.8" fill="#888" />
+                                      <circle cx="108" cy="40" r="0.8" fill="#888" />
+                                      {/* Goal indicators */}
+                                      <rect x="0" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
+                                      <rect x="119.5" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
+                                      
+                                      {/* Plot box entries */}
+                                      {(m.box_entry_locations[gamePhaseTeams.home] || []).map((entry, entryIdx) => (
+                                        <g key={entryIdx}>
+                                          <line
+                                            x1={entry.x1}
+                                            y1={80 - entry.y1}
+                                            x2={entry.x2}
+                                            y2={80 - entry.y2}
+                                            stroke={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
+                                            strokeWidth="1.5"
+                                            strokeDasharray={entry.type === 'pass' ? '2,2' : '0'}
+                                            opacity="0.7"
+                                          />
+                                          <circle
+                                            cx={entry.x2}
+                                            cy={80 - entry.y2}
+                                            r="2"
+                                            fill={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
+                                            stroke="black"
+                                            strokeWidth="0.3"
+                                            opacity="0.75"
+                                          >
+                                            <title>{entry.type === 'pass' ? 'Pass into box' : 'Carry into box'}</title>
+                                          </circle>
+                                        </g>
+                                      ))}
+                                    </svg>
+                                  </div>
+                                  
+                                  {/* Away team box entry map */}
+                                  <div className={styles.shotMapCard}>
+                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.away}</div>
+                                    <svg viewBox="0 0 120 80" className={styles.shotMapSvg}>
+                                      {/* Pitch outline */}
+                                      <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
+                                      {/* Half line */}
+                                      <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
+                                      {/* Penalty boxes - attacking box highlighted */}
+                                      <rect x="102" y="18" width="18" height="44" fill="rgba(255, 200, 200, 0.3)" stroke="#888" strokeWidth="0.8" />
+                                      <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* 6-yard boxes */}
+                                      <rect x="0" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      <rect x="114" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
+                                      {/* Penalty spots */}
+                                      <circle cx="12" cy="40" r="0.8" fill="#888" />
+                                      <circle cx="108" cy="40" r="0.8" fill="#888" />
+                                      {/* Goal indicators */}
+                                      <rect x="0" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
+                                      <rect x="119.5" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
+                                      
+                                      {/* Plot box entries */}
+                                      {(m.box_entry_locations[gamePhaseTeams.away] || []).map((entry, entryIdx) => (
+                                        <g key={entryIdx}>
+                                          <line
+                                            x1={120 - entry.x1}
+                                            y1={80 - entry.y1}
+                                            x2={120 - entry.x2}
+                                            y2={80 - entry.y2}
+                                            stroke={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
+                                            strokeWidth="1.5"
+                                            strokeDasharray={entry.type === 'pass' ? '2,2' : '0'}
+                                            opacity="0.7"
+                                          />
+                                          <circle
+                                            cx={120 - entry.x2}
+                                            cy={80 - entry.y2}
+                                            r="2"
+                                            fill={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
+                                            stroke="black"
+                                            strokeWidth="0.3"
+                                            opacity="0.75"
+                                          >
+                                            <title>{entry.type === 'pass' ? 'Pass into box' : 'Carry into box'}</title>
+                                          </circle>
+                                        </g>
+                                      ))}
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className={styles.shotMapLegend}>
+                                  <span><span className={styles.legendLine} style={{backgroundColor: '#2196F3', borderStyle: 'dashed'}}></span> Pass into box</span>
+                                  <span><span className={styles.legendLine} style={{backgroundColor: '#FF9800'}}></span> Carry into box</span>
+                                </div>
                               </div>
-                              <div className={styles.metricCard}>
-                                <div className={styles.metricLabel}>Shots (total • on target)</div>
-                                <div className={styles.metricValue}>{gamePhaseTeams.home}: {m.shots_summary?.[gamePhaseTeams.home]?.total ?? 0} ({m.shots_summary?.[gamePhaseTeams.home]?.on_target ?? 0})</div>
-                                <div className={styles.metricValue}>{gamePhaseTeams.away}: {m.shots_summary?.[gamePhaseTeams.away]?.total ?? 0} ({m.shots_summary?.[gamePhaseTeams.away]?.on_target ?? 0})</div>
-                              </div>
-                              <div className={styles.metricCard}>
-                                <div className={styles.metricLabel}>Score (phase)</div>
-                                <div className={styles.metricValue}>Start: {gamePhaseTeams.home} {m.score_at_start?.[gamePhaseTeams.home] ?? 0} - {m.score_at_start?.[gamePhaseTeams.away] ?? 0} {gamePhaseTeams.away}</div>
-                                <div className={styles.metricValue}>End: {gamePhaseTeams.home} {m.score_at_end?.[gamePhaseTeams.home] ?? 0} - {m.score_at_end?.[gamePhaseTeams.away] ?? 0} {gamePhaseTeams.away}</div>
-                              </div>
-                            </div>
+                            )}
                           </div>
                         );
                       })()}
