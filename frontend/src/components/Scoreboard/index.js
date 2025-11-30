@@ -6,26 +6,12 @@ export default function Scoreboard({ stage, home, away, score, shots, shotsOnTar
   return (
     <div className={styles.container}>
       <div className={styles.scoreboard}>
-        {stage && (
-          <div className={styles.stage}>
-            {stage}
-          </div>
-        )}
-
+        {/* Team names header for column alignment */}
         <div className={styles.teamNames}>
           <span>{home}</span>
           <span>{away}</span>
         </div>
 
-        <div className={styles.label}>
-          <span>Goals</span>
-        </div>
-
-        {/* Goals row values */}
-        <div className={styles.values}>
-          <span>{score ? score.split(" - ")[0] : "-"}</span>
-          <span>{score ? score.split(" - ")[1] : "-"}</span>
-        </div>
         {/* Shots row label */}
         <div className={styles.label}>
           <span>Shots</span>

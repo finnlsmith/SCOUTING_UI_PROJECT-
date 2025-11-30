@@ -139,38 +139,64 @@ export default function MatchViz() {
     <div className={styles.container}>
       <ErrorBanner error={globalError} onClose={handleClearError} />
       <div className={styles.content}>
-        {/* Tournament Title */}
-        <h1 className={styles.tournamentTitle}>Euro 2020</h1>
-        {/* Match Selection */}
-        <div className={styles.matchSelection}>
-          <h2 className={styles.sectionTitle}>Select a Match</h2>
-          <div className={styles.matchSelectorWrapper}>
-            <MatchSelector
-              matches={matches}
-              selectedMatch={selectedMatch}
-              onChange={async (v) => {
-                setSelectedMatch(v);
-                try {
-                  await loadMatchViz(v, setStats);
+        {/* Tournament Title and Match Selection Header */}
+        <div className={styles.pageHeader}>
+          <h1 className={styles.tournamentTitle}>Euro 2020</h1>
+          <div className={styles.matchSelection}>
+            <h2 className={styles.sectionTitle}>Select a Match</h2>
+            <div className={styles.matchSelectorWrapper}>
+              <MatchSelector
+                matches={matches}
+                selectedMatch={selectedMatch}
+                onChange={async (v) => {
+                  setSelectedMatch(v);
+                  try {
+                    await loadMatchViz(v, setStats);
+                    // setFigData(null); // This line was commented out in the original file
+                  } catch (e) {
+                    setVizError?.(e?.message || "Failed to load match");
+                  }
+                }}
+                flipSides={flipSides}
+                onFlipChange={setFlipSides}
+                onReset={() => {
+                  setSelectedMatch("");
+                  setStats({});
                   // setFigData(null); // This line was commented out in the original file
-                } catch (e) {
-                  setVizError?.(e?.message || "Failed to load match");
-                }
-              }}
-              flipSides={flipSides}
-              onFlipChange={setFlipSides}
-              onReset={() => {
-                setSelectedMatch("");
-                setStats({});
-                // setFigData(null); // This line was commented out in the original file
-              }}
-              matchesLoading={matchesLoading}
-            />
+                }}
+                matchesLoading={matchesLoading}
+              />
+            </div>
           </div>
         </div>
 
         {selectedMatch && (
           <>
+            <div className={styles.sectionDivider}></div>
+            
+            {/* Entire Match Section */}
+            <h2 className={styles.entireMatchTitle}>Entire Match</h2>
+            
+            {/* Score Banner */}
+            <div className={styles.scoreBanner}>
+              <span className={styles.scoreText}>
+                {stats.home_team} {Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "0 - 0"} {stats.away_team}
+              </span>
+              {stats.competition_stage && <span className={styles.stageText}>{stats.competition_stage}</span>}
+              {selectedLabel && <span className={styles.dateText}>{selectedLabel.match(/\d{4}-\d{2}-\d{2}/)?.[0] || ""}</span>}
+            </div>
+
+            {/* Visualization Header */}
+            <div className={styles.visualizationHeader}>
+              <span className={styles.vizHeaderScore}>
+                {stats.home_team} {Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "0 - 0"} {stats.away_team}
+              </span>
+              <span className={styles.vizHeaderSeparator}>|</span>
+              {stats.competition_stage && <span className={styles.vizHeaderStage}>{stats.competition_stage}</span>}
+              {selectedLabel && stats.competition_stage && <span className={styles.vizHeaderSeparator}>|</span>}
+              {selectedLabel && <span className={styles.vizHeaderDate}>{selectedLabel.match(/\d{4}-\d{2}-\d{2}/)?.[0] || ""}</span>}
+            </div>
+
             {/* Main 3-panel row */}
             <div className={styles.mainRow}>
               {/* Match Facts */}
@@ -201,7 +227,7 @@ export default function MatchViz() {
 
               {/* Shot Maps, with buttons */}
               <div className={styles.shotMaps}>
-                <h2 className={styles.shotMapsTitle}>Shot Maps</h2>
+                <h2 className={styles.shotMapsTitle}>Shot Map</h2>
                 <div className={styles.flipSidesContainer}>
                   <label className={styles.flipSidesLabel}>
                     <input
@@ -275,6 +301,9 @@ export default function MatchViz() {
                 )}
               </div>
             </div>
+            
+            <div className={styles.sectionDivider}></div>
+            
             {/* Key Moments Section */}
             <div className={styles.keyMoments}>
               <h2 className={styles.keyMomentsTitle}>Key Moments <span className={styles.showScenesLabel}><input type="checkbox" checked={showImportantScenes} onChange={handleShowImportantScenesToggle} className={styles.showScenesCheckbox} />Show Scenes</span></h2>
@@ -344,6 +373,9 @@ export default function MatchViz() {
                 )}
               </div>
             </div>
+            
+            <div className={styles.sectionDivider}></div>
+            
             {/* Game Phases Section */}
             <div className={styles.gamePhases}>
               <h2 className={styles.gamePhasesTitle}>Game Phases</h2>
@@ -356,32 +388,36 @@ export default function MatchViz() {
               )}
               {!gamePhaseLoading && !gamePhaseError && gamePhases.length > 0 && (
                 <div className={styles.gamePhasesList}>
-                  {gamePhases.map((ph, idx) => (
+                  {gamePhases.map((ph, idx) => {
+                    const m = (gamePhaseMetrics || []).find(mm => mm.phase_idx === ph.phase_idx);
+                    return (
                     <div key={idx} className={styles.gamePhaseCard}>
-                      <div className={styles.gamePhaseTitle}>Game Phase {ph.phase_idx}</div>
-                      <div className={styles.gamePhaseTime}>
-                        <b>From: </b>{`${ph.start_minute}:${String(ph.start_second).padStart(2, '0')}`} <b>— To: </b>{ph.end_minute !== null ? `${ph.end_minute}:${String(ph.end_second).padStart(2,'0')}` : 'End'}
-                      </div>
-                      <div className={styles.gamePhaseScore}>
-                        <b>Score: </b>{gamePhaseTeams.home} {ph.score_start} {gamePhaseTeams.away}
-                        {ph.score_end ? ` → ${ph.score_end}` : ''}
-                      </div>
-                      {ph.goal_info && ph.goal_info.scorer && (
-                        <div className={styles.gamePhaseGoalInfo}>
-                          Goal Event: <b>{ph.goal_info.event_type}</b>{ph.goal_info.own_goal_team ? ` (Own goal by ${ph.goal_info.own_goal_team})` : ''}, scored by <b>{ph.goal_info.scorer}</b>
+                      <div className={styles.gamePhaseHeader}>
+                        <div className={styles.gamePhaseTitle}>Game Phase {ph.phase_idx}</div>
+                        <div className={styles.gamePhaseTime}>
+                          <b>From: </b>{`${ph.start_minute}:${String(ph.start_second).padStart(2, '0')}`} <b>— To: </b>{ph.end_minute !== null ? `${ph.end_minute}:${String(ph.end_second).padStart(2,'0')}` : 'End'}
                         </div>
-                      )}
-                      {Array.isArray(ph.break_reasons) && ph.break_reasons.length > 0 && (
-                        <div className={styles.gamePhaseBreakReasons}>
-                          Phase ended by: {ph.break_reasons.map(r => r === "half_end" ? "Half Ended" : r).join(', ')}
-                          {/* {ph.start_period ? ` • period ${ph.start_period}` : ''} */}
+                        <div className={styles.gamePhaseScore}>
+                          <b>Score: </b>{gamePhaseTeams.home} {ph.score_start} {gamePhaseTeams.away}
+                          {ph.score_end ? ` → ${ph.score_end}` : ''}
                         </div>
-                      )}
-                      {(() => {
-                        const m = (gamePhaseMetrics || []).find(mm => mm.phase_idx === ph.phase_idx);
-                        if (!m) return null;
-                        return (
-                          <div className={styles.metricsContainer}>
+                        {ph.goal_info && ph.goal_info.scorer && (
+                          <div className={styles.gamePhaseGoalInfo}>
+                            Goal Event: <b>{ph.goal_info.event_type}</b>{ph.goal_info.own_goal_team ? ` (Own goal by ${ph.goal_info.own_goal_team})` : ''}, scored by <b>{ph.goal_info.scorer}</b>
+                          </div>
+                        )}
+                        {Array.isArray(ph.break_reasons) && ph.break_reasons.length > 0 && (
+                          <div className={styles.gamePhaseBreakReasons}>
+                            Phase ended by: {ph.break_reasons.map(r => r === "half_end" ? "Half Ended" : r).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {m && (
+                        <div className={styles.phaseTwoColumnLayout}>
+                          {/* Left column: Stats table */}
+                          <div className={styles.phaseStatsColumn}>
+                            <div className={styles.metricsContainer}>
                             <table className={styles.phaseMetricsTable}>
                               <thead>
                                 <tr>
@@ -443,7 +479,11 @@ export default function MatchViz() {
                                 </tr>
                               </tbody>
                             </table>
-                            
+                            </div>
+                          </div>
+                          
+                          {/* Right column: Visualizations */}
+                          <div className={styles.phaseVisualizationsColumn}>
                             {/* Key Event Maps (shots, cards, own goals) */}
                             {m.shot_map_data && (
                               <div className={styles.shotMapsContainer}>
@@ -756,10 +796,11 @@ export default function MatchViz() {
                               </div>
                             )}
                           </div>
-                        );
-                      })()}
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
