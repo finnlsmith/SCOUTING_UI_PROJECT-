@@ -25,6 +25,8 @@ module.exports = function override(config, env) {
       clientsClaim: true,
       skipWaiting: true,
       cleanupOutdatedCaches: true,
+      // Increase the maximum file size for precaching to 5MB
+      maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       exclude: [/\.map$/, /manifest$/, /\.htaccess$/],
       runtimeCaching: [
         {
