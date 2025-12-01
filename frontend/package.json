@@ -18,6 +18,7 @@
     "workbox-webpack-plugin": "^7.1.0"
   },
   "devDependencies": {
+    "msw": "^2.12.3",
     "webpack-bundle-analyzer": "^4.10.2"
   },
   "scripts": {
