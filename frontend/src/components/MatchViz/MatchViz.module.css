@@ -654,12 +654,28 @@
   font-size: 13px;
   color: #333;
   flex-wrap: wrap;
+  margin-bottom: 8px;
 }
 
 .shotMapLegend span {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.shotOutcomeLegend {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  font-size: 11px;
+  color: #666;
+  flex-wrap: wrap;
+}
+
+.shotOutcomeLegend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .legendDot {
@@ -710,5 +726,46 @@
   height: 3px;
   display: inline-block;
   border: none;
+}
+
+/* Shot Outcome Legend Icons */
+.legendWhiteX {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  position: relative;
+  background: linear-gradient(45deg, transparent 40%, white 40%, white 60%, transparent 60%),
+              linear-gradient(-45deg, transparent 40%, white 40%, white 60%, transparent 60%);
+  border: 1px solid black;
+  border-radius: 2px;
+}
+
+.legendRedCircle {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  border-radius: 50%;
+  border: 2px solid red;
+  background: transparent;
+}
+
+.legendRedX {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  position: relative;
+  background: linear-gradient(45deg, transparent 40%, red 40%, red 60%, transparent 60%),
+              linear-gradient(-45deg, transparent 40%, red 40%, red 60%, transparent 60%);
+}
+
+.legendQuestion {
+  width: 12px;
+  height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  color: purple;
 }
 

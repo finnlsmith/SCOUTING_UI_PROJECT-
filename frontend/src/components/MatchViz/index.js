@@ -535,10 +535,7 @@ export default function MatchViz() {
                                             </g>
                                           );
                                         } else {
-                                          // Shot event - render circle with optional outcome indicators
-                                          const isBlocked = event.outcome === 'Blocked';
-                                          const isOffTarget = event.outcome === 'Off T' || event.outcome === 'Wayward';
-                                          
+                                          const outcome = event.outcome.toLowerCase();
                                           return (
                                             <g key={eventIdx}>
                                               <circle
@@ -553,24 +550,28 @@ export default function MatchViz() {
                                                 <title>{`${event.player}\nxG: ${event.xg}\n${event.outcome}`}</title>
                                               </circle>
                                               
-                                              {/* Red X for blocked shots */}
-                                              {isBlocked && (
+                                              {outcome === 'woodwork' && (
+                                                <>
+                                                  <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="white" strokeWidth="2" />
+                                                  <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="white" strokeWidth="2" />
+                                                  <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="black" strokeWidth="0.5" />
+                                                  <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="black" strokeWidth="0.5" />
+                                                </>
+                                              )}
+                                              
+                                              {outcome === 'saved' && (
+                                                <circle cx={event.x} cy={80 - event.y} r="3.5" fill="none" stroke="red" strokeWidth="1.2" />
+                                              )}
+                                              
+                                              {outcome === 'blocked' && (
                                                 <>
                                                   <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="red" strokeWidth="1" />
                                                   <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="red" strokeWidth="1" />
                                                 </>
                                               )}
                                               
-                                              {/* Red unfilled circle for off target shots */}
-                                              {isOffTarget && (
-                                                <circle
-                                                  cx={event.x}
-                                                  cy={80 - event.y}
-                                                  r="4"
-                                                  fill="none"
-                                                  stroke="red"
-                                                  strokeWidth="0.8"
-                                                />
+                                              {outcome === 'wayward' && (
+                                                <text x={event.x} y={80 - event.y + 1.5} textAnchor="middle" fontSize="5" fill="purple" fontWeight="bold">?</text>
                                               )}
                                             </g>
                                           );
@@ -627,10 +628,7 @@ export default function MatchViz() {
                                             </g>
                                           );
                                         } else {
-                                          // Shot event - render circle with optional outcome indicators
-                                          const isBlocked = event.outcome === 'blocked';
-                                          const isOffTarget = event.outcome === 'off t' || event.outcome === 'wayward';
-                                          
+                                          const outcome = event.outcome.toLowerCase();
                                           return (
                                             <g key={eventIdx}>
                                               <circle
@@ -645,24 +643,28 @@ export default function MatchViz() {
                                                 <title>{`${event.player}\nxG: ${event.xg}\n${event.outcome}`}</title>
                                               </circle>
                                               
-                                              {/* Red X for blocked shots */}
-                                              {isBlocked && (
+                                              {outcome === 'woodwork' && (
+                                                <>
+                                                  <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="white" strokeWidth="2" />
+                                                  <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="white" strokeWidth="2" />
+                                                  <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="black" strokeWidth="0.5" />
+                                                  <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="black" strokeWidth="0.5" />
+                                                </>
+                                              )}
+                                              
+                                              {outcome === 'saved' && (
+                                                <circle cx={event.x} cy={80 - event.y} r="3.5" fill="none" stroke="red" strokeWidth="1.2" />
+                                              )}
+                                              
+                                              {outcome === 'blocked' && (
                                                 <>
                                                   <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="red" strokeWidth="1" />
                                                   <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="red" strokeWidth="1" />
                                                 </>
                                               )}
                                               
-                                              {/* Red unfilled circle for off target shots */}
-                                              {isOffTarget && (
-                                                <circle
-                                                  cx={event.x}
-                                                  cy={80 - event.y}
-                                                  r="4"
-                                                  fill="none"
-                                                  stroke="red"
-                                                  strokeWidth="0.8"
-                                                />
+                                              {outcome === 'wayward' && (
+                                                <text x={event.x} y={80 - event.y + 1.5} textAnchor="middle" fontSize="5" fill="purple" fontWeight="bold">?</text>
                                               )}
                                             </g>
                                           );
@@ -678,6 +680,12 @@ export default function MatchViz() {
                                   <span><span className={styles.legendDot} style={{backgroundColor: 'black'}}></span> Low xG (&lt;0.08)</span>
                                   <span><span className={styles.legendSquare}></span> Red Card</span>
                                   <span><span className={styles.legendX}></span> Own Goal For</span>
+                                </div>
+                                <div className={styles.shotOutcomeLegend}>
+                                  <span><span className={styles.legendWhiteX}></span> Woodwork</span>
+                                  <span><span className={styles.legendRedCircle}></span> Saved</span>
+                                  <span><span className={styles.legendRedX}></span> Blocked</span>
+                                  <span><span className={styles.legendQuestion}></span> Wayward</span>
                                 </div>
                               </div>
                             )}
