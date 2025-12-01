@@ -1,7 +1,7 @@
 # routes/matches.py
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 import pandas as pd
 import plotly.express as px
 import io
@@ -135,3 +135,33 @@ async def upload_csv(file: UploadFile = File(...)):
     except Exception as e:
         logger.exception("Error processing uploaded CSV")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/team-logo/{team_name}", summary="Get team logo from S3")
+async def get_team_logo(team_name: str):
+    """
+    Fetch team logo from S3. Tries {team_name}.png, then .svg, then .jpeg/.jpg
+    Returns the image with appropriate Content-Type or 404 if not found.
+    """
+    extensions = [".png", ".svg", ".jpeg", ".jpg"]
+    
+    for ext in extensions:
+        key = f"{team_name}{ext}"
+        try:
+            response = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
+            image_data = response['Body'].read()
+            
+            # Set appropriate Content-Type
+            content_type = {
+                ".png": "image/png",
+                ".svg": "image/svg+xml",
+                ".jpeg": "image/jpeg",
+                ".jpg": "image/jpeg"
+            }.get(ext, "application/octet-stream")
+            
+            return Response(content=image_data, media_type=content_type)
+        except Exception as e:
+            continue  # Try next extension
+    
+    # None found
+    raise HTTPException(status_code=404, detail=f"Logo not found for team: {team_name}")

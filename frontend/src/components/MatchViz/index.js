@@ -228,13 +228,36 @@ export default function MatchViz() {
             
             {/* Score/Round/Date Header */}
             <div className={styles.visualizationHeader}>
-              <span className={styles.vizHeaderScore}>
-                {stats.home_team} {Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "0 - 0"} {stats.away_team}
-              </span>
-              <span className={styles.vizHeaderSeparator}>|</span>
-              {stats.competition_stage && <span className={styles.vizHeaderStage}>{stats.competition_stage}</span>}
-              {selectedLabel && stats.competition_stage && <span className={styles.vizHeaderSeparator}>|</span>}
-              {selectedLabel && <span className={styles.vizHeaderDate}>{selectedLabel.match(/\d{4}-\d{2}-\d{2}/)?.[0] || ""}</span>}
+              <div className={styles.vizHeaderContent}>
+                <div className={styles.vizHeaderTeamSection}>
+                  <img 
+                    src={`${API_BASE}/team-logo/${encodeURIComponent(stats.home_team)}`} 
+                    alt={stats.home_team}
+                    className={styles.teamLogo}
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                  <span className={styles.teamName}>{stats.home_team}</span>
+                </div>
+                <div className={styles.vizHeaderScoreSection}>
+                  <span className={styles.vizHeaderScore}>
+                    {Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "0 - 0"}
+                  </span>
+                  <div className={styles.vizHeaderMeta}>
+                    {stats.competition_stage && <span className={styles.vizHeaderStage}>{stats.competition_stage}</span>}
+                    {selectedLabel && stats.competition_stage && <span className={styles.vizHeaderSeparator}>|</span>}
+                    {selectedLabel && <span className={styles.vizHeaderDate}>{selectedLabel.match(/\d{4}-\d{2}-\d{2}/)?.[0] || ""}</span>}
+                  </div>
+                </div>
+                <div className={styles.vizHeaderTeamSection}>
+                  <span className={styles.teamName}>{stats.away_team}</span>
+                  <img 
+                    src={`${API_BASE}/team-logo/${encodeURIComponent(stats.away_team)}`} 
+                    alt={stats.away_team}
+                    className={styles.teamLogo}
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                </div>
+              </div>
             </div>
             
             {/* ========================================
@@ -466,8 +489,8 @@ export default function MatchViz() {
                       const startTime = startMin * 60 + startSec;
                       const endTime = endMin * 60 + endSec;
                       
-                      // Exclude moments outside time range
-                      if (momentTime < startTime || momentTime > endTime) return false;
+                      // Exclude moments outside time range (strict: start_time < x <= end_time)
+                      if (momentTime <= startTime || momentTime > endTime) return false;
                       
                       // Exclude the goal that ENDED this phase (it's the next phase's starting event)
                       if (ph.goal_info && ph.goal_info.scorer) {
@@ -521,24 +544,14 @@ export default function MatchViz() {
                               </thead>
                               <tbody>
                                 <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Goals</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.goals?.[gamePhaseTeams.home] ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.goals?.[gamePhaseTeams.away] ?? 0}</td>
+                                  <td className={styles.phaseMetricsLabelCell}>Shots (On Target)</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.home]?.total ?? 0} ({m.shots_summary?.[gamePhaseTeams.home]?.on_target ?? 0})</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.away]?.total ?? 0} ({m.shots_summary?.[gamePhaseTeams.away]?.on_target ?? 0})</td>
                                 </tr>
                                 <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Shots (total)</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.home]?.total ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.away]?.total ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Shots on Target</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.home]?.on_target ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.away]?.on_target ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Possession %</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.possession_pct_by_passes?.[gamePhaseTeams.home] ?? 0}%</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.possession_pct_by_passes?.[gamePhaseTeams.away] ?? 0}%</td>
+                                  <td className={styles.phaseMetricsLabelCell}>Final Third Entries</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.final_third_entries?.[gamePhaseTeams.home] ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.final_third_entries?.[gamePhaseTeams.away] ?? 0}</td>
                                 </tr>
                                 <tr className={styles.phaseMetricsRow}>
                                   <td className={styles.phaseMetricsLabelCell}>Box Entries</td>
@@ -546,9 +559,14 @@ export default function MatchViz() {
                                   <td className={styles.phaseMetricsValueCell}>{m.box_entries?.[gamePhaseTeams.away] ?? 0}</td>
                                 </tr>
                                 <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Final Third Entries</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.final_third_entries?.[gamePhaseTeams.home] ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.final_third_entries?.[gamePhaseTeams.away] ?? 0}</td>
+                                  <td className={styles.phaseMetricsLabelCell}>Possession %</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.possession_pct_by_passes?.[gamePhaseTeams.home] ?? 0}%</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.possession_pct_by_passes?.[gamePhaseTeams.away] ?? 0}%</td>
+                                </tr>
+                                <tr className={styles.phaseMetricsRow}>
+                                  <td className={styles.phaseMetricsLabelCell}>Goals</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.goals?.[gamePhaseTeams.home] ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.goals?.[gamePhaseTeams.away] ?? 0}</td>
                                 </tr>
                                 <tr className={styles.phaseMetricsRow}>
                                   <td className={styles.phaseMetricsLabelCell}>Fouls</td>
@@ -875,9 +893,9 @@ export default function MatchViz() {
                                         <g key={entryIdx}>
                                           <line
                                             x1={120 - entry.x1}
-                                            y1={80 - entry.y1}
+                                            y1={entry.y1}
                                             x2={120 - entry.x2}
-                                            y2={80 - entry.y2}
+                                            y2={entry.y2}
                                             stroke={strokeColor}
                                             strokeWidth="1.5"
                                             strokeDasharray={entry.type === 'pass' ? '2,2' : '0'}
@@ -885,7 +903,7 @@ export default function MatchViz() {
                                           />
                                           <circle
                                             cx={120 - entry.x2}
-                                            cy={80 - entry.y2}
+                                            cy={entry.y2}
                                             r="2"
                                             fill={fillColor}
                                             stroke="black"

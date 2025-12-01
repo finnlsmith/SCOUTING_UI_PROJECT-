@@ -49,35 +49,102 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 24px;
-  padding: 20px 32px;
+  padding: 32px 40px;
   background: var(--color-bg-card);
   border-radius: var(--radius-lg);
   margin-bottom: 24px;
   box-shadow: var(--shadow-md);
+  min-height: 120px;
 }
 
-.vizHeaderScore {
-  font-size: 28px;
-  font-weight: var(--font-weight-extrabold);
+.vizHeaderContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 900px;
+  gap: 40px;
+}
+
+.vizHeaderTeamSection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.vizHeaderTeamSection:last-child {
+  flex-direction: row-reverse;
+}
+
+.teamLogo {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+}
+
+.teamName {
+  font-size: 24px;
+  font-weight: var(--font-weight-bold);
   color: var(--color-text-dark);
 }
 
+[data-theme="dark"] .teamName {
+  color: white;
+}
+
+.vizHeaderScoreSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.vizHeaderScore {
+  font-size: 48px;
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-text-dark);
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .vizHeaderScore {
+  color: white;
+}
+
+.vizHeaderMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+}
+
 .vizHeaderStage {
-  font-size: 22px;
+  font-size: 16px;
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .vizHeaderStage {
+  color: #aaa;
 }
 
 .vizHeaderDate {
-  font-size: 22px;
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-secondary);
+  font-size: 16px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+}
+
+[data-theme="dark"] .vizHeaderDate {
+  color: #999;
 }
 
 .vizHeaderSeparator {
-  font-size: 22px;
+  font-size: 16px;
   color: var(--color-text-tertiary);
+}
+
+[data-theme="dark"] .vizHeaderSeparator {
+  color: #666;
 }
 
 .sectionTitle {
@@ -449,6 +516,12 @@
   width: 100%;
 }
 
+/* Dark theme specific: black background for phase cards */
+[data-theme="dark"] .gamePhaseCard {
+  background: #000000;
+  border-color: #333;
+}
+
 /* Layout: Phase content + Key Moments side-by-side */
 .phaseWithMomentsLayout {
   display: flex;
@@ -470,7 +543,11 @@
   font-size: 22px;
   font-weight: var(--font-weight-bold);
   margin-bottom: 12px;
-  color: black;
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .phaseMomentsTitle {
+  color: white;
 }
 
 .phaseMomentsTable {
@@ -551,8 +628,12 @@
 .gamePhaseTitle {
   font-weight: var(--font-weight-extrabold);
   font-size: 36px;
-  color: black;
+  color: var(--color-text-dark);
   margin-bottom: 14px;
+}
+
+[data-theme="dark"] .gamePhaseTitle {
+  color: white;
 }
 
 .gamePhaseTime {
@@ -562,11 +643,19 @@
   color: var(--color-text-secondary);
 }
 
+[data-theme="dark"] .gamePhaseTime {
+  color: #aaa;
+}
+
 .gamePhaseScore {
   font-size: 28px;
   font-weight: var(--font-weight-extrabold);
-  color: black;
+  color: var(--color-text-dark);
   margin: 10px 0;
+}
+
+[data-theme="dark"] .gamePhaseScore {
+  color: white;
 }
 
 .gamePhaseGoalInfo {
@@ -576,11 +665,19 @@
   color: #357;
 }
 
+[data-theme="dark"] .gamePhaseGoalInfo {
+  color: #6FB1FF;
+}
+
 .gamePhaseBreakReasons {
   margin-top: 12px;
   font-size: 20px;
   font-weight: var(--font-weight-medium);
   color: var(--color-text-tertiary);
+}
+
+[data-theme="dark"] .gamePhaseBreakReasons {
+  color: #999;
 }
 
 /* Two-column layout for stats and visualizations within phase */
@@ -708,6 +805,10 @@
   font-weight: var(--font-weight-semibold);
   margin-bottom: 14px;
   color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .phaseVisualizationTitle {
+  color: white;
 }
 
 .shotMapsGrid {
