@@ -13,11 +13,16 @@ import { ThemeProvider } from '../../contexts/ThemeContext';
 export function renderWithProviders(ui, { route = '/', theme = 'light', ...renderOptions } = {}) {
   // Set up router with initial route
   window.history.pushState({}, 'Test page', route);
+  
+  // Set theme in localStorage if provided
+  if (theme) {
+    localStorage.setItem('theme', theme);
+  }
 
   function Wrapper({ children }) {
     return (
       <BrowserRouter>
-        <ThemeProvider initialTheme={theme}>
+        <ThemeProvider>
           {children}
         </ThemeProvider>
       </BrowserRouter>
