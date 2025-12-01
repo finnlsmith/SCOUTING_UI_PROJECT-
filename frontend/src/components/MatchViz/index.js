@@ -174,9 +174,6 @@ export default function MatchViz() {
           <>
             <div className={styles.sectionDivider}></div>
             
-            {/* Entire Match Section */}
-            <h2 className={styles.entireMatchTitle}>Entire Match</h2>
-            
             {/* Score/Round/Date Header */}
             <div className={styles.visualizationHeader}>
               <span className={styles.vizHeaderScore}>
@@ -187,6 +184,9 @@ export default function MatchViz() {
               {selectedLabel && stats.competition_stage && <span className={styles.vizHeaderSeparator}>|</span>}
               {selectedLabel && <span className={styles.vizHeaderDate}>{selectedLabel.match(/\d{4}-\d{2}-\d{2}/)?.[0] || ""}</span>}
             </div>
+            
+            {/* Entire Match Section */}
+            <h2 className={styles.entireMatchTitle}>Entire Match</h2>
 
             {/* Main 3-panel row */}
             <div className={styles.mainRow}>
