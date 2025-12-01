@@ -185,39 +185,45 @@ export default function MatchViz() {
               {selectedLabel && <span className={styles.vizHeaderDate}>{selectedLabel.match(/\d{4}-\d{2}-\d{2}/)?.[0] || ""}</span>}
             </div>
             
-            {/* Entire Match Section */}
+            {/* ========================================
+                ENTIRE MATCH SECTION 
+                ======================================== */}
             <h2 className={styles.entireMatchTitle}>Entire Match</h2>
 
-            {/* Main 3-panel row */}
-            <div className={styles.mainRow}>
-              {/* Match Facts */}
-              <div className={styles.matchFacts}>
-                <h2 className={styles.matchFactsTitle}>Match Facts</h2>
-                <div className={styles.matchFactsCard}>
-                  <Scoreboard
-                    stage={stats.competition_stage}
-                    home={stats.home_team}
-                    away={stats.away_team}
-                    score={Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "-"}
-                    shots={(stats.home_shots !== null && stats.away_shots !== null && stats.home_shots !== undefined && stats.away_shots !== undefined)
-                      ? `${stats.home_shots} - ${stats.away_shots}` : "-"}
-                    shotsOnTarget={(stats.home_shots_on_target !== null && stats.away_shots_on_target !== null && stats.home_shots_on_target !== undefined && stats.away_shots_on_target !== undefined)
-                      ? `${stats.home_shots_on_target} - ${stats.away_shots_on_target}` : "-"}
-                    xg={(stats.home_xg_sum && stats.away_xg_sum)
-                        ? `${stats.home_xg_sum} - ${stats.away_xg_sum}`
-                        : "-"}
-                    bigChances={(Number.isFinite(stats.home_big_chances) && Number.isFinite(stats.away_big_chances)) ? `${stats.home_big_chances} - ${stats.away_big_chances}` : "-"}
-                    okChances={(Number.isFinite(stats.home_ok_chances) && Number.isFinite(stats.away_ok_chances)) ? `${stats.home_ok_chances} - ${stats.away_ok_chances}` : "-"}
-                    fouls={(Number.isFinite(stats.home_fouls) && Number.isFinite(stats.away_fouls)) ? `${stats.home_fouls} - ${stats.away_fouls}` : "-"}
-                    cardsLeft={(Number.isFinite(stats.home_cards_total) && Number.isFinite(stats.home_cards_yellow) && Number.isFinite(stats.home_cards_red)) ? `${stats.home_cards_total} (${stats.home_cards_yellow}/${stats.home_cards_red})` : "-"}
-                    cardsRight={(Number.isFinite(stats.away_cards_total) && Number.isFinite(stats.away_cards_yellow) && Number.isFinite(stats.away_cards_red)) ? `${stats.away_cards_total} (${stats.away_cards_yellow}/${stats.away_cards_red})` : "-"}
-                    boxEntries={(Number.isFinite(stats.home_box_entries) && Number.isFinite(stats.away_box_entries)) ? `${stats.home_box_entries} - ${stats.away_box_entries}` : "-"}
-                  />
-                </div>
+            {/* ========================================
+                MATCH FACTS (STANDALONE SECTION)
+                ======================================== */}
+            <div className={styles.matchFactsSection}>
+              <h2 className={styles.matchFactsTitle}>Match Facts</h2>
+              <div className={styles.matchFactsCard}>
+                <Scoreboard
+                  stage={stats.competition_stage}
+                  home={stats.home_team}
+                  away={stats.away_team}
+                  score={Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "-"}
+                  shots={(stats.home_shots !== null && stats.away_shots !== null && stats.home_shots !== undefined && stats.away_shots !== undefined)
+                    ? `${stats.home_shots} - ${stats.away_shots}` : "-"}
+                  shotsOnTarget={(stats.home_shots_on_target !== null && stats.away_shots_on_target !== null && stats.home_shots_on_target !== undefined && stats.away_shots_on_target !== undefined)
+                    ? `${stats.home_shots_on_target} - ${stats.away_shots_on_target}` : "-"}
+                  xg={(stats.home_xg_sum && stats.away_xg_sum)
+                      ? `${stats.home_xg_sum} - ${stats.away_xg_sum}`
+                      : "-"}
+                  bigChances={(Number.isFinite(stats.home_big_chances) && Number.isFinite(stats.away_big_chances)) ? `${stats.home_big_chances} - ${stats.away_big_chances}` : "-"}
+                  okChances={(Number.isFinite(stats.home_ok_chances) && Number.isFinite(stats.away_ok_chances)) ? `${stats.home_ok_chances} - ${stats.away_ok_chances}` : "-"}
+                  fouls={(Number.isFinite(stats.home_fouls) && Number.isFinite(stats.away_fouls)) ? `${stats.home_fouls} - ${stats.away_fouls}` : "-"}
+                  cardsLeft={(Number.isFinite(stats.home_cards_total) && Number.isFinite(stats.home_cards_yellow) && Number.isFinite(stats.home_cards_red)) ? `${stats.home_cards_total} (${stats.home_cards_yellow}/${stats.home_cards_red})` : "-"}
+                  cardsRight={(Number.isFinite(stats.away_cards_total) && Number.isFinite(stats.away_cards_yellow) && Number.isFinite(stats.away_cards_red)) ? `${stats.away_cards_total} (${stats.away_cards_yellow}/${stats.away_cards_red})` : "-"}
+                  boxEntries={(Number.isFinite(stats.home_box_entries) && Number.isFinite(stats.away_box_entries)) ? `${stats.home_box_entries} - ${stats.away_box_entries}` : "-"}
+                />
               </div>
+            </div>
 
-              {/* Shot Maps, with buttons */}
-              <div className={styles.shotMaps}>
+            {/* ========================================
+                VISUALIZATIONS ROW: SHOT MAPS + PASSING NETWORK
+                ======================================== */}
+            <div className={styles.visualizationsRow}>
+              {/* --- SHOT MAPS COLUMN --- */}
+              <div className={styles.shotMapsColumn}>
                 <h2 className={styles.shotMapsTitle}>Shot Map</h2>
                 <div className={styles.flipSidesContainer}>
                   <label className={styles.flipSidesLabel}>
@@ -262,8 +268,8 @@ export default function MatchViz() {
                 )}
               </div>
 
-              {/* Passing Network (right) */}
-              <div className={styles.passingNetwork}>
+              {/* --- PASSING NETWORK COLUMN --- */}
+              <div className={styles.passingNetworkColumn}>
                 <h2 className={styles.passingNetworkTitle}>Passing Network</h2>
                 <div className={styles.passingNetworkButtons}>
                   <button onClick={async () => {

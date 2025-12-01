@@ -91,16 +91,15 @@
   margin: 0 auto;
 }
 
-.mainRow {
+/* ========================================
+   MATCH FACTS SECTION (Standalone, Full Width)
+   ======================================== */
+.matchFactsSection {
+  margin-bottom: 50px;
   display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-3xl);
-  margin-bottom: 54px;
-}
-
-.matchFacts {
-  flex: 1;
-  min-width: 295px;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
 }
 
 .matchFactsTitle {
@@ -120,17 +119,30 @@
   margin: 0 auto;
 }
 
-.shotMaps {
-  flex: 2;
-  min-width: 340px;
+/* ========================================
+   VISUALIZATIONS ROW (Shot Maps + Passing Network)
+   ======================================== */
+.visualizationsRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3xl);
+  margin-bottom: 54px;
+  justify-content: center;
+  width: 100%;
+}
+
+.shotMapsColumn {
+  flex: 1;
+  min-width: 400px;
   text-align: center;
 }
 
 .shotMapsTitle {
-  font-size: 48px;
+  font-size: 52px;
   font-weight: var(--font-weight-extrabold);
   margin-bottom: var(--spacing-lg);
   color: var(--color-text-primary);
+  text-align: center;
 }
 
 .flipSidesContainer {
@@ -212,14 +224,14 @@
   justify-content: center;
 }
 
-.passingNetwork {
-  flex: 1.42;
-  min-width: 295px;
+.passingNetworkColumn {
+  flex: 1;
+  min-width: 400px;
 }
 
 .passingNetworkTitle {
-  font-size: 48px;
-  font-weight: var(--font-weight-extrabold);
+  font-size: 38px;
+  font-weight: var(--font-weight-bold);
   margin-bottom: var(--spacing-lg);
   text-align: center;
   color: var(--color-text-primary);
@@ -382,17 +394,17 @@
 }
 
 .gamePhases {
-  margin: 52px auto 0;
+  margin: 52px 0 0;
   max-width: 100%;
   width: 100%;
-  padding: 0 20px;
 }
 
 .gamePhasesTitle {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-medium);
-  color: #f9f9ff;
-  margin-bottom: 3px;
+  font-size: 36px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: 20px;
+  text-align: left;
 }
 
 .gamePhasesLoading {
@@ -428,8 +440,9 @@
   padding: var(--spacing-xl) var(--spacing-2xl);
   box-shadow: var(--shadow-xl);
   min-height: 60px;
-  max-width: 1400px;
+  max-width: 1500px;
   margin: 0 auto;
+  width: 100%;
 }
 
 .gamePhaseHeader {
