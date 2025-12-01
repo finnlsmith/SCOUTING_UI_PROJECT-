@@ -117,6 +117,39 @@ export default function useVisualization() {
     try {
       const url = `${BACKEND_URL}/match/${encodeURIComponent(filename)}/passing_network?team=${encodeURIComponent(team)}&min_passes=${minPasses}&flip=${flip}`;
       const data = await _fetchJson(url);
+      
+      // Scale marker sizes to be more proportional
+      if (data && data.data) {
+        data.data = data.data.map(trace => {
+          if (trace.marker && trace.marker.size) {
+            // If size is an array, scale each value
+            if (Array.isArray(trace.marker.size)) {
+              const sizes = trace.marker.size;
+              const minSize = Math.min(...sizes);
+              const maxSize = Math.max(...sizes);
+              const range = maxSize - minSize;
+              
+              // Apply power scaling to make differences more pronounced
+              const scaledSizes = sizes.map(s => {
+                if (range === 0) return s;
+                const normalized = (s - minSize) / range;
+                const scaled = Math.pow(normalized, 0.5); // Power of 0.5 creates more dramatic differences
+                return minSize + (scaled * range * 2.5); // Multiply by 2.5 for larger overall sizes
+              });
+              
+              return {
+                ...trace,
+                marker: {
+                  ...trace.marker,
+                  size: scaledSizes
+                }
+              };
+            }
+          }
+          return trace;
+        });
+      }
+      
       return data;
     } catch (err) {
       console.error("Passing network fetch failed:", err);
