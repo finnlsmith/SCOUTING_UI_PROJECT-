@@ -79,6 +79,22 @@ class TestMatchesRoute:
         # Assert
         assert response.status_code == 500
         assert "Failed to load matches from S3" in response.json()['detail']
+    
+    @patch('routes.matches.s3_client')
+    def test_list_matches_csv_parse_error(self, mock_s3_client, client):
+        """Test handling of CSV parsing errors."""
+        # Arrange
+        # Create invalid CSV content that will cause parsing to fail
+        invalid_csv = BytesIO(b"not,a,valid,csv\nbroken,data")
+        mock_get_object = Mock(return_value={'Body': invalid_csv})
+        mock_s3_client.get_object = mock_get_object
+        
+        # Act
+        response = client.get("/api/matches")
+        
+        # Assert
+        assert response.status_code == 500
+        assert "Failed to parse matches file" in response.json()['detail']
 
 
 @pytest.mark.integration
