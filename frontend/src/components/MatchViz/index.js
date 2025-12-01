@@ -48,6 +48,8 @@ export default function MatchViz() {
   const [gamePhaseError, setGamePhaseError] = useState(null);
   const [gamePhaseTeams, setGamePhaseTeams] = useState({ home: "", away: "" });
   const [gamePhaseMetrics, setGamePhaseMetrics] = useState([]);
+  const [phaseScenes, setPhaseScenes] = useState({}); // {phaseIdx: {selectedMomentIdx, imageBase64, loading, error}}
+  const [phaseShowScenes, setPhaseShowScenes] = useState({}); // {phaseIdx: boolean}
 
   useEffect(() => {
     setGlobalError(matchesError || uploadError || vizError || "");
@@ -134,6 +136,56 @@ export default function MatchViz() {
   const handlePrev = () => setSelectedMomentIdx(idx => idx > 0 ? idx - 1 : 0);
   const handleNext = () => setSelectedMomentIdx(idx => idx < importantMoments.length - 1 ? idx + 1 : idx);
   const handleShowImportantScenesToggle = () => setShowImportantScenes(s => !s);
+  
+  // Handler for phase-specific key moments
+  const handlePhaseMomentClick = (phaseIdx, momentIdx, moment) => {
+    if (!moment || !moment.possession) return;
+    
+    setPhaseScenes(prev => ({
+      ...prev,
+      [phaseIdx]: {
+        ...prev[phaseIdx],
+        selectedMomentIdx: momentIdx,
+        loading: true,
+        error: null,
+        imageBase64: null
+      }
+    }));
+    
+    fetch(`${BACKEND_URL}/match/${selectedMatch}/possession_scene?possession=${moment.possession}`)
+      .then(res => res.json())
+      .then(res => {
+        if (res.image_base64) {
+          setPhaseScenes(prev => ({
+            ...prev,
+            [phaseIdx]: {
+              ...prev[phaseIdx],
+              imageBase64: res.image_base64,
+              loading: false
+            }
+          }));
+        } else if (res.error) {
+          setPhaseScenes(prev => ({
+            ...prev,
+            [phaseIdx]: {
+              ...prev[phaseIdx],
+              error: res.error,
+              loading: false
+            }
+          }));
+        }
+      })
+      .catch(() => {
+        setPhaseScenes(prev => ({
+          ...prev,
+          [phaseIdx]: {
+            ...prev[phaseIdx],
+            error: "Failed to fetch scene",
+            loading: false
+          }
+        }));
+      });
+  };
 
   return (
     <div className={styles.container}>
@@ -388,30 +440,57 @@ export default function MatchViz() {
                 <div className={styles.gamePhasesList}>
                   {gamePhases.map((ph, idx) => {
                     const m = (gamePhaseMetrics || []).find(mm => mm.phase_idx === ph.phase_idx);
+                    
+                    // Filter key moments for this phase (check period AND time)
+                    const phaseMoments = importantMoments.filter(moment => {
+                      if (!moment.when) return false;
+                      
+                      // Check period matches
+                      const momentPeriod = moment.period;
+                      const phasePeriod = ph.start_period;
+                      if (momentPeriod !== phasePeriod) return false;
+                      
+                      // Check time range within same period
+                      const [min, sec] = moment.when.split(':').map(Number);
+                      const startMin = ph.start_minute;
+                      const startSec = ph.start_second;
+                      const endMin = ph.end_minute !== null ? ph.end_minute : 999;
+                      const endSec = ph.end_minute !== null ? ph.end_second : 999;
+                      
+                      const momentTime = min * 60 + sec;
+                      const startTime = startMin * 60 + startSec;
+                      const endTime = endMin * 60 + endSec;
+                      
+                      return momentTime >= startTime && momentTime <= endTime;
+                    });
+                    
                     return (
                     <div key={idx} className={styles.gamePhaseCard}>
-                      <div className={styles.gamePhaseHeader}>
-                        <div className={styles.gamePhaseTitle}>Game Phase {ph.phase_idx}</div>
-                        <div className={styles.gamePhaseTime}>
-                          <b>From: </b>{`${ph.start_minute}:${String(ph.start_second).padStart(2, '0')}`} <b>— To: </b>{ph.end_minute !== null ? `${ph.end_minute}:${String(ph.end_second).padStart(2,'0')}` : 'End'}
-                        </div>
-                        <div className={styles.gamePhaseScore}>
-                          <b>Score: </b>{gamePhaseTeams.home} {ph.score_start} {gamePhaseTeams.away}
-                          {ph.score_end ? ` → ${ph.score_end}` : ''}
-                        </div>
-                        {ph.goal_info && ph.goal_info.scorer && (
-                          <div className={styles.gamePhaseGoalInfo}>
-                            Goal Event: <b>{ph.goal_info.event_type}</b>{ph.goal_info.own_goal_team ? ` (Own goal by ${ph.goal_info.own_goal_team})` : ''}, scored by <b>{ph.goal_info.scorer}</b>
+                      <div className={styles.phaseWithMomentsLayout}>
+                        {/* LEFT SIDE: Phase content */}
+                        <div className={styles.phaseContentColumn}>
+                          <div className={styles.gamePhaseHeader}>
+                            <div className={styles.gamePhaseTitle}>Game Phase {ph.phase_idx}</div>
+                            <div className={styles.gamePhaseTime}>
+                              <b>From: </b>{`${ph.start_minute}:${String(ph.start_second).padStart(2, '0')}`} <b>— To: </b>{ph.end_minute !== null ? `${ph.end_minute}:${String(ph.end_second).padStart(2,'0')}` : 'End'}
+                            </div>
+                            <div className={styles.gamePhaseScore}>
+                              <b>Score: </b>{gamePhaseTeams.home} {ph.score_start} {gamePhaseTeams.away}
+                              {ph.score_end ? ` → ${ph.score_end}` : ''}
+                            </div>
+                            {ph.goal_info && ph.goal_info.scorer && (
+                              <div className={styles.gamePhaseGoalInfo}>
+                                Goal Event: <b>{ph.goal_info.event_type}</b>{ph.goal_info.own_goal_team ? ` (Own goal by ${ph.goal_info.own_goal_team})` : ''}, scored by <b>{ph.goal_info.scorer}</b>
+                              </div>
+                            )}
+                            {Array.isArray(ph.break_reasons) && ph.break_reasons.length > 0 && (
+                              <div className={styles.gamePhaseBreakReasons}>
+                                Phase ended by: {ph.break_reasons.map(r => r === "half_end" ? "Half Ended" : r).join(', ')}
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {Array.isArray(ph.break_reasons) && ph.break_reasons.length > 0 && (
-                          <div className={styles.gamePhaseBreakReasons}>
-                            Phase ended by: {ph.break_reasons.map(r => r === "half_end" ? "Half Ended" : r).join(', ')}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {m && (
+                          
+                          {m && (
                         <div className={styles.phaseTwoColumnLayout}>
                           {/* Left column: Stats table */}
                           <div className={styles.phaseStatsColumn}>
@@ -819,6 +898,83 @@ export default function MatchViz() {
                           </div>
                         </div>
                       )}
+                        </div>
+                        
+                        {/* RIGHT SIDE: Key Moments for this phase */}
+                        <div className={styles.phaseMomentsColumn}>
+                          <h3 className={styles.phaseMomentsTitle}>
+                            Key Moments
+                            {phaseMoments.length > 0 && (
+                              <label className={styles.showScenesLabel}>
+                                <input 
+                                  type="checkbox" 
+                                  checked={phaseShowScenes[ph.phase_idx] || false}
+                                  onChange={(e) => {
+                                    setPhaseShowScenes(prev => ({...prev, [ph.phase_idx]: e.target.checked}));
+                                    if (e.target.checked && phaseMoments.length > 0) {
+                                      handlePhaseMomentClick(ph.phase_idx, 0, phaseMoments[0]);
+                                    }
+                                  }}
+                                  className={styles.showScenesCheckbox}
+                                />
+                                Show Scenes
+                              </label>
+                            )}
+                          </h3>
+                          {phaseMoments.length === 0 ? (
+                            <div className={styles.noMomentsPlaceholder}>No key moments in this phase</div>
+                          ) : (
+                            <>
+                              <table className={styles.phaseMomentsTable}>
+                                <thead>
+                                  <tr className={styles.tableHeader}>
+                                    <th className={styles.phaseMomentsHeaderCell}>When</th>
+                                    <th className={styles.phaseMomentsHeaderCell}>Who</th>
+                                    <th className={styles.phaseMomentsHeaderCell}>Type</th>
+                                    <th className={styles.phaseMomentsHeaderCell}>xG</th>
+                                    <th className={styles.phaseMomentsHeaderCell}>Outcome</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {phaseMoments.map((moment, mIdx) => {
+                                    const phaseScene = phaseScenes[ph.phase_idx];
+                                    const isSelected = phaseShowScenes[ph.phase_idx] && phaseScene?.selectedMomentIdx === mIdx;
+                                    return (
+                                      <tr 
+                                        key={mIdx} 
+                                        className={isSelected ? styles.phaseMomentsRowSelected : styles.phaseMomentsRow}
+                                        onClick={() => handlePhaseMomentClick(ph.phase_idx, mIdx, moment)}
+                                        style={{cursor: 'pointer'}}
+                                      >
+                                        <td className={styles.phaseMomentsCell}>{moment.when}</td>
+                                        <td className={styles.phaseMomentsCell}>{moment.who}</td>
+                                        <td className={styles.phaseMomentsCell}>{moment.event_type}</td>
+                                        <td className={styles.phaseMomentsCell}>{moment.xg !== undefined && moment.xg !== null ? moment.xg : ''}</td>
+                                        <td className={styles.phaseMomentsCell}>{moment.outcome}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                              
+                              {/* Scene Viewer for this phase */}
+                              {phaseShowScenes[ph.phase_idx] && phaseScenes[ph.phase_idx] && (
+                                <div className={styles.phaseSceneViewer}>
+                                  {phaseScenes[ph.phase_idx].loading && <div>Loading scene...</div>}
+                                  {phaseScenes[ph.phase_idx].error && <div className={styles.errorText}>{phaseScenes[ph.phase_idx].error}</div>}
+                                  {phaseScenes[ph.phase_idx].imageBase64 && (
+                                    <img
+                                      src={`data:image/png;base64,${phaseScenes[ph.phase_idx].imageBase64}`}
+                                      alt="Phase Possession Scene"
+                                      className={styles.phaseSceneImage}
+                                    />
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     );
                   })}

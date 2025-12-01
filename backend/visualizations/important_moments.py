@@ -88,11 +88,14 @@ async def important_moments(filename: str):
                 outcome = "Penalty Won"
             possession = safe(row.get('possession'))
             team = safe(row.get('team', None))
+            period_val = safe(row.get('period', None))
+            period_int = int(period_val) if period_val is not None else None
             result.append({
                 "original_row": int(idx),
                 "possession": int(possession) if possession is not None else None,
                 "who": who,
                 "when": when,
+                "period": period_int,
                 "event_type": event_type,
                 "xg": xg,
                 "outcome": outcome,
