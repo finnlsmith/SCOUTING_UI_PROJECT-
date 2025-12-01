@@ -340,54 +340,108 @@ async def game_phases(filename: str):
                             away_poss_final.add(int(r['possession']))
                 final_third_entries_dedup = {home_team: len(home_poss_final), away_team: len(away_poss_final)}
 
+                # Helper function to determine box entry outcome color
+                def get_box_entry_color(row, team_name, ev_phase_df):
+                    """Check next 10 seconds for goal, own goal, or shot"""
+                    if 'timestamp' not in row.index or 'minute_int' not in row.index or 'second_int' not in row.index:
+                        return '#FF9800'  # default carry color or '#2196F3' for pass
+                    
+                    entry_timestamp = row.get('timestamp')
+                    entry_minute = row.get('minute_int')
+                    entry_second = row.get('second_int')
+                    
+                    if pd.isna(entry_timestamp) or pd.isna(entry_minute) or pd.isna(entry_second):
+                        return '#FF9800'
+                    
+                    # Look for events in next 10 seconds
+                    future_events = ev_phase_df[
+                        (ev_phase_df['minute_int'] == entry_minute) & (ev_phase_df['second_int'] > entry_second) & (ev_phase_df['second_int'] <= entry_second + 10) |
+                        (ev_phase_df['minute_int'] == entry_minute + 1) & (ev_phase_df['second_int'] <= (entry_second + 10) % 60)
+                    ]
+                    
+                    # Check for goal by same team
+                    goals = future_events[
+                        (future_events['type'] == 'Shot') & 
+                        (future_events.get('shot_outcome') == 'Goal') &
+                        (future_events['possession_team'] == team_name)
+                    ]
+                    if not goals.empty:
+                        return '#00C853'  # Green for goal
+                    
+                    # Check for own goal for (helps attacking team)
+                    own_goals = future_events[
+                        (future_events['type'] == 'Own Goal For') &
+                        (future_events['team'] == team_name)
+                    ]
+                    if not own_goals.empty:
+                        return '#69F0AE'  # Light green for own goal
+                    
+                    # Check for any shot by same team
+                    shots = future_events[
+                        (future_events['type'] == 'Shot') &
+                        (future_events['possession_team'] == team_name)
+                    ]
+                    if not shots.empty:
+                        return '#FFF59D'  # Pale yellow for shot
+                    
+                    return None  # Use default type-based color
+
                 # Box entries dedup (by possession across carries and passes)
                 home_poss_box, away_poss_box = set(), set()
                 home_box_locations, away_box_locations = [], []
                 
                 if not carry_phase.empty and 'possession' in carry_phase.columns:
-                    cb = carry_phase[(carry_phase['in_box']) & carry_phase['team'].notna()]
-                    for _, r in cb[['team', 'possession', 'start_point', 'point']].iterrows():
+                    cb = carry_phase[(carry_phase['in_box']) & carry_phase['team'].notna()].copy()
+                    for idx, r in cb.iterrows():
                         poss_num = int(r['possession'])
                         if r['team'] == home_team:
                             if poss_num not in home_poss_box:
                                 home_poss_box.add(poss_num)
                                 if r['start_point'] and r['point']:
+                                    color = get_box_entry_color(r, home_team, ev_phase)
                                     home_box_locations.append({
                                         'x1': r['start_point'][0], 'y1': r['start_point'][1],
                                         'x2': r['point'][0], 'y2': r['point'][1],
-                                        'type': 'carry'
+                                        'type': 'carry',
+                                        'color': color
                                     })
                         elif r['team'] == away_team:
                             if poss_num not in away_poss_box:
                                 away_poss_box.add(poss_num)
                                 if r['start_point'] and r['point']:
+                                    color = get_box_entry_color(r, away_team, ev_phase)
                                     away_box_locations.append({
                                         'x1': r['start_point'][0], 'y1': r['start_point'][1],
                                         'x2': r['point'][0], 'y2': r['point'][1],
-                                        'type': 'carry'
+                                        'type': 'carry',
+                                        'color': color
                                     })
                 
                 if not pass_phase.empty and 'possession' in pass_phase.columns:
-                    pb = pass_phase[(pass_phase['in_box']) & pass_phase['team'].notna()]
-                    for _, r in pb[['team', 'possession', 'start_point', 'point']].iterrows():
+                    pb = pass_phase[(pass_phase['in_box']) & pass_phase['team'].notna()].copy()
+                    for idx, r in pb.iterrows():
                         poss_num = int(r['possession'])
                         if r['team'] == home_team:
                             if poss_num not in home_poss_box:
                                 home_poss_box.add(poss_num)
                                 if r['start_point'] and r['point']:
+                                    color = get_box_entry_color(r, home_team, ev_phase)
                                     home_box_locations.append({
                                         'x1': r['start_point'][0], 'y1': r['start_point'][1],
                                         'x2': r['point'][0], 'y2': r['point'][1],
-                                        'type': 'pass'
+                                        'type': 'pass',
+                                        'color': color
                                     })
                         elif r['team'] == away_team:
                             if poss_num not in away_poss_box:
                                 away_poss_box.add(poss_num)
                                 if r['start_point'] and r['point']:
+                                    color = get_box_entry_color(r, away_team, ev_phase)
                                     away_box_locations.append({
                                         'x1': r['start_point'][0], 'y1': r['start_point'][1],
                                         'x2': r['point'][0], 'y2': r['point'][1],
-                                        'type': 'pass'
+                                        'type': 'pass',
+                                        'color': color
                                     })
                 
                 box_entries_dedup = {home_team: len(home_poss_box), away_team: len(away_poss_box)}

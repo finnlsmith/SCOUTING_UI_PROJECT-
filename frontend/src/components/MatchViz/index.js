@@ -717,14 +717,18 @@ export default function MatchViz() {
                                       <rect x="119.5" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
                                       
                                       {/* Plot box entries */}
-                                      {(m.box_entry_locations[gamePhaseTeams.home] || []).map((entry, entryIdx) => (
+                                      {(m.box_entry_locations[gamePhaseTeams.home] || []).map((entry, entryIdx) => {
+                                        const defaultColor = entry.type === 'pass' ? '#2196F3' : '#FF9800';
+                                        const strokeColor = entry.color || defaultColor;
+                                        const fillColor = entry.color || defaultColor;
+                                        return (
                                         <g key={entryIdx}>
                                           <line
                                             x1={entry.x1}
                                             y1={80 - entry.y1}
                                             x2={entry.x2}
                                             y2={80 - entry.y2}
-                                            stroke={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
+                                            stroke={strokeColor}
                                             strokeWidth="1.5"
                                             strokeDasharray={entry.type === 'pass' ? '2,2' : '0'}
                                             opacity="0.7"
@@ -733,7 +737,7 @@ export default function MatchViz() {
                                             cx={entry.x2}
                                             cy={80 - entry.y2}
                                             r="2"
-                                            fill={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
+                                            fill={fillColor}
                                             stroke="black"
                                             strokeWidth="0.3"
                                             opacity="0.75"
@@ -741,7 +745,8 @@ export default function MatchViz() {
                                             <title>{entry.type === 'pass' ? 'Pass into box' : 'Carry into box'}</title>
                                           </circle>
                                         </g>
-                                      ))}
+                                        );
+                                      })}
                                     </svg>
                                   </div>
                                   
@@ -767,14 +772,18 @@ export default function MatchViz() {
                                       <rect x="119.5" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
                                       
                                       {/* Plot box entries */}
-                                      {(m.box_entry_locations[gamePhaseTeams.away] || []).map((entry, entryIdx) => (
+                                      {(m.box_entry_locations[gamePhaseTeams.away] || []).map((entry, entryIdx) => {
+                                        const defaultColor = entry.type === 'pass' ? '#2196F3' : '#FF9800';
+                                        const strokeColor = entry.color || defaultColor;
+                                        const fillColor = entry.color || defaultColor;
+                                        return (
                                         <g key={entryIdx}>
                                           <line
                                             x1={120 - entry.x1}
                                             y1={80 - entry.y1}
                                             x2={120 - entry.x2}
                                             y2={80 - entry.y2}
-                                            stroke={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
+                                            stroke={strokeColor}
                                             strokeWidth="1.5"
                                             strokeDasharray={entry.type === 'pass' ? '2,2' : '0'}
                                             opacity="0.7"
@@ -783,7 +792,7 @@ export default function MatchViz() {
                                             cx={120 - entry.x2}
                                             cy={80 - entry.y2}
                                             r="2"
-                                            fill={entry.type === 'pass' ? '#2196F3' : '#FF9800'}
+                                            fill={fillColor}
                                             stroke="black"
                                             strokeWidth="0.3"
                                             opacity="0.75"
@@ -791,13 +800,19 @@ export default function MatchViz() {
                                             <title>{entry.type === 'pass' ? 'Pass into box' : 'Carry into box'}</title>
                                           </circle>
                                         </g>
-                                      ))}
+                                        );
+                                      })}
                                     </svg>
                                   </div>
                                 </div>
                                 <div className={styles.shotMapLegend}>
                                   <span><span className={styles.legendLine} style={{backgroundColor: '#2196F3', borderStyle: 'dashed'}}></span> Pass into box</span>
                                   <span><span className={styles.legendLine} style={{backgroundColor: '#FF9800'}}></span> Carry into box</span>
+                                </div>
+                                <div className={styles.shotOutcomeLegend}>
+                                  <span><span className={styles.legendDot} style={{backgroundColor: '#00C853'}}></span> → Goal</span>
+                                  <span><span className={styles.legendDot} style={{backgroundColor: '#69F0AE'}}></span> → Own Goal</span>
+                                  <span><span className={styles.legendDot} style={{backgroundColor: '#FFF59D'}}></span> → Shot</span>
                                 </div>
                               </div>
                             )}
