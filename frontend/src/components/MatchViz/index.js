@@ -231,7 +231,7 @@ export default function MatchViz() {
               <div className={styles.vizHeaderContent}>
                 <div className={styles.vizHeaderTeamSection}>
                   <img 
-                    src={`${API_BASE}/team-logo/${encodeURIComponent(stats.home_team)}`} 
+                    src={`${BACKEND_URL}/team-logo/${encodeURIComponent(stats.home_team)}`} 
                     alt={stats.home_team}
                     className={styles.teamLogo}
                     onError={(e) => { e.target.style.display = 'none'; }}
@@ -251,7 +251,7 @@ export default function MatchViz() {
                 <div className={styles.vizHeaderTeamSection}>
                   <span className={styles.teamName}>{stats.away_team}</span>
                   <img 
-                    src={`${API_BASE}/team-logo/${encodeURIComponent(stats.away_team)}`} 
+                    src={`${BACKEND_URL}/team-logo/${encodeURIComponent(stats.away_team)}`} 
                     alt={stats.away_team}
                     className={styles.teamLogo}
                     onError={(e) => { e.target.style.display = 'none'; }}
