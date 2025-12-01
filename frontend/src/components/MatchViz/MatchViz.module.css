@@ -605,12 +605,7 @@
   border-top: 2px solid #e0e0e0;
 }
 
-.shotMapsTitle {
-  font-size: 18px;
-  font-weight: var(--font-weight-semibold);
-  margin-bottom: 14px;
-  color: black;
-}
+/* Removed duplicate .shotMapsTitle - defined earlier in file at line 140 */
 
 .shotMapsGrid {
   display: grid;
