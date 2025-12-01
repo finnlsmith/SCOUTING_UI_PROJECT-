@@ -5,8 +5,9 @@
 }
 
 .content {
-  max-width: 1310px;
+  max-width: 100%;
   margin: 0 auto;
+  padding: 0 40px;
 }
 
 /* Page Header - Tournament title and match selector */
@@ -92,21 +93,29 @@
 }
 
 /* ========================================
-   MATCH FACTS SECTION (Standalone, Full Width)
+   ENTIRE MATCH ROW (Match Facts Sidebar + Visualizations)
    ======================================== */
-.matchFactsSection {
-  margin-bottom: 50px;
+.entireMatchRow {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
+  gap: 32px;
+  margin-bottom: 54px;
   width: 100%;
 }
 
+/* Match Facts Sidebar (Left) */
+.matchFactsSidebar {
+  flex: 0 0 280px;
+  min-width: 280px;
+  max-width: 280px;
+}
+
 .matchFactsTitle {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-medium);
-  margin-bottom: var(--spacing-lg);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-md);
   text-align: center;
+  color: var(--color-text-primary);
 }
 
 .matchFactsCard {
@@ -115,20 +124,15 @@
   background: var(--color-bg-card);
   padding: 17px;
   min-height: 230px;
-  max-width: 350px;
-  margin: 0 auto;
 }
 
-/* ========================================
-   VISUALIZATIONS ROW (Shot Maps + Passing Network)
-   ======================================== */
-.visualizationsRow {
+/* Visualizations Container (Right Side) */
+.visualizationsContainer {
+  flex: 1;
   display: flex;
+  gap: 32px;
   align-items: flex-start;
-  gap: var(--spacing-3xl);
-  margin-bottom: 54px;
-  justify-content: center;
-  width: 100%;
+  justify-content: space-between;
 }
 
 .shotMapsColumn {
@@ -605,7 +609,13 @@
   border-top: 2px solid #e0e0e0;
 }
 
-/* Removed duplicate .shotMapsTitle - defined earlier in file at line 140 */
+/* Phase Visualization Titles (Key Events, Box Entry Maps) */
+.phaseVisualizationTitle {
+  font-size: 20px;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 14px;
+  color: var(--color-text-dark);
+}
 
 .shotMapsGrid {
   display: grid;

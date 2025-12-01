@@ -191,12 +191,14 @@ export default function MatchViz() {
             <h2 className={styles.entireMatchTitle}>Entire Match</h2>
 
             {/* ========================================
-                MATCH FACTS (STANDALONE SECTION)
+                MAIN CONTENT ROW: MATCH FACTS + VISUALIZATIONS
                 ======================================== */}
-            <div className={styles.matchFactsSection}>
-              <h2 className={styles.matchFactsTitle}>Match Facts</h2>
-              <div className={styles.matchFactsCard}>
-                <Scoreboard
+            <div className={styles.entireMatchRow}>
+              {/* --- MATCH FACTS SIDEBAR (LEFT) --- */}
+              <div className={styles.matchFactsSidebar}>
+                <h2 className={styles.matchFactsTitle}>Match Facts</h2>
+                <div className={styles.matchFactsCard}>
+                  <Scoreboard
                   stage={stats.competition_stage}
                   home={stats.home_team}
                   away={stats.away_team}
@@ -215,15 +217,13 @@ export default function MatchViz() {
                   cardsRight={(Number.isFinite(stats.away_cards_total) && Number.isFinite(stats.away_cards_yellow) && Number.isFinite(stats.away_cards_red)) ? `${stats.away_cards_total} (${stats.away_cards_yellow}/${stats.away_cards_red})` : "-"}
                   boxEntries={(Number.isFinite(stats.home_box_entries) && Number.isFinite(stats.away_box_entries)) ? `${stats.home_box_entries} - ${stats.away_box_entries}` : "-"}
                 />
+                </div>
               </div>
-            </div>
 
-            {/* ========================================
-                VISUALIZATIONS ROW: SHOT MAPS + PASSING NETWORK
-                ======================================== */}
-            <div className={styles.visualizationsRow}>
-              {/* --- SHOT MAPS COLUMN --- */}
-              <div className={styles.shotMapsColumn}>
+              {/* --- VISUALIZATIONS CONTAINER (RIGHT SIDE) --- */}
+              <div className={styles.visualizationsContainer}>
+                {/* --- SHOT MAPS COLUMN --- */}
+                <div className={styles.shotMapsColumn}>
                 <h2 className={styles.shotMapsTitle}>Shot Map</h2>
                 <div className={styles.flipSidesContainer}>
                   <label className={styles.flipSidesLabel}>
@@ -296,6 +296,7 @@ export default function MatchViz() {
                     </Suspense>
                   </div>
                 )}
+              </div>
               </div>
             </div>
             
@@ -465,7 +466,7 @@ export default function MatchViz() {
                                   <td className={styles.phaseMetricsValueCell}>{m.cards?.[gamePhaseTeams.away]?.yellow ?? 0} / {m.cards?.[gamePhaseTeams.away]?.red ?? 0}</td>
                                 </tr>
                                 <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Chances (OK / Good)</td>
+                                  <td className={styles.phaseMetricsLabelCell}>All / Big</td>
                                   <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.home]?.ok ?? 0} / {m.chances?.[gamePhaseTeams.home]?.good ?? 0}</td>
                                   <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.away]?.ok ?? 0} / {m.chances?.[gamePhaseTeams.away]?.good ?? 0}</td>
                                 </tr>
@@ -481,10 +482,10 @@ export default function MatchViz() {
                           
                           {/* Right column: Visualizations */}
                           <div className={styles.phaseVisualizationsColumn}>
-                            {/* Key Event Maps (shots, cards, own goals) */}
+                            {/* Key Events (shots, red cards, own goals) */}
                             {m.shot_map_data && (
                               <div className={styles.shotMapsContainer}>
-                                <h3 className={styles.shotMapsTitle}>Key Event Maps (shots, cards, own goals)</h3>
+                                <h3 className={styles.phaseVisualizationTitle}>Key Events (shots, red cards, own goals)</h3>
                                 <div className={styles.shotMapsGrid}>
                                   {/* Home team event map */}
                                   <div className={styles.shotMapCard}>
@@ -673,7 +674,7 @@ export default function MatchViz() {
                                 <div className={styles.shotMapLegend}>
                                   <span><span className={styles.legendDot} style={{backgroundColor: 'green'}}></span> Goal</span>
                                   <span><span className={styles.legendDot} style={{backgroundColor: 'yellow'}}></span> High xG (≥0.27)</span>
-                                  <span><span className={styles.legendDot} style={{backgroundColor: 'orange'}}></span> Med xG (0.08-0.27)</span>
+                                  <span><span className={styles.legendDot} style={{backgroundColor: 'orange'}}></span> Normal xG (0.08-0.27)</span>
                                   <span><span className={styles.legendDot} style={{backgroundColor: 'black'}}></span> Low xG (&lt;0.08)</span>
                                   <span><span className={styles.legendSquare}></span> Red Card</span>
                                   <span><span className={styles.legendX}></span> Own Goal For</span>
@@ -684,7 +685,7 @@ export default function MatchViz() {
                             {/* Box Entry Maps for each team */}
                             {m.box_entry_locations && (
                               <div className={styles.shotMapsContainer}>
-                                <h3 className={styles.shotMapsTitle}>Box Entry Maps</h3>
+                                <h3 className={styles.phaseVisualizationTitle}>Box Entry Maps</h3>
                                 <div className={styles.shotMapsGrid}>
                                   {/* Home team box entry map */}
                                   <div className={styles.shotMapCard}>
