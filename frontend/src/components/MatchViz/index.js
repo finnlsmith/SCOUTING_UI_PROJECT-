@@ -441,14 +441,19 @@ export default function MatchViz() {
                   {gamePhases.map((ph, idx) => {
                     const m = (gamePhaseMetrics || []).find(mm => mm.phase_idx === ph.phase_idx);
                     
-                    // Filter key moments for this phase (check period AND time)
+                    // Filter key moments for this phase (check period AND time, exclude phase-ending goal)
                     const phaseMoments = importantMoments.filter(moment => {
                       if (!moment.when) return false;
                       
-                      // Check period matches
+                      // Check period matches (handle null/undefined)
                       const momentPeriod = moment.period;
                       const phasePeriod = ph.start_period;
-                      if (momentPeriod !== phasePeriod) return false;
+                      
+                      // If both have period values, they must match
+                      if (momentPeriod !== null && momentPeriod !== undefined && 
+                          phasePeriod !== null && phasePeriod !== undefined) {
+                        if (momentPeriod !== phasePeriod) return false;
+                      }
                       
                       // Check time range within same period
                       const [min, sec] = moment.when.split(':').map(Number);
@@ -461,7 +466,18 @@ export default function MatchViz() {
                       const startTime = startMin * 60 + startSec;
                       const endTime = endMin * 60 + endSec;
                       
-                      return momentTime >= startTime && momentTime <= endTime;
+                      // Exclude moments outside time range
+                      if (momentTime < startTime || momentTime > endTime) return false;
+                      
+                      // Exclude the goal that ENDED this phase (it's the next phase's starting event)
+                      if (ph.goal_info && ph.goal_info.scorer) {
+                        const phaseEndTime = endMin * 60 + endSec;
+                        if (momentTime === phaseEndTime && moment.who === ph.goal_info.scorer) {
+                          return false;
+                        }
+                      }
+                      
+                      return true;
                     });
                     
                     return (
