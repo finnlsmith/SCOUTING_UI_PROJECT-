@@ -627,8 +627,8 @@ export default function MatchViz() {
                                           );
                                         } else {
                                           // Shot event - render circle with optional outcome indicators
-                                          const isBlocked = event.outcome === 'Blocked';
-                                          const isOffTarget = event.outcome === 'Off T' || event.outcome === 'Wayward';
+                                          const isBlocked = event.outcome === 'blocked';
+                                          const isOffTarget = event.outcome === 'off t' || event.outcome === 'wayward';
                                           
                                           return (
                                             <g key={eventIdx}>
