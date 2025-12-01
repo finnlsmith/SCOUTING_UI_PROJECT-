@@ -3,7 +3,7 @@
  */
 import React from 'react';
 import { render } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import { ThemeProvider } from '../../contexts/ThemeContext';
 
 /**
@@ -11,21 +11,21 @@ import { ThemeProvider } from '../../contexts/ThemeContext';
  * Use this instead of the default render from @testing-library/react
  */
 export function renderWithProviders(ui, { route = '/', theme = 'light', ...renderOptions } = {}) {
-  // Set up router with initial route
-  window.history.pushState({}, 'Test page', route);
-  
-  // Set theme in localStorage if provided
-  if (theme) {
-    localStorage.setItem('theme', theme);
+  // Clear and set theme in localStorage before rendering
+  if (typeof localStorage !== 'undefined') {
+    localStorage.clear();
+    if (theme) {
+      localStorage.setItem('theme', theme);
+    }
   }
-
+  
   function Wrapper({ children }) {
     return (
-      <BrowserRouter>
+      <MemoryRouter initialEntries={[route]}>
         <ThemeProvider>
           {children}
         </ThemeProvider>
-      </BrowserRouter>
+      </MemoryRouter>
     );
   }
 
@@ -36,10 +36,8 @@ export function renderWithProviders(ui, { route = '/', theme = 'light', ...rende
  * Render component with router only (no theme provider)
  */
 export function renderWithRouter(ui, { route = '/' } = {}) {
-  window.history.pushState({}, 'Test page', route);
-
   function Wrapper({ children }) {
-    return <BrowserRouter>{children}</BrowserRouter>;
+    return <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>;
   }
 
   return render(ui, { wrapper: Wrapper });

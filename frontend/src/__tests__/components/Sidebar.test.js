@@ -2,57 +2,59 @@
  * Tests for Sidebar component
  */
 import React from 'react';
-import { screen } from '@testing-library/react';
-import { renderWithProviders } from '../helpers/testUtils';
+import { screen, render } from '@testing-library/react';
 import Sidebar from '../../components/Sidebar';
 
+// Mock react-router-dom
+const mockLocation = { pathname: '/' };
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useLocation: () => mockLocation,
+  Link: ({ to, children, className, ...props }) => (
+    <a href={to} className={className} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
 describe('Sidebar', () => {
+  beforeEach(() => {
+    mockLocation.pathname = '/';
+  });
+
   it('renders navigation title', () => {
-    renderWithProviders(<Sidebar />);
+    render(<Sidebar />);
     expect(screen.getByText('Navigation')).toBeInTheDocument();
   });
 
   it('renders Home link', () => {
-    renderWithProviders(<Sidebar />);
+    render(<Sidebar />);
     const homeLink = screen.getByRole('link', { name: /home/i });
     expect(homeLink).toBeInTheDocument();
     expect(homeLink).toHaveAttribute('href', '/');
   });
 
   it('renders Tournaments link', () => {
-    renderWithProviders(<Sidebar />);
+    render(<Sidebar />);
     const tournamentsLink = screen.getByRole('link', { name: /tournaments/i });
     expect(tournamentsLink).toBeInTheDocument();
     expect(tournamentsLink).toHaveAttribute('href', '/tournaments');
   });
 
   it('renders Players (Coming Soon) link as disabled', () => {
-    renderWithProviders(<Sidebar />);
+    render(<Sidebar />);
     const playersLink = screen.getByRole('link', { name: /players.*coming soon/i });
     expect(playersLink).toBeInTheDocument();
     expect(playersLink).toHaveAttribute('href', '#');
   });
 
-  it('highlights active link when on home page', () => {
-    renderWithProviders(<Sidebar />, { route: '/' });
-    const homeLink = screen.getByRole('link', { name: /home/i });
-    // The link should have active class (implementation detail, but we can check it exists)
-    expect(homeLink).toBeInTheDocument();
-  });
-
-  it('highlights active link when on tournaments page', () => {
-    renderWithProviders(<Sidebar />, { route: '/tournaments' });
-    const tournamentsLink = screen.getByRole('link', { name: /tournaments/i });
-    expect(tournamentsLink).toBeInTheDocument();
-  });
-
   it('renders "Powered by" text', () => {
-    renderWithProviders(<Sidebar />);
+    render(<Sidebar />);
     expect(screen.getByText('Powered by')).toBeInTheDocument();
   });
 
   it('renders Trilemma Foundation logo with correct attributes', () => {
-    renderWithProviders(<Sidebar />);
+    render(<Sidebar />);
     const trilemmaImage = screen.getByAltText('Trilemma Foundation');
     expect(trilemmaImage).toBeInTheDocument();
     
@@ -63,7 +65,7 @@ describe('Sidebar', () => {
   });
 
   it('renders Sincere FC logo with correct attributes', () => {
-    renderWithProviders(<Sidebar />);
+    render(<Sidebar />);
     const sincereImage = screen.getByAltText('Sincere FC');
     expect(sincereImage).toBeInTheDocument();
     
@@ -74,10 +76,23 @@ describe('Sidebar', () => {
   });
 
   it('renders all navigation links', () => {
-    renderWithProviders(<Sidebar />);
+    render(<Sidebar />);
     const links = screen.getAllByRole('link');
     // Should have: Home, Players, Tournaments, Trilemma, Sincere = 5 links
     expect(links.length).toBeGreaterThanOrEqual(3); // At least 3 nav links
   });
-});
 
+  it('highlights active link when on home page', () => {
+    mockLocation.pathname = '/';
+    render(<Sidebar />);
+    const homeLink = screen.getByRole('link', { name: /home/i });
+    expect(homeLink).toBeInTheDocument();
+  });
+
+  it('highlights active link when on tournaments page', () => {
+    mockLocation.pathname = '/tournaments';
+    render(<Sidebar />);
+    const tournamentsLink = screen.getByRole('link', { name: /tournaments/i });
+    expect(tournamentsLink).toBeInTheDocument();
+  });
+});

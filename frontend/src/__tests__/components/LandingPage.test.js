@@ -2,55 +2,62 @@
  * Tests for LandingPage component
  */
 import React from 'react';
-import { screen } from '@testing-library/react';
+import { screen, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { renderWithProviders } from '../helpers/testUtils';
+import { ThemeProvider } from '../../contexts/ThemeContext';
+import LandingPage from '../../components/LandingPage';
 
-// Mock useNavigate before importing component
+// Mock useNavigate
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => mockNavigate,
 }));
 
-import LandingPage from '../../components/LandingPage';
+const renderLandingPage = () => {
+  localStorage.setItem('theme', 'light');
+  const Wrapper = ({ children }) => (
+    <ThemeProvider>
+      {children}
+    </ThemeProvider>
+  );
+  return render(<LandingPage />, { wrapper: Wrapper });
+};
 
 describe('LandingPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.clear();
   });
 
   it('renders RoarStats logo', () => {
-    renderWithProviders(<LandingPage />);
+    renderLandingPage();
     const logo = screen.getByAltText('RoarStats Logo');
     expect(logo).toBeInTheDocument();
   });
 
   it('renders title with beta text', () => {
-    renderWithProviders(<LandingPage />);
+    renderLandingPage();
     expect(screen.getByText(/RoarStats - Nov 2025 Beta/i)).toBeInTheDocument();
   });
 
   it('renders Tournaments button', () => {
-    renderWithProviders(<LandingPage />);
+    renderLandingPage();
     const tournamentsButton = screen.getByRole('button', { name: /tournaments/i });
     expect(tournamentsButton).toBeInTheDocument();
   });
 
   it('renders Players (coming soon) button as disabled', () => {
-    renderWithProviders(<LandingPage />);
+    renderLandingPage();
     const playersButton = screen.getByRole('button', { name: /players.*coming soon/i });
     expect(playersButton).toBeInTheDocument();
     expect(playersButton).toBeDisabled();
   });
 
   it('navigates to tournaments when Tournaments button is clicked', async () => {
-    renderWithProviders(<LandingPage />);
-    
+    renderLandingPage();
     const tournamentsButton = screen.getByRole('button', { name: /tournaments/i });
     await userEvent.click(tournamentsButton);
-    
     expect(mockNavigate).toHaveBeenCalledWith('/tournaments');
   });
 });
-
