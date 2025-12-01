@@ -62,7 +62,7 @@ export default function Scoreboard({ stage, home, away, score, shots, shotsOnTar
 
         {/* Box Entries label */}
         <div className={styles.label}>
-          <span>Opp. Box Entries</span>
+          <span>Box Entries</span>
         </div>
         {/* Box Entries values */}
         <div className={styles.values}>

@@ -177,16 +177,7 @@ export default function MatchViz() {
             {/* Entire Match Section */}
             <h2 className={styles.entireMatchTitle}>Entire Match</h2>
             
-            {/* Score Banner */}
-            <div className={styles.scoreBanner}>
-              <span className={styles.scoreText}>
-                {stats.home_team} {Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "0 - 0"} {stats.away_team}
-              </span>
-              {stats.competition_stage && <span className={styles.stageText}>{stats.competition_stage}</span>}
-              {selectedLabel && <span className={styles.dateText}>{selectedLabel.match(/\d{4}-\d{2}-\d{2}/)?.[0] || ""}</span>}
-            </div>
-
-            {/* Visualization Header */}
+            {/* Score/Round/Date Header */}
             <div className={styles.visualizationHeader}>
               <span className={styles.vizHeaderScore}>
                 {stats.home_team} {Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "0 - 0"} {stats.away_team}

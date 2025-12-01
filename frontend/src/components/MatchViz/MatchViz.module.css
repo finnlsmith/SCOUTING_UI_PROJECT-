@@ -43,37 +43,6 @@
   color: var(--color-text-primary);
 }
 
-/* Score Banner */
-.scoreBanner {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 24px;
-  padding: 16px 24px;
-  background: var(--color-bg-card);
-  border-radius: var(--radius-lg);
-  margin-bottom: 30px;
-  box-shadow: var(--shadow-md);
-}
-
-.scoreText {
-  font-size: 24px;
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-dark);
-}
-
-.stageText {
-  font-size: 18px;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
-}
-
-.dateText {
-  font-size: 18px;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
-}
-
 /* Visualization Header - above Shot Maps/Passing Network */
 .visualizationHeader {
   display: flex;
@@ -414,7 +383,8 @@
 
 .gamePhases {
   margin: 52px 0 0;
-  max-width: 980px;
+  max-width: 100%;
+  width: 100%;
 }
 
 .gamePhasesTitle {
@@ -460,43 +430,50 @@
 }
 
 .gamePhaseHeader {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e0e0e0;
 }
 
 .gamePhaseTitle {
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-extrabold);
+  font-size: 28px;
   color: black;
+  margin-bottom: 12px;
 }
 
 .gamePhaseTime {
-  margin: var(--spacing-sm) 0;
-  font-size: 15px;
+  margin: 10px 0;
+  font-size: 20px;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
 }
 
 .gamePhaseScore {
-  font-size: 15px;
+  font-size: 22px;
+  font-weight: var(--font-weight-bold);
   color: black;
+  margin: 8px 0;
 }
 
 .gamePhaseGoalInfo {
-  margin-top: 6px;
-  font-size: var(--font-size-sm);
+  margin-top: 10px;
+  font-size: 18px;
+  font-weight: var(--font-weight-medium);
   color: #357;
 }
 
 .gamePhaseBreakReasons {
-  margin-top: 6px;
-  font-size: 13px;
+  margin-top: 10px;
+  font-size: 16px;
   color: var(--color-text-tertiary);
 }
 
 /* Two-column layout for Game Phases */
 .phaseTwoColumnLayout {
   display: grid;
-  grid-template-columns: 45% 55%;
-  gap: 24px;
+  grid-template-columns: 40% 60%;
+  gap: 32px;
   margin-top: 12px;
 }
 
