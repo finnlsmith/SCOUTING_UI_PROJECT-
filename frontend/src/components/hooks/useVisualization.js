@@ -9,11 +9,14 @@ async function _fetchJson(url) {
   return res.json();
 }
 
-// Helper to flip x (and optionally y) for away team traces
-function flipTraceX(trace, pitchLength = 120) {
+// Helper to flip x and y for away team traces
+function flipTrace(trace, pitchLength = 120, pitchWidth = 80) {
   const newTrace = { ...trace };
   if (Array.isArray(newTrace.x)) {
     newTrace.x = newTrace.x.map(v => (typeof v === "number" ? pitchLength - v : v));
+  }
+  if (Array.isArray(newTrace.y)) {
+    newTrace.y = newTrace.y.map(v => (typeof v === "number" ? pitchWidth - v : v));
   }
   return newTrace;
 }
@@ -92,7 +95,7 @@ export default function useVisualization() {
             name: `${home} – ${t.name ?? "Shot"}`,
           })),
           ...(awayData.data || []).map((t) => ({
-            ...flipTraceX(t, 120),
+            ...flipTrace(t, 120, 80),
             marker: {
               ...(t.marker || {}),
               colorscale: [ [0, "white"], [1, awayColor] ], showscale: false,

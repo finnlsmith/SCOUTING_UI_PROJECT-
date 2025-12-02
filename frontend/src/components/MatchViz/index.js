@@ -129,6 +129,24 @@ export default function MatchViz() {
     }
   }, [importantMoments, selectedMatch, showImportantScenes]);
 
+  // Auto-load Both Teams Shot Map when match is selected
+  useEffect(() => {
+    if (canShoot && selectedMatch && homeName && awayName) {
+      loadBothShotmaps(selectedMatch, homeName, awayName).then(data => {
+        if (data) setShotMapFigData(data);
+      });
+    }
+  }, [selectedMatch, homeName, awayName, canShoot]);
+
+  // Auto-load Home Team Passing Network when match is selected
+  useEffect(() => {
+    if (canShoot && selectedMatch && homeName) {
+      loadPassingNetwork(selectedMatch, homeName, 1, false).then(data => {
+        if (data) setPassNetFigData(data);
+      });
+    }
+  }, [selectedMatch, homeName, canShoot]);
+
   const handleMomentClick = idx => {
     setSelectedMomentIdx(idx);
     setShowImportantScenes(true);
