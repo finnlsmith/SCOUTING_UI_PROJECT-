@@ -9,18 +9,6 @@ async function _fetchJson(url) {
   return res.json();
 }
 
-// Helper to flip x and y for away team traces
-function flipTrace(trace, pitchLength = 120, pitchWidth = 80) {
-  const newTrace = { ...trace };
-  if (Array.isArray(newTrace.x)) {
-    newTrace.x = newTrace.x.map(v => (typeof v === "number" ? pitchLength - v : v));
-  }
-  if (Array.isArray(newTrace.y)) {
-    newTrace.y = newTrace.y.map(v => (typeof v === "number" ? pitchWidth - v : v));
-  }
-  return newTrace;
-}
-
 export default function useVisualization() {
   const [figData, setFigData] = useState(null);
   const [loading, setLoading] = useState(false);
