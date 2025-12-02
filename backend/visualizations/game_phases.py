@@ -410,10 +410,9 @@ async def game_phases(filename: str):
                                 away_poss_box.add(poss_num)
                                 if r['start_point'] and r['point']:
                                     color = get_box_entry_color(r, away_team, ev_phase)
-                                    # Flip coordinates for away team (120x80 pitch)
                                     away_box_locations.append({
-                                        'x1': 120 - r['start_point'][0], 'y1': 80 - r['start_point'][1],
-                                        'x2': 120 - r['point'][0], 'y2': 80 - r['point'][1],
+                                        'x1': r['start_point'][0], 'y1': r['start_point'][1],
+                                        'x2': r['point'][0], 'y2': r['point'][1],
                                         'type': 'carry',
                                         'color': color
                                     })
@@ -438,10 +437,9 @@ async def game_phases(filename: str):
                                 away_poss_box.add(poss_num)
                                 if r['start_point'] and r['point']:
                                     color = get_box_entry_color(r, away_team, ev_phase)
-                                    # Flip coordinates for away team (120x80 pitch)
                                     away_box_locations.append({
-                                        'x1': 120 - r['start_point'][0], 'y1': 80 - r['start_point'][1],
-                                        'x2': 120 - r['point'][0], 'y2': 80 - r['point'][1],
+                                        'x1': r['start_point'][0], 'y1': r['start_point'][1],
+                                        'x2': r['point'][0], 'y2': r['point'][1],
                                         'type': 'pass',
                                         'color': color
                                     })

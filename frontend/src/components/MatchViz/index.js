@@ -193,31 +193,31 @@ export default function MatchViz() {
       <div className={styles.content}>
         {/* Tournament Title and Match Selection Header */}
         <div className={styles.pageHeader}>
-          <h1 className={styles.tournamentTitle}>Euro 2020</h1>
-          <div className={styles.matchSelection}>
-            <h2 className={styles.sectionTitle}>Select a Match</h2>
-            <div className={styles.matchSelectorWrapper}>
-              <MatchSelector
-                matches={matches}
-                selectedMatch={selectedMatch}
-                onChange={async (v) => {
-                  setSelectedMatch(v);
-                  try {
-                    await loadMatchViz(v, setStats);
-                    // setFigData(null); // This line was commented out in the original file
-                  } catch (e) {
-                    setVizError?.(e?.message || "Failed to load match");
-                  }
-                }}
-                flipSides={flipSides}
-                onFlipChange={setFlipSides}
-                onReset={() => {
-                  setSelectedMatch("");
-                  setStats({});
+        <h1 className={styles.tournamentTitle}>Euro 2020</h1>
+        <div className={styles.matchSelection}>
+          <h2 className={styles.sectionTitle}>Select a Match</h2>
+          <div className={styles.matchSelectorWrapper}>
+            <MatchSelector
+              matches={matches}
+              selectedMatch={selectedMatch}
+              onChange={async (v) => {
+                setSelectedMatch(v);
+                try {
+                  await loadMatchViz(v, setStats);
                   // setFigData(null); // This line was commented out in the original file
-                }}
-                matchesLoading={matchesLoading}
-              />
+                } catch (e) {
+                  setVizError?.(e?.message || "Failed to load match");
+                }
+              }}
+              flipSides={flipSides}
+              onFlipChange={setFlipSides}
+              onReset={() => {
+                setSelectedMatch("");
+                setStats({});
+                // setFigData(null); // This line was commented out in the original file
+              }}
+              matchesLoading={matchesLoading}
+            />
             </div>
           </div>
         </div>
@@ -366,24 +366,24 @@ export default function MatchViz() {
                 <h2 className={styles.matchFactsTitle}>Match Facts</h2>
                 <div className={styles.matchFactsCard}>
                   <Scoreboard
-                  stage={stats.competition_stage}
-                  home={stats.home_team}
-                  away={stats.away_team}
-                  score={Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "-"}
-                  shots={(stats.home_shots !== null && stats.away_shots !== null && stats.home_shots !== undefined && stats.away_shots !== undefined)
-                    ? `${stats.home_shots} - ${stats.away_shots}` : "-"}
-                  shotsOnTarget={(stats.home_shots_on_target !== null && stats.away_shots_on_target !== null && stats.home_shots_on_target !== undefined && stats.away_shots_on_target !== undefined)
-                    ? `${stats.home_shots_on_target} - ${stats.away_shots_on_target}` : "-"}
-                  xg={(stats.home_xg_sum && stats.away_xg_sum)
-                      ? `${stats.home_xg_sum} - ${stats.away_xg_sum}`
-                      : "-"}
-                  bigChances={(Number.isFinite(stats.home_big_chances) && Number.isFinite(stats.away_big_chances)) ? `${stats.home_big_chances} - ${stats.away_big_chances}` : "-"}
-                  okChances={(Number.isFinite(stats.home_ok_chances) && Number.isFinite(stats.away_ok_chances)) ? `${stats.home_ok_chances} - ${stats.away_ok_chances}` : "-"}
-                  fouls={(Number.isFinite(stats.home_fouls) && Number.isFinite(stats.away_fouls)) ? `${stats.home_fouls} - ${stats.away_fouls}` : "-"}
-                  cardsLeft={(Number.isFinite(stats.home_cards_total) && Number.isFinite(stats.home_cards_yellow) && Number.isFinite(stats.home_cards_red)) ? `${stats.home_cards_total} (${stats.home_cards_yellow}/${stats.home_cards_red})` : "-"}
-                  cardsRight={(Number.isFinite(stats.away_cards_total) && Number.isFinite(stats.away_cards_yellow) && Number.isFinite(stats.away_cards_red)) ? `${stats.away_cards_total} (${stats.away_cards_yellow}/${stats.away_cards_red})` : "-"}
-                  boxEntries={(Number.isFinite(stats.home_box_entries) && Number.isFinite(stats.away_box_entries)) ? `${stats.home_box_entries} - ${stats.away_box_entries}` : "-"}
-                />
+                    stage={stats.competition_stage}
+                    home={stats.home_team}
+                    away={stats.away_team}
+                    score={Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "-"}
+                    shots={(stats.home_shots !== null && stats.away_shots !== null && stats.home_shots !== undefined && stats.away_shots !== undefined)
+                      ? `${stats.home_shots} - ${stats.away_shots}` : "-"}
+                    shotsOnTarget={(stats.home_shots_on_target !== null && stats.away_shots_on_target !== null && stats.home_shots_on_target !== undefined && stats.away_shots_on_target !== undefined)
+                      ? `${stats.home_shots_on_target} - ${stats.away_shots_on_target}` : "-"}
+                    xg={(stats.home_xg_sum && stats.away_xg_sum)
+                        ? `${stats.home_xg_sum} - ${stats.away_xg_sum}`
+                        : "-"}
+                    bigChances={(Number.isFinite(stats.home_big_chances) && Number.isFinite(stats.away_big_chances)) ? `${stats.home_big_chances} - ${stats.away_big_chances}` : "-"}
+                    okChances={(Number.isFinite(stats.home_ok_chances) && Number.isFinite(stats.away_ok_chances)) ? `${stats.home_ok_chances} - ${stats.away_ok_chances}` : "-"}
+                    fouls={(Number.isFinite(stats.home_fouls) && Number.isFinite(stats.away_fouls)) ? `${stats.home_fouls} - ${stats.away_fouls}` : "-"}
+                    cardsLeft={(Number.isFinite(stats.home_cards_total) && Number.isFinite(stats.home_cards_yellow) && Number.isFinite(stats.home_cards_red)) ? `${stats.home_cards_total} (${stats.home_cards_yellow}/${stats.home_cards_red})` : "-"}
+                    cardsRight={(Number.isFinite(stats.away_cards_total) && Number.isFinite(stats.away_cards_yellow) && Number.isFinite(stats.away_cards_red)) ? `${stats.away_cards_total} (${stats.away_cards_yellow}/${stats.away_cards_red})` : "-"}
+                    boxEntries={(Number.isFinite(stats.home_box_entries) && Number.isFinite(stats.away_box_entries)) ? `${stats.home_box_entries} - ${stats.away_box_entries}` : "-"}
+                  />
                 </div>
               </div>
 
@@ -464,7 +464,7 @@ export default function MatchViz() {
                   </div>
                 )}
               </div>
-              </div>
+            </div>
             </div>
             
             <div className={styles.sectionDivider}></div>
@@ -594,31 +594,31 @@ export default function MatchViz() {
                         {/* LEFT SIDE: Phase content */}
                         <div className={styles.phaseContentColumn}>
                           <div className={styles.gamePhaseHeader}>
-                            <div className={styles.gamePhaseTitle}>Game Phase {ph.phase_idx}</div>
-                            <div className={styles.gamePhaseTime}>
-                              <b>From: </b>{`${ph.start_minute}:${String(ph.start_second).padStart(2, '0')}`} <b>— To: </b>{ph.end_minute !== null ? `${ph.end_minute}:${String(ph.end_second).padStart(2,'0')}` : 'End'}
-                            </div>
-                            <div className={styles.gamePhaseScore}>
-                              <b>Score: </b>{gamePhaseTeams.home} {ph.score_start} {gamePhaseTeams.away}
-                              {ph.score_end ? ` → ${ph.score_end}` : ''}
-                            </div>
-                            {ph.goal_info && ph.goal_info.scorer && (
-                              <div className={styles.gamePhaseGoalInfo}>
-                                Goal Event: <b>{ph.goal_info.event_type}</b>{ph.goal_info.own_goal_team ? ` (Own goal by ${ph.goal_info.own_goal_team})` : ''}, scored by <b>{ph.goal_info.scorer}</b>
-                              </div>
-                            )}
-                            {Array.isArray(ph.break_reasons) && ph.break_reasons.length > 0 && (
-                              <div className={styles.gamePhaseBreakReasons}>
-                                Phase ended by: {ph.break_reasons.map(r => r === "half_end" ? "Half Ended" : r).join(', ')}
-                              </div>
-                            )}
+                      <div className={styles.gamePhaseTitle}>Game Phase {ph.phase_idx}</div>
+                      <div className={styles.gamePhaseTime}>
+                        <b>From: </b>{`${ph.start_minute}:${String(ph.start_second).padStart(2, '0')}`} <b>— To: </b>{ph.end_minute !== null ? `${ph.end_minute}:${String(ph.end_second).padStart(2,'0')}` : 'End'}
+                      </div>
+                      <div className={styles.gamePhaseScore}>
+                        <b>Score: </b>{gamePhaseTeams.home} {ph.score_start} {gamePhaseTeams.away}
+                        {ph.score_end ? ` → ${ph.score_end}` : ''}
+                      </div>
+                      {ph.goal_info && ph.goal_info.scorer && (
+                        <div className={styles.gamePhaseGoalInfo}>
+                          Goal Event: <b>{ph.goal_info.event_type}</b>{ph.goal_info.own_goal_team ? ` (Own goal by ${ph.goal_info.own_goal_team})` : ''}, scored by <b>{ph.goal_info.scorer}</b>
+                        </div>
+                      )}
+                      {Array.isArray(ph.break_reasons) && ph.break_reasons.length > 0 && (
+                        <div className={styles.gamePhaseBreakReasons}>
+                          Phase ended by: {ph.break_reasons.map(r => r === "half_end" ? "Half Ended" : r).join(', ')}
+                        </div>
+                      )}
                           </div>
                           
                           {m && (
                         <div className={styles.phaseTwoColumnLayout}>
                           {/* Left column: Stats table */}
                           <div className={styles.phaseStatsColumn}>
-                            <div className={styles.metricsContainer}>
+                          <div className={styles.metricsContainer}>
                             <table className={styles.phaseMetricsTable}>
                               <thead>
                                 <tr>
@@ -677,7 +677,7 @@ export default function MatchViz() {
                             </table>
                             </div>
                           </div>
-                          
+                            
                           {/* Right column: Visualizations */}
                           <div className={styles.phaseVisualizationsColumn}>
                             {/* Key Events (shots, red cards, own goals) */}
@@ -978,9 +978,9 @@ export default function MatchViz() {
                                         <g key={entryIdx}>
                                           <line
                                             x1={entry.x1}
-                                            y1={entry.y1}
+                                            y1={80 - entry.y1}
                                             x2={entry.x2}
-                                            y2={entry.y2}
+                                            y2={80 - entry.y2}
                                             stroke={strokeColor}
                                             strokeWidth="1.5"
                                             strokeDasharray={entry.type === 'pass' ? '2,2' : '0'}
@@ -988,7 +988,7 @@ export default function MatchViz() {
                                           />
                                           <circle
                                             cx={entry.x2}
-                                            cy={entry.y2}
+                                            cy={80 - entry.y2}
                                             r="2"
                                             fill={fillColor}
                                             stroke="black"
@@ -1088,7 +1088,7 @@ export default function MatchViz() {
                                       className={styles.phaseSceneImage}
                                     />
                                   )}
-                                </div>
+                    </div>
                               )}
                             </>
                           )}
