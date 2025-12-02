@@ -261,27 +261,23 @@ export default function MatchViz() {
             </div>
             
             {/* ========================================
-                MATCH TIMELINE - Goals, Red Cards, Own Goals
+                MATCH TIMELINE - Goals, Red Cards, Own Goals (Vertical)
                 ======================================== */}
             {importantMoments.length > 0 && (
               <div className={styles.matchTimeline}>
                 <div className={styles.timelineTrack}>
-                  {/* Timeline line */}
+                  {/* Vertical timeline line */}
                   <div className={styles.timelineLine}></div>
                   
-                  {/* Halftime marker */}
-                  <div className={styles.timelineMarker} style={{ left: '50%' }}>
+                  {/* Time markers */}
+                  <div className={styles.timelineMarker} style={{ top: '0%' }}>
+                    <span className={styles.timelineMarkerLabel}>0'</span>
+                  </div>
+                  <div className={styles.timelineMarker} style={{ top: '50%' }}>
                     <span className={styles.timelineMarkerLabel}>HT</span>
                   </div>
-                  
-                  {/* Fulltime marker */}
-                  <div className={styles.timelineMarker} style={{ left: '100%' }}>
+                  <div className={styles.timelineMarker} style={{ top: '100%' }}>
                     <span className={styles.timelineMarkerLabel}>FT</span>
-                  </div>
-                  
-                  {/* Start marker */}
-                  <div className={styles.timelineMarker} style={{ left: '0%' }}>
-                    <span className={styles.timelineMarkerLabel}>0'</span>
                   </div>
                   
                   {/* Plot events */}
@@ -313,15 +309,15 @@ export default function MatchViz() {
                       return (
                         <div
                           key={idx}
-                          className={isHomeTeam ? styles.timelineEventTop : styles.timelineEventBottom}
-                          style={{ left: `${Math.min(position, 98)}%` }}
+                          className={isHomeTeam ? styles.timelineEventLeft : styles.timelineEventRight}
+                          style={{ top: `${Math.min(position, 98)}%` }}
                           title={`${moment.who} - ${moment.when}`}
                         >
-                          <div className={styles.timelineEventDot} style={{ backgroundColor: color }}>
-                            {icon}
-                          </div>
                           <div className={styles.timelineEventLabel}>
                             {min}'
+                          </div>
+                          <div className={styles.timelineEventDot} style={{ backgroundColor: color }}>
+                            {icon}
                           </div>
                         </div>
                       );
@@ -339,15 +335,15 @@ export default function MatchViz() {
                       return (
                         <div
                           key={`red-${idx}`}
-                          className={isHomeTeam ? styles.timelineEventTop : styles.timelineEventBottom}
-                          style={{ left: `${Math.min(position, 98)}%` }}
+                          className={isHomeTeam ? styles.timelineEventLeft : styles.timelineEventRight}
+                          style={{ top: `${Math.min(position, 98)}%` }}
                           title={`${moment.who} - ${moment.when}`}
                         >
-                          <div className={styles.timelineEventDot} style={{ backgroundColor: '#D32F2F', borderRadius: '2px' }}>
-                            🟥
-                          </div>
                           <div className={styles.timelineEventLabel}>
                             {min}'
+                          </div>
+                          <div className={styles.timelineEventDot} style={{ backgroundColor: '#D32F2F', borderRadius: '2px' }}>
+                            🟥
                           </div>
                         </div>
                       );
