@@ -560,7 +560,7 @@ export default function MatchViz() {
                   {gamePhases.map((ph, idx) => {
                     const m = (gamePhaseMetrics || []).find(mm => mm.phase_idx === ph.phase_idx);
                     
-                    // Filter key moments for this phase (check period AND time, exclude phase-ending goal)
+                    // Filter key moments for this phase (check period AND time, exclude phase-starting goal)
                     const phaseMoments = importantMoments.filter(moment => {
                       if (!moment.when) return false;
                       
@@ -585,16 +585,9 @@ export default function MatchViz() {
                       const startTime = startMin * 60 + startSec;
                       const endTime = endMin * 60 + endSec;
                       
-                      // Exclude moments outside time range (strict: start_time < x <= end_time)
+                      // Strict range: start_time < moment_time <= end_time
+                      // This excludes any moment AT the start time (which ended the previous phase)
                       if (momentTime <= startTime || momentTime > endTime) return false;
-                      
-                      // Exclude the goal that ENDED this phase (it's the next phase's starting event)
-                      if (ph.goal_info && ph.goal_info.scorer) {
-                        const phaseEndTime = endMin * 60 + endSec;
-                        if (momentTime === phaseEndTime && moment.who === ph.goal_info.scorer) {
-                          return false;
-                        }
-                      }
                       
                       return true;
                     });
@@ -633,7 +626,7 @@ export default function MatchViz() {
                             <table className={styles.phaseMetricsTable}>
                               <thead>
                                 <tr>
-                                  <th className={styles.phaseMetricsHeaderCell}>Statistic</th>
+                                  <th className={styles.phaseMetricsHeaderCell}></th>
                                   <th className={styles.phaseMetricsHeaderCell}>{gamePhaseTeams.home}</th>
                                   <th className={styles.phaseMetricsHeaderCell}>{gamePhaseTeams.away}</th>
                                 </tr>
@@ -643,6 +636,11 @@ export default function MatchViz() {
                                   <td className={styles.phaseMetricsLabelCell}>Shots (On Target)</td>
                                   <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.home]?.total ?? 0} ({m.shots_summary?.[gamePhaseTeams.home]?.on_target ?? 0})</td>
                                   <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.away]?.total ?? 0} ({m.shots_summary?.[gamePhaseTeams.away]?.on_target ?? 0})</td>
+                                </tr>
+                                <tr className={styles.phaseMetricsRow}>
+                                  <td className={styles.phaseMetricsLabelCell}>Chances (All/Big)</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.home]?.ok ?? 0} / {m.chances?.[gamePhaseTeams.home]?.good ?? 0}</td>
+                                  <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.away]?.ok ?? 0} / {m.chances?.[gamePhaseTeams.away]?.good ?? 0}</td>
                                 </tr>
                                 <tr className={styles.phaseMetricsRow}>
                                   <td className={styles.phaseMetricsLabelCell}>Final Third Entries</td>
@@ -673,11 +671,6 @@ export default function MatchViz() {
                                   <td className={styles.phaseMetricsLabelCell}>Cards (Yellow / Red)</td>
                                   <td className={styles.phaseMetricsValueCell}>{m.cards?.[gamePhaseTeams.home]?.yellow ?? 0} / {m.cards?.[gamePhaseTeams.home]?.red ?? 0}</td>
                                   <td className={styles.phaseMetricsValueCell}>{m.cards?.[gamePhaseTeams.away]?.yellow ?? 0} / {m.cards?.[gamePhaseTeams.away]?.red ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>All / Big</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.home]?.ok ?? 0} / {m.chances?.[gamePhaseTeams.home]?.good ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.away]?.ok ?? 0} / {m.chances?.[gamePhaseTeams.away]?.good ?? 0}</td>
                                 </tr>
                                 <tr className={styles.phaseMetricsRow}>
                                   <td className={styles.phaseMetricsLabelCell}>Penalties</td>
@@ -989,9 +982,9 @@ export default function MatchViz() {
                                         <g key={entryIdx}>
                                           <line
                                             x1={120 - entry.x1}
-                                            y1={entry.y1}
+                                            y1={80 - entry.y1}
                                             x2={120 - entry.x2}
-                                            y2={entry.y2}
+                                            y2={80 - entry.y2}
                                             stroke={strokeColor}
                                             strokeWidth="1.5"
                                             strokeDasharray={entry.type === 'pass' ? '2,2' : '0'}
@@ -999,7 +992,7 @@ export default function MatchViz() {
                                           />
                                           <circle
                                             cx={120 - entry.x2}
-                                            cy={entry.y2}
+                                            cy={80 - entry.y2}
                                             r="2"
                                             fill={fillColor}
                                             stroke="black"
