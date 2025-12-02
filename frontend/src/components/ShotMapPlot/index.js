@@ -14,7 +14,7 @@ export default function ShotMapPlot({ displayFig, flipSides, plotLoading, smalle
       range: flipSides ? [120,0] : [0,120],
     },
     responsive: !(smaller || customSize),
-    ...(smaller ? { width: 590, height: 415 } : {}),
+    ...(smaller ? { width: 950, height: 650 } : {}),
     ...(customSize ? { width: customSize.width, height: customSize.height } : {}),
   };
   return (

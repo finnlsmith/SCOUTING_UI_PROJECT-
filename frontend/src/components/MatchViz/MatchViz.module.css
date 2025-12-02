@@ -154,12 +154,12 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 32px 40px;
+  padding: 40px 40px;
   background: var(--color-bg-card);
   border-radius: var(--radius-lg);
   margin-bottom: 24px;
   box-shadow: var(--shadow-md);
-  min-height: 120px;
+  min-height: 160px;
 }
 
 .vizHeaderContent {
@@ -183,19 +183,19 @@
 }
 
 .teamLogo {
-  width: 60px;
-  height: 60px;
+  width: 100px;
+  height: 100px;
   object-fit: contain;
 }
 
 .teamName {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: var(--font-weight-bold);
   color: var(--color-text-dark);
 }
 
 [data-theme="dark"] .teamName {
-  color: white;
+  color: #333;
 }
 
 .vizHeaderScoreSection {
@@ -206,14 +206,14 @@
 }
 
 .vizHeaderScore {
-  font-size: 48px;
+  font-size: 56px;
   font-weight: var(--font-weight-extrabold);
   color: var(--color-text-dark);
   white-space: nowrap;
 }
 
 [data-theme="dark"] .vizHeaderScore {
-  color: white;
+  color: #222;
 }
 
 .vizHeaderMeta {
@@ -230,7 +230,7 @@
 }
 
 [data-theme="dark"] .vizHeaderStage {
-  color: #aaa;
+  color: #555;
 }
 
 .vizHeaderDate {
@@ -240,7 +240,7 @@
 }
 
 [data-theme="dark"] .vizHeaderDate {
-  color: #999;
+  color: #666;
 }
 
 .vizHeaderSeparator {
@@ -395,7 +395,8 @@
 
 .shotMapPlot {
   margin: var(--spacing-lg) auto 0;
-  width: 330px;
+  width: 100%;
+  max-width: 1000px;
   display: flex;
   justify-content: center;
 }
@@ -427,7 +428,8 @@
 
 .passingNetworkPlot {
   margin: var(--spacing-lg) auto 0;
-  max-width: 540px;
+  max-width: 1000px;
+  width: 100%;
 }
 
 .keyMoments {
