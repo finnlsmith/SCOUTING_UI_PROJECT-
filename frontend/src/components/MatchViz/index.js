@@ -317,15 +317,20 @@ export default function MatchViz() {
                       
                       // Determine which team scored (own goals benefit the other team)
                       const isOwnGoal = moment.event_type === 'Own Goal For' || moment.event_type === 'Own Goal Against';
-                      let scoringTeam = moment.team;
+                      let displayTeam = moment.team;
                       
-                      // For own goals, flip to the benefiting team
+                      // For own goals, show on the BENEFITING team's side
                       if (moment.event_type === 'Own Goal For') {
-                        // Own Goal For means this team scored for themselves (benefits opponent)
-                        scoringTeam = moment.team === stats.home_team ? stats.away_team : stats.home_team;
+                        // "Own Goal For" means this team benefited (opponent scored on themselves)
+                        // So keep it on this team's side
+                        displayTeam = moment.team;
+                      } else if (moment.event_type === 'Own Goal Against') {
+                        // "Own Goal Against" means this team scored on themselves (benefits opponent)
+                        // So flip to opponent's side
+                        displayTeam = moment.team === stats.home_team ? stats.away_team : stats.home_team;
                       }
                       
-                      const isHomeTeam = scoringTeam === stats.home_team;
+                      const isHomeTeam = displayTeam === stats.home_team;
                       
                       // Icon type
                       let icon = '⚽';

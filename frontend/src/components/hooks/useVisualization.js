@@ -79,21 +79,42 @@ export default function useVisualization() {
             ...t,
             marker: {
               ...(t.marker || {}),
-              colorscale: [ [0, "white"], [1, homeColor] ], showscale: false,
+              colorscale: [ [0, "white"], [1, homeColor] ],
+              showscale: false,
+              opacity: 0.85,
+              line: { color: homeColor, width: 2 }
             },
-            name: `${home} – ${t.name ?? "Shot"}`,
+            name: `${home}`,
           })),
           // Away team - backend ALREADY flipped both X and Y, use as-is (NO additional flip!)
           ...(awayData.data || []).map((t) => ({
             ...t,
             marker: {
               ...(t.marker || {}),
-              colorscale: [ [0, "white"], [1, awayColor] ], showscale: false,
+              colorscale: [ [0, "white"], [1, awayColor] ],
+              showscale: false,
+              opacity: 0.85,
+              line: { color: awayColor, width: 2 }
             },
-            name: `${away} – ${t.name ?? "Shot"}`,
+            name: `${away}`,
           })),
         ],
-        layout: { ...(homeData.layout || {}), title: `Shot Map — ${home} vs ${away}` },
+        layout: { 
+          ...(homeData.layout || {}),
+          title: `Shot Map — ${home} vs ${away}`,
+          showlegend: true,
+          legend: {
+            x: 0.5,
+            y: 1.05,
+            xanchor: 'center',
+            yanchor: 'bottom',
+            orientation: 'h',
+            bgcolor: 'rgba(255,255,255,0.8)',
+            bordercolor: '#ccc',
+            borderwidth: 1,
+            font: { size: 14, weight: 'bold' }
+          }
+        },
       };
       return result;
     } catch (err) {
