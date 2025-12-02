@@ -288,7 +288,7 @@ export default function MatchViz() {
                   {importantMoments
                     .filter(moment => {
                       // Only goals, red cards, own goals
-                      return moment.event_type === 'Shot' && moment.outcome === 'Goal' ||
+                      return (moment.event_type === 'Shot' && moment.outcome === 'Goal') ||
                              moment.event_type === 'Own Goal For' ||
                              moment.event_type === 'Own Goal Against';
                     })
