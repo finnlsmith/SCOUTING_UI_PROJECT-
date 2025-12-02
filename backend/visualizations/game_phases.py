@@ -431,7 +431,7 @@ async def game_phases(filename: str):
                                         'x1': r['start_point'][0], 'y1': r['start_point'][1],
                                         'x2': r['point'][0], 'y2': r['point'][1],
                                         'type': 'pass',
-                                        'color': color
+                                        'color': color  #0==0
                                     })
                         elif r['team'] == away_team:
                             if poss_num not in away_poss_box:
