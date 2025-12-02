@@ -981,18 +981,18 @@ export default function MatchViz() {
                                         return (
                                         <g key={entryIdx}>
                                           <line
-                                            x1={120 - entry.x1}
-                                            y1={80 - entry.y1}
-                                            x2={120 - entry.x2}
-                                            y2={80 - entry.y2}
+                                            x1={entry.x1}
+                                            y1={entry.y1}
+                                            x2={entry.x2}
+                                            y2={entry.y2}
                                             stroke={strokeColor}
                                             strokeWidth="1.5"
                                             strokeDasharray={entry.type === 'pass' ? '2,2' : '0'}
                                             opacity="0.7"
                                           />
                                           <circle
-                                            cx={120 - entry.x2}
-                                            cy={80 - entry.y2}
+                                            cx={entry.x2}
+                                            cy={entry.y2}
                                             r="2"
                                             fill={fillColor}
                                             stroke="black"
