@@ -86,6 +86,7 @@ export default function useVisualization() {
       const awayColor = TEAM_COLORS[away] || "#ff7f0e";
       const result = {
         data: [
+          // Home team - backend doesn't flip, use as-is
           ...(homeData.data || []).map((t) => ({
             ...t,
             marker: {
@@ -94,8 +95,9 @@ export default function useVisualization() {
             },
             name: `${home} – ${t.name ?? "Shot"}`,
           })),
+          // Away team - backend ALREADY flipped both X and Y, use as-is (NO additional flip!)
           ...(awayData.data || []).map((t) => ({
-            ...flipTrace(t, 120, 80),
+            ...t,
             marker: {
               ...(t.marker || {}),
               colorscale: [ [0, "white"], [1, awayColor] ], showscale: false,

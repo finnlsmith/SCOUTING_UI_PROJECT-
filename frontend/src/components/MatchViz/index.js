@@ -315,16 +315,25 @@ export default function MatchViz() {
                       // Assume 90 min match for positioning (can adjust for ET)
                       const position = (totalMinutes / 90) * 100;
                       
-                      // Determine which team
-                      const isHomeTeam = moment.team === stats.home_team;
+                      // Determine which team scored (own goals benefit the other team)
+                      const isOwnGoal = moment.event_type === 'Own Goal For' || moment.event_type === 'Own Goal Against';
+                      let scoringTeam = moment.team;
+                      
+                      // For own goals, flip to the benefiting team
+                      if (moment.event_type === 'Own Goal For') {
+                        // Own Goal For means this team scored for themselves (benefits opponent)
+                        scoringTeam = moment.team === stats.home_team ? stats.away_team : stats.home_team;
+                      }
+                      
+                      const isHomeTeam = scoringTeam === stats.home_team;
                       
                       // Icon type
                       let icon = '⚽';
-                      let color = '#4CAF50';
-                      if (moment.event_type === 'Own Goal For' || moment.event_type === 'Own Goal Against') {
-                        icon = '⚽';
-                        color = '#FF9800';
-                      }
+                      let color = isOwnGoal ? '#FF9800' : '#4CAF50';
+                      
+                      // Get player last name
+                      const playerName = moment.who || '';
+                      const lastName = playerName.includes(' ') ? playerName.split(' ').pop() : playerName;
                       
                       return (
                         <div
@@ -334,7 +343,7 @@ export default function MatchViz() {
                           title={`${moment.who} - ${moment.when}`}
                         >
                           <div className={styles.timelineEventLabel}>
-                            {min}'
+                            {min}' {lastName}
                           </div>
                           <div className={styles.timelineEventDot} style={{ backgroundColor: color }}>
                             {icon}
@@ -352,6 +361,10 @@ export default function MatchViz() {
                       const position = (totalMinutes / 90) * 100;
                       const isHomeTeam = moment.team === stats.home_team;
                       
+                      // Get player last name
+                      const playerName = moment.who || '';
+                      const lastName = playerName.includes(' ') ? playerName.split(' ').pop() : playerName;
+                      
                       return (
                         <div
                           key={`red-${idx}`}
@@ -360,7 +373,7 @@ export default function MatchViz() {
                           title={`${moment.who} - ${moment.when}`}
                         >
                           <div className={styles.timelineEventLabel}>
-                            {min}'
+                            {min}' {lastName}
                           </div>
                           <div className={styles.timelineEventDot} style={{ backgroundColor: '#D32F2F', borderRadius: '2px' }}>
                             🟥
