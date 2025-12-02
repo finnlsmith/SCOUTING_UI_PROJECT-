@@ -621,10 +621,10 @@
   width: 100%;
 }
 
-/* Dark theme specific: black background for phase cards */
+/* Dark theme specific: dark background for phase cards */
 [data-theme="dark"] .gamePhaseCard {
-  background: #000000;
-  border-color: #333;
+  background: #1a1a1a;
+  border-color: #444;
 }
 
 /* Layout: Phase content + Key Moments side-by-side */
@@ -956,6 +956,10 @@
   margin-bottom: 8px;
 }
 
+[data-theme="dark"] .shotMapLegend {
+  color: white;
+}
+
 .shotMapLegend span {
   display: flex;
   align-items: center;
@@ -969,6 +973,10 @@
   font-size: 11px;
   color: #666;
   flex-wrap: wrap;
+}
+
+[data-theme="dark"] .shotOutcomeLegend {
+  color: #ccc;
 }
 
 .shotOutcomeLegend span {
