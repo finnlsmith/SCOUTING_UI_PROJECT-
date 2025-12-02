@@ -261,6 +261,102 @@ export default function MatchViz() {
             </div>
             
             {/* ========================================
+                MATCH TIMELINE - Goals, Red Cards, Own Goals
+                ======================================== */}
+            {importantMoments.length > 0 && (
+              <div className={styles.matchTimeline}>
+                <div className={styles.timelineTrack}>
+                  {/* Timeline line */}
+                  <div className={styles.timelineLine}></div>
+                  
+                  {/* Halftime marker */}
+                  <div className={styles.timelineMarker} style={{ left: '50%' }}>
+                    <span className={styles.timelineMarkerLabel}>HT</span>
+                  </div>
+                  
+                  {/* Fulltime marker */}
+                  <div className={styles.timelineMarker} style={{ left: '100%' }}>
+                    <span className={styles.timelineMarkerLabel}>FT</span>
+                  </div>
+                  
+                  {/* Start marker */}
+                  <div className={styles.timelineMarker} style={{ left: '0%' }}>
+                    <span className={styles.timelineMarkerLabel}>0'</span>
+                  </div>
+                  
+                  {/* Plot events */}
+                  {importantMoments
+                    .filter(moment => {
+                      // Only goals, red cards, own goals
+                      return moment.event_type === 'Shot' && moment.outcome === 'Goal' ||
+                             moment.event_type === 'Own Goal For' ||
+                             moment.event_type === 'Own Goal Against';
+                    })
+                    .map((moment, idx) => {
+                      // Parse time
+                      const [min, sec] = moment.when ? moment.when.split(':').map(Number) : [0, 0];
+                      const totalMinutes = min + sec / 60;
+                      // Assume 90 min match for positioning (can adjust for ET)
+                      const position = (totalMinutes / 90) * 100;
+                      
+                      // Determine which team
+                      const isHomeTeam = moment.team === stats.home_team;
+                      
+                      // Icon type
+                      let icon = '⚽';
+                      let color = '#4CAF50';
+                      if (moment.event_type === 'Own Goal For' || moment.event_type === 'Own Goal Against') {
+                        icon = '⚽';
+                        color = '#FF9800';
+                      }
+                      
+                      return (
+                        <div
+                          key={idx}
+                          className={isHomeTeam ? styles.timelineEventTop : styles.timelineEventBottom}
+                          style={{ left: `${Math.min(position, 98)}%` }}
+                          title={`${moment.who} - ${moment.when}`}
+                        >
+                          <div className={styles.timelineEventDot} style={{ backgroundColor: color }}>
+                            {icon}
+                          </div>
+                          <div className={styles.timelineEventLabel}>
+                            {min}'
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                  {/* Red cards */}
+                  {importantMoments
+                    .filter(moment => moment.event_type === 'Red Card')
+                    .map((moment, idx) => {
+                      const [min, sec] = moment.when ? moment.when.split(':').map(Number) : [0, 0];
+                      const totalMinutes = min + sec / 60;
+                      const position = (totalMinutes / 90) * 100;
+                      const isHomeTeam = moment.team === stats.home_team;
+                      
+                      return (
+                        <div
+                          key={`red-${idx}`}
+                          className={isHomeTeam ? styles.timelineEventTop : styles.timelineEventBottom}
+                          style={{ left: `${Math.min(position, 98)}%` }}
+                          title={`${moment.who} - ${moment.when}`}
+                        >
+                          <div className={styles.timelineEventDot} style={{ backgroundColor: '#D32F2F', borderRadius: '2px' }}>
+                            🟥
+                          </div>
+                          <div className={styles.timelineEventLabel}>
+                            {min}'
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+            
+            {/* ========================================
                 ENTIRE MATCH SECTION 
                 ======================================== */}
             <h2 className={styles.entireMatchTitle}>Entire Match</h2>
