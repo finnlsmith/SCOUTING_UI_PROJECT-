@@ -463,7 +463,7 @@ export default function MatchViz() {
                 {passNetFigData && (
                   <div className={styles.passingNetworkPlot}>
                     <Suspense fallback={<PlotSkeleton />}>
-                      <ShotMapPlot displayFig={passNetFigData} flipSides={flipSides} plotLoading={plotLoading} customSize={{ width: 540, height: 380 }} />
+                      <ShotMapPlot displayFig={passNetFigData} flipSides={flipSides} plotLoading={plotLoading} customSize={{ width: 950, height: 650 }} />
                     </Suspense>
                   </div>
                 )}
