@@ -136,7 +136,7 @@ export default function MatchViz() {
         if (data) setShotMapFigData(data);
       });
     }
-  }, [selectedMatch, homeName, awayName, canShoot]);
+  }, [selectedMatch, homeName, awayName, canShoot, loadBothShotmaps]);
 
   // Auto-load Home Team Passing Network when match is selected
   useEffect(() => {
@@ -145,7 +145,7 @@ export default function MatchViz() {
         if (data) setPassNetFigData(data);
       });
     }
-  }, [selectedMatch, homeName, canShoot]);
+  }, [selectedMatch, homeName, canShoot, loadPassingNetwork]);
 
   const handleMomentClick = idx => {
     setSelectedMomentIdx(idx);
