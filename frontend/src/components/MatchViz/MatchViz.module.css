@@ -350,13 +350,13 @@
 .visualizationsContainer {
   flex: 1;
   display: flex;
-  gap: 20px;
+  gap: 40px;
   align-items: flex-start;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 .shotMapsColumn {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 400px;
   max-width: 1000px;
   text-align: center;
@@ -451,8 +451,9 @@
 }
 
 .passingNetworkColumn {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 400px;
+  max-width: 1000px;
 }
 
 .passingNetworkTitle {
