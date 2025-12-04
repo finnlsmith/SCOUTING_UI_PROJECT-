@@ -308,13 +308,15 @@
   display: flex;
   gap: 32px;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: center;
 }
 
 .shotMapsColumn {
   flex: 1;
   min-width: 400px;
+  max-width: 1000px;
   text-align: center;
+  margin-left: 40px;
 }
 
 .shotMapsTitle {

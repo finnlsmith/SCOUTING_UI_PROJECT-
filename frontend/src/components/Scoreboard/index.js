@@ -3,6 +3,21 @@ import styles from "./Scoreboard.module.css";
 
 export default function Scoreboard({ stage, home, away, score, shots, shotsOnTarget, xg, bigChances, okChances, fouls, cardsLeft, cardsRight, boxEntries }) {
   if (!home || !away) return null;
+  
+  // Parse values for combined rows
+  const homeShots = shots ? shots.split(" - ")[0] : "-";
+  const awayShots = shots ? shots.split(" - ")[1] : "-";
+  const homeSoT = shotsOnTarget ? shotsOnTarget.split(" - ")[0] : "-";
+  const awaySoT = shotsOnTarget ? shotsOnTarget.split(" - ")[1] : "-";
+  const homeBig = bigChances ? bigChances.split(" - ")[0] : "-";
+  const awayBig = bigChances ? bigChances.split(" - ")[1] : "-";
+  const homeOk = okChances ? okChances.split(" - ")[0] : "-";
+  const awayOk = okChances ? okChances.split(" - ")[1] : "-";
+  
+  // Calculate All Chances (Big + OK)
+  const homeAllChances = (homeBig !== "-" && homeOk !== "-") ? (parseInt(homeBig) + parseInt(homeOk)) : "-";
+  const awayAllChances = (awayBig !== "-" && awayOk !== "-") ? (parseInt(awayBig) + parseInt(awayOk)) : "-";
+  
   return (
     <div className={styles.container}>
       <div className={styles.scoreboard}>
@@ -12,27 +27,18 @@ export default function Scoreboard({ stage, home, away, score, shots, shotsOnTar
           <span>{away}</span>
         </div>
 
-        {/* Shots row label */}
+        {/* Shots (on Target) row - combined */}
         <div className={styles.label}>
-          <span>Shots</span>
+          <span>Shots (on Target)</span>
         </div>
-        {/* Shots row values */}
         <div className={styles.values}>
-          <span>{shots ? shots.split(" - ")[0] : "-"}</span>
-          <span>{shots ? shots.split(" - ")[1] : "-"}</span>
+          <span>{homeShots} ({homeSoT})</span>
+          <span>{awayShots} ({awaySoT})</span>
         </div>
-        {/* Shots on Target label */}
+        
+        {/* xG (pen.) label */}
         <div className={styles.label}>
-          <span>Shots on Target</span>
-        </div>
-        {/* Shots on Target values */}
-        <div className={styles.values}>
-          <span>{shotsOnTarget ? shotsOnTarget.split(" - ")[0] : "-"}</span>
-          <span>{shotsOnTarget ? shotsOnTarget.split(" - ")[1] : "-"}</span>
-        </div>
-        {/* xG label */}
-        <div className={styles.label}>
-          <span>xG</span>
+          <span>xG (pen.)</span>
         </div>
         {/* xG values */}
         <div className={styles.values}>
@@ -40,24 +46,13 @@ export default function Scoreboard({ stage, home, away, score, shots, shotsOnTar
           <span>{xg ? xg.split(" - ")[1] : "-"}</span>
         </div>
 
-        {/* Big Chances label */}
+        {/* Chances (All/Big) row - combined */}
         <div className={styles.label}>
-          <span>Big Chances (≥ 0.27 xG)</span>
+          <span>Chances (All/Big)</span>
         </div>
-        {/* Big Chances values */}
         <div className={styles.values}>
-          <span>{bigChances ? bigChances.split(" - ")[0] : "-"}</span>
-          <span>{bigChances ? bigChances.split(" - ")[1] : "-"}</span>
-        </div>
-
-        {/* OK Chances label */}
-        <div className={styles.label}>
-          <span>OK Chances (0.08–0.27 xG)</span>
-        </div>
-        {/* OK Chances values */}
-        <div className={styles.values}>
-          <span>{okChances ? okChances.split(" - ")[0] : "-"}</span>
-          <span>{okChances ? okChances.split(" - ")[1] : "-"}</span>
+          <span>{homeAllChances}/{homeBig}</span>
+          <span>{awayAllChances}/{awayBig}</span>
         </div>
 
         {/* Box Entries label */}
