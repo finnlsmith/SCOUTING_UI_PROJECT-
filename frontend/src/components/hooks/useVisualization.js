@@ -74,30 +74,40 @@ export default function useVisualization() {
       const awayColor = TEAM_COLORS[away] || "#ff7f0e";
       const result = {
         data: [
-          // Home team - backend doesn't flip, use as-is
-          ...(homeData.data || []).map((t) => ({
-            ...t,
-            marker: {
-              ...(t.marker || {}),
-              colorscale: [ [0, "white"], [1, homeColor] ],
-              showscale: false,
-              opacity: 0.85,
-              line: { color: homeColor, width: 2 }
-            },
-            name: `${home}`,
-          })),
-          // Away team - backend ALREADY flipped both X and Y, use as-is (NO additional flip!)
-          ...(awayData.data || []).map((t) => ({
-            ...t,
-            marker: {
-              ...(t.marker || {}),
-              colorscale: [ [0, "white"], [1, awayColor] ],
-              showscale: false,
-              opacity: 0.85,
-              line: { color: awayColor, width: 2 }
-            },
-            name: `${away}`,
-          })),
+          // Home team traces - preserve backend Goal styling (black outline)
+          ...(homeData.data || []).map((t) => {
+            const isGoalTrace = t.name === 'Goal';
+            return {
+              ...t,
+              marker: {
+                ...(t.marker || {}),
+                colorscale: [ [0, "white"], [1, homeColor] ],
+                showscale: false,
+                // Keep black outline for goals, otherwise use team color
+                line: isGoalTrace 
+                  ? { color: 'black', width: 3 }
+                  : { color: homeColor, width: 1 }
+              },
+              name: isGoalTrace ? `${home} Goal` : `${home}`,
+            };
+          }),
+          // Away team traces - preserve backend Goal styling (black outline)
+          ...(awayData.data || []).map((t) => {
+            const isGoalTrace = t.name === 'Goal';
+            return {
+              ...t,
+              marker: {
+                ...(t.marker || {}),
+                colorscale: [ [0, "white"], [1, awayColor] ],
+                showscale: false,
+                // Keep black outline for goals, otherwise use team color
+                line: isGoalTrace 
+                  ? { color: 'black', width: 3 }
+                  : { color: awayColor, width: 1 }
+              },
+              name: isGoalTrace ? `${away} Goal` : `${away}`,
+            };
+          }),
         ],
         layout: { 
           ...(homeData.layout || {}),

@@ -399,22 +399,24 @@ export default function MatchViz() {
                 </div>
               </div>
 
+              {/* --- FLIP SIDES CONTROL (applies to both Shot Map and Passing Network) --- */}
+              <div className={styles.flipSidesContainerCentered}>
+                <label className={styles.flipSidesLabel}>
+                  <input
+                    type="checkbox"
+                    checked={flipSides}
+                    onChange={(e) => setFlipSides(e.target.checked)}
+                    className={styles.flipSidesCheckbox}
+                  />
+                  Flip Sides (applies to both)
+                </label>
+              </div>
+
               {/* --- VISUALIZATIONS CONTAINER (RIGHT SIDE) --- */}
               <div className={styles.visualizationsContainer}>
                 {/* --- SHOT MAPS COLUMN --- */}
                 <div className={styles.shotMapsColumn}>
                 <h2 className={styles.shotMapsTitle}>Shot Map</h2>
-                <div className={styles.flipSidesContainer}>
-                  <label className={styles.flipSidesLabel}>
-                    <input
-                      type="checkbox"
-                      checked={flipSides}
-                      onChange={(e) => setFlipSides(e.target.checked)}
-                      className={styles.flipSidesCheckbox}
-                    />
-                    Flip Sides
-                  </label>
-                </div>
                 <div className={styles.buttonGroup}>
                   <button onClick={async () => {
                     if (!canShoot) return;

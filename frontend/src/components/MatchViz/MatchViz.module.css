@@ -331,8 +331,8 @@
 }
 
 .matchFactsTitle {
-  font-size: 32px;
-  font-weight: var(--font-weight-bold);
+  font-size: 42px;
+  font-weight: var(--font-weight-extrabold);
   margin-bottom: var(--spacing-lg);
   text-align: center;
   color: var(--color-text-primary);
@@ -376,6 +376,19 @@
   align-items: center;
   margin-bottom: 14px;
   gap: 28px;
+}
+
+.flipSidesContainerCentered {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 12px 20px;
+  background: var(--color-bg-card-alt);
+  border-radius: var(--radius-lg);
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .flipSidesLabel {
