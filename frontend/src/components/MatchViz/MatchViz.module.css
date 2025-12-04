@@ -35,40 +35,84 @@
   margin: 40px 0;
 }
 
-/* Match Timeline - Vertical */
+/* Match Timeline - Sequential List */
 .matchTimeline {
   margin: 32px auto 40px auto;
   padding: 20px 0;
-  max-width: 600px;
+  max-width: 500px;
 }
 
-.timelineTrack {
-  position: relative;
-  height: 500px;
-  width: 100%;
+.timelineList {
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timelineRow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.timelineHomeCell {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  padding-right: 16px;
+}
+
+.timelineMinuteCell {
+  flex: 0 0 50px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-card);
+  padding: 6px 0;
+  border-radius: 4px;
+}
+
+[data-theme="dark"] .timelineMinuteCell {
+  background: #1a1a1a;
+  color: #aaa;
+}
+
+.timelineAwayCell {
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
+  padding-left: 16px;
+}
+
+.timelineEventContent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.timelinePlayerName {
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .timelinePlayerName {
+  color: #ddd;
+}
+
+.timelineIcon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
   justify-content: center;
+  font-size: 14px;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
-.timelineLine {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--color-border-dark);
-  transform: translateX(-50%);
-}
-
-[data-theme="dark"] .timelineLine {
-  background: #444;
-}
-
-.timelineMarker {
-  position: absolute;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 2;
+[data-theme="dark"] .timelineIcon {
+  border-color: #333;
 }
 
 .timelineMarkerLabel {
@@ -146,9 +190,9 @@
 
 /* Entire Match Section */
 .entireMatchTitle {
-  font-size: 36px;
-  font-weight: var(--font-weight-bold);
-  margin-bottom: 20px;
+  font-size: 48px;
+  font-weight: var(--font-weight-extrabold);
+  margin-bottom: 24px;
   text-align: left;
   color: var(--color-text-primary);
 }
@@ -287,9 +331,9 @@
 }
 
 .matchFactsTitle {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-semibold);
-  margin-bottom: var(--spacing-md);
+  font-size: 32px;
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-lg);
   text-align: center;
   color: var(--color-text-primary);
 }
@@ -306,9 +350,9 @@
 .visualizationsContainer {
   flex: 1;
   display: flex;
-  gap: 32px;
+  gap: 20px;
   align-items: flex-start;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .shotMapsColumn {
@@ -316,7 +360,6 @@
   min-width: 400px;
   max-width: 1000px;
   text-align: center;
-  margin-left: 40px;
 }
 
 .shotMapsTitle {
@@ -653,9 +696,9 @@
 }
 
 .phaseMomentsTitle {
-  font-size: 22px;
+  font-size: 26px;
   font-weight: var(--font-weight-bold);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   color: var(--color-text-dark);
 }
 
@@ -665,7 +708,7 @@
 
 .phaseMomentsTable {
   width: 100%;
-  font-size: 14px;
+  font-size: 17px;
   border-collapse: collapse;
   background: white;
   border-radius: 8px;
@@ -674,10 +717,10 @@
 }
 
 .phaseMomentsHeaderCell {
-  padding: 8px 10px;
+  padding: 12px 14px;
   text-align: left;
   font-weight: var(--font-weight-semibold);
-  font-size: 13px;
+  font-size: 15px;
   background: #f5f5f7;
   color: var(--color-text-dark);
   border-bottom: 1px solid #e0e0e0;
@@ -700,8 +743,8 @@
 }
 
 .phaseMomentsCell {
-  padding: 8px 10px;
-  font-size: 13px;
+  padding: 14px 14px;
+  font-size: 16px;
   color: var(--color-text-dark);
 }
 

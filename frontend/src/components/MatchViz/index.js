@@ -281,107 +281,81 @@ export default function MatchViz() {
             </div>
             
             {/* ========================================
-                MATCH TIMELINE - Goals, Red Cards, Own Goals (Vertical)
+                MATCH TIMELINE - Sequential list of Goals, Red Cards, Own Goals
                 ======================================== */}
             {importantMoments.length > 0 && (
               <div className={styles.matchTimeline}>
-                <div className={styles.timelineTrack}>
-                  {/* Vertical timeline line */}
-                  <div className={styles.timelineLine}></div>
-                  
-                  {/* Time markers */}
-                  <div className={styles.timelineMarker} style={{ top: '0%' }}>
-                    <span className={styles.timelineMarkerLabel}>0'</span>
-                  </div>
-                  <div className={styles.timelineMarker} style={{ top: '50%' }}>
-                    <span className={styles.timelineMarkerLabel}>HT</span>
-                  </div>
-                  <div className={styles.timelineMarker} style={{ top: '100%' }}>
-                    <span className={styles.timelineMarkerLabel}>FT</span>
-                  </div>
-                  
-                  {/* Plot events */}
+                <div className={styles.timelineList}>
+                  {/* Combine goals, own goals, and red cards, then sort by time */}
                   {importantMoments
                     .filter(moment => {
-                      // Only goals, red cards, own goals
                       return (moment.event_type === 'Shot' && moment.outcome === 'Goal') ||
                              moment.event_type === 'Own Goal For' ||
-                             moment.event_type === 'Own Goal Against';
+                             moment.event_type === 'Own Goal Against' ||
+                             moment.event_type === 'Red Card';
+                    })
+                    .sort((a, b) => {
+                      const [aMin] = a.when ? a.when.split(':').map(Number) : [0];
+                      const [bMin] = b.when ? b.when.split(':').map(Number) : [0];
+                      return aMin - bMin;
                     })
                     .map((moment, idx) => {
-                      // Parse time
-                      const [min, sec] = moment.when ? moment.when.split(':').map(Number) : [0, 0];
-                      const totalMinutes = min + sec / 60;
-                      // Assume 90 min match for positioning (can adjust for ET)
-                      const position = (totalMinutes / 90) * 100;
+                      const [min] = moment.when ? moment.when.split(':').map(Number) : [0];
                       
                       // Determine which team scored (own goals benefit the other team)
                       const isOwnGoal = moment.event_type === 'Own Goal For' || moment.event_type === 'Own Goal Against';
+                      const isRedCard = moment.event_type === 'Red Card';
                       let displayTeam = moment.team;
                       
-                      // For own goals, show on the BENEFITING team's side
                       if (moment.event_type === 'Own Goal For') {
-                        // "Own Goal For" means this team benefited (opponent scored on themselves)
-                        // So keep it on this team's side
                         displayTeam = moment.team;
                       } else if (moment.event_type === 'Own Goal Against') {
-                        // "Own Goal Against" means this team scored on themselves (benefits opponent)
-                        // So flip to opponent's side
                         displayTeam = moment.team === stats.home_team ? stats.away_team : stats.home_team;
                       }
                       
                       const isHomeTeam = displayTeam === stats.home_team;
                       
-                      // Icon type
+                      // Icon and color
                       let icon = '⚽';
                       let color = isOwnGoal ? '#FF9800' : '#4CAF50';
+                      if (isRedCard) {
+                        icon = '🟥';
+                        color = '#D32F2F';
+                      }
                       
                       // Get player last name
                       const playerName = moment.who || '';
                       const lastName = playerName.includes(' ') ? playerName.split(' ').pop() : playerName;
                       
                       return (
-                        <div
-                          key={idx}
-                          className={isHomeTeam ? styles.timelineEventLeft : styles.timelineEventRight}
-                          style={{ top: `${Math.min(position, 98)}%` }}
-                          title={`${moment.who} - ${moment.when}`}
-                        >
-                          <div className={styles.timelineEventLabel}>
-                            {min}' {lastName}
+                        <div key={idx} className={styles.timelineRow}>
+                          {/* Home team side */}
+                          <div className={styles.timelineHomeCell}>
+                            {isHomeTeam && (
+                              <div className={styles.timelineEventContent}>
+                                <span className={styles.timelinePlayerName}>{lastName}</span>
+                                <div className={styles.timelineIcon} style={{ backgroundColor: color, borderRadius: isRedCard ? '3px' : '50%' }}>
+                                  {icon}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          <div className={styles.timelineEventDot} style={{ backgroundColor: color }}>
-                            {icon}
+                          
+                          {/* Minute in center */}
+                          <div className={styles.timelineMinuteCell}>
+                            {min}'
                           </div>
-                        </div>
-                      );
-                    })}
-                    
-                  {/* Red cards */}
-                  {importantMoments
-                    .filter(moment => moment.event_type === 'Red Card')
-                    .map((moment, idx) => {
-                      const [min, sec] = moment.when ? moment.when.split(':').map(Number) : [0, 0];
-                      const totalMinutes = min + sec / 60;
-                      const position = (totalMinutes / 90) * 100;
-                      const isHomeTeam = moment.team === stats.home_team;
-                      
-                      // Get player last name
-                      const playerName = moment.who || '';
-                      const lastName = playerName.includes(' ') ? playerName.split(' ').pop() : playerName;
-                      
-                      return (
-                        <div
-                          key={`red-${idx}`}
-                          className={isHomeTeam ? styles.timelineEventLeft : styles.timelineEventRight}
-                          style={{ top: `${Math.min(position, 98)}%` }}
-                          title={`${moment.who} - ${moment.when}`}
-                        >
-                          <div className={styles.timelineEventLabel}>
-                            {min}' {lastName}
-                          </div>
-                          <div className={styles.timelineEventDot} style={{ backgroundColor: '#D32F2F', borderRadius: '2px' }}>
-                            🟥
+                          
+                          {/* Away team side */}
+                          <div className={styles.timelineAwayCell}>
+                            {!isHomeTeam && (
+                              <div className={styles.timelineEventContent}>
+                                <div className={styles.timelineIcon} style={{ backgroundColor: color, borderRadius: isRedCard ? '3px' : '50%' }}>
+                                  {icon}
+                                </div>
+                                <span className={styles.timelinePlayerName}>{lastName}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
