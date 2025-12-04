@@ -325,9 +325,9 @@
 
 /* Match Facts Sidebar (Left) */
 .matchFactsSidebar {
-  flex: 0 0 380px;
-  min-width: 380px;
-  max-width: 380px;
+  flex: 0 0 500px;
+  min-width: 500px;
+  max-width: 500px;
 }
 
 .matchFactsTitle {
