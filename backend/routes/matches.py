@@ -142,7 +142,23 @@ async def get_team_logo(team_name: str):
     """
     Fetch team logo from S3. Tries {team_name}.png, then .svg, then .jpeg/.jpg
     Returns the image with appropriate Content-Type or 404 if not found.
+    
+    Caching:
+    - Backend: Cached in Redis/memory for 1 hour
+    - Browser: Cache-Control header for 1 day
     """
+    from cache import cache
+    
+    # Check cache first
+    cache_key = f"team_logo:{team_name}"
+    cached_result = cache.get(cache_key, cache_type="team_logo")
+    if cached_result is not None:
+        return Response(
+            content=cached_result["data"],
+            media_type=cached_result["content_type"],
+            headers={"Cache-Control": "public, max-age=86400"}  # 1 day browser cache
+        )
+    
     extensions = [".png", ".svg", ".jpeg", ".jpg"]
     
     for ext in extensions:
@@ -159,7 +175,17 @@ async def get_team_logo(team_name: str):
                 ".jpg": "image/jpeg"
             }.get(ext, "application/octet-stream")
             
-            return Response(content=image_data, media_type=content_type)
+            # Cache the result (store as dict with data and content_type)
+            cache.set(cache_key, {
+                "data": image_data,
+                "content_type": content_type
+            }, cache_type="team_logo")  # 1 hour backend cache (from config)
+            
+            return Response(
+                content=image_data,
+                media_type=content_type,
+                headers={"Cache-Control": "public, max-age=86400"}  # 1 day browser cache
+            )
         except Exception as e:
             continue  # Try next extension
     

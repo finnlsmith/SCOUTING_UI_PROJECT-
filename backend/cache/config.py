@@ -9,8 +9,9 @@ CACHE_TTL = {
     "important_moments": 600, # 10 minutes - computed from events
     "game_phases": 600,       # 10 minutes - computed from events
     "plotly_viz": 600,        # 10 minutes - expensive to compute
-    "passing_network": 600,    # 10 minutes - expensive to compute
+    "passing_network": 600,   # 10 minutes - expensive to compute
     "possession_scene": 300,  # 5 minutes - very expensive
+    "team_logo": 3600,        # 1 hour - logos rarely change
     "default": 600,           # 10 minutes default
 }
 
