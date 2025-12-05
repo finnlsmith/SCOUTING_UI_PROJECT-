@@ -157,6 +157,34 @@ async def game_phases(filename: str):
                     reasons.append('goal')
                     score_after = (score[home_team], score[away_team])
 
+            # Woodwork/Post/Saved to Post as phase divider (with 30-second caveat)
+            if row.get('type') == 'Shot':
+                shot_outcome = str(row.get('shot_outcome', '')).lower()
+                if shot_outcome in ['woodwork', 'post', 'saved to post']:
+                    # Check if there's a Goal or Own Goal within 30 seconds BEFORE this event
+                    should_be_divider = True
+                    # Look back 30 seconds
+                    lookback_start_tsec = max(0, tsec - 30)
+                    time_mask = (ev['tsec'] >= lookback_start_tsec) & (ev['tsec'] < tsec)
+                    
+                    if period_val is not None and 'period' in ev.columns:
+                        # Filter to same period
+                        period_int = pd.to_numeric(ev['period'], errors='coerce')
+                        same_period_mask = (period_int == period_val) & pd.notna(period_int)
+                        lookback_events = ev[same_period_mask & time_mask]
+                    else:
+                        # No period filtering if period_val is None
+                        lookback_events = ev[time_mask]
+                    
+                    # Check for Goal or Own Goal in lookback window
+                    if not lookback_events.empty:
+                        goal_in_window = lookback_events.apply(is_goal, axis=1).any()
+                        if goal_in_window:
+                            should_be_divider = False
+                    
+                    if should_be_divider:
+                        reasons.append('woodwork_post')
+
             if reasons:
                 if key not in marks:
                     marks[key] = {

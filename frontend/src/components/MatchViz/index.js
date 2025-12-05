@@ -213,31 +213,31 @@ export default function MatchViz() {
       <div className={styles.content}>
         {/* Tournament Title and Match Selection Header */}
         <div className={styles.pageHeader}>
-        <h1 className={styles.tournamentTitle}>Euro 2020</h1>
-        <div className={styles.matchSelection}>
-          <h2 className={styles.sectionTitle}>Select a Match</h2>
-          <div className={styles.matchSelectorWrapper}>
-            <MatchSelector
-              matches={matches}
-              selectedMatch={selectedMatch}
-              onChange={async (v) => {
-                setSelectedMatch(v);
-                try {
-                  await loadMatchViz(v, setStats);
+          <h1 className={styles.tournamentTitle}>Euro 2020</h1>
+          <div className={styles.matchSelection}>
+            <h2 className={styles.sectionTitle}>Select a Match</h2>
+            <div className={styles.matchSelectorWrapper}>
+              <MatchSelector
+                matches={matches}
+                selectedMatch={selectedMatch}
+                onChange={async (v) => {
+                  setSelectedMatch(v);
+                  try {
+                    await loadMatchViz(v, setStats);
+                    // setFigData(null); // This line was commented out in the original file
+                  } catch (e) {
+                    setVizError?.(e?.message || "Failed to load match");
+                  }
+                }}
+                flipSides={flipSides}
+                onFlipChange={setFlipSides}
+                onReset={() => {
+                  setSelectedMatch("");
+                  setStats({});
                   // setFigData(null); // This line was commented out in the original file
-                } catch (e) {
-                  setVizError?.(e?.message || "Failed to load match");
-                }
-              }}
-              flipSides={flipSides}
-              onFlipChange={setFlipSides}
-              onReset={() => {
-                setSelectedMatch("");
-                setStats({});
-                // setFigData(null); // This line was commented out in the original file
-              }}
-              matchesLoading={matchesLoading}
-            />
+                }}
+                matchesLoading={matchesLoading}
+              />
             </div>
           </div>
         </div>
@@ -261,7 +261,7 @@ export default function MatchViz() {
                 <div className={styles.vizHeaderScoreSection}>
                   <span className={styles.vizHeaderScore}>
                     {Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "0 - 0"}
-                  </span>
+              </span>
                   <div className={styles.vizHeaderMeta}>
                     {stats.competition_stage && <span className={styles.vizHeaderStage}>{stats.competition_stage}</span>}
                     {selectedLabel && stats.competition_stage && <span className={styles.vizHeaderSeparator}>|</span>}
@@ -279,7 +279,7 @@ export default function MatchViz() {
                 </div>
               </div>
             </div>
-            
+
             {/* ========================================
                 MATCH TIMELINE - Sequential list of Goals, Red Cards, Own Goals
                 ======================================== */}
@@ -401,16 +401,16 @@ export default function MatchViz() {
 
               {/* --- FLIP SIDES CONTROL (applies to both Shot Map and Passing Network) --- */}
               <div className={styles.flipSidesContainerCentered}>
-                <label className={styles.flipSidesLabel}>
-                  <input
-                    type="checkbox"
-                    checked={flipSides}
-                    onChange={(e) => setFlipSides(e.target.checked)}
-                    className={styles.flipSidesCheckbox}
-                  />
+                  <label className={styles.flipSidesLabel}>
+                    <input
+                      type="checkbox"
+                      checked={flipSides}
+                      onChange={(e) => setFlipSides(e.target.checked)}
+                      className={styles.flipSidesCheckbox}
+                    />
                   Flip Sides (applies to both)
-                </label>
-              </div>
+                  </label>
+                </div>
 
               {/* --- VISUALIZATIONS CONTAINER (RIGHT SIDE) --- */}
               <div className={styles.visualizationsContainer}>
@@ -764,7 +764,7 @@ export default function MatchViz() {
                                                 <title>{`${event.player}\nxG: ${event.xg}\n${event.outcome}`}</title>
                                               </circle>
                                               
-                                              {outcome === 'woodwork' && (
+                                              {(outcome === 'woodwork' || outcome === 'post' || outcome === 'saved to post') && (
                                                 <>
                                                   <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="white" strokeWidth="2" />
                                                   <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="white" strokeWidth="2" />
@@ -857,7 +857,7 @@ export default function MatchViz() {
                                                 <title>{`${event.player}\nxG: ${event.xg}\n${event.outcome}`}</title>
                                               </circle>
                                               
-                                              {outcome === 'woodwork' && (
+                                              {(outcome === 'woodwork' || outcome === 'post' || outcome === 'saved to post') && (
                                                 <>
                                                   <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="white" strokeWidth="2" />
                                                   <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="white" strokeWidth="2" />
@@ -896,7 +896,7 @@ export default function MatchViz() {
                                   <span><span className={styles.legendX}></span> Own Goal For</span>
                                 </div>
                                 <div className={styles.shotOutcomeLegend}>
-                                  <span><span className={styles.legendWhiteX}></span> Woodwork</span>
+                                  <span><span className={styles.legendWhiteX}></span> Woodwork/Post/Saved to Post</span>
                                   <span><span className={styles.legendRedCircle}></span> Saved</span>
                                   <span><span className={styles.legendRedX}></span> Blocked</span>
                                   <span><span className={styles.legendQuestion}></span> Wayward</span>
