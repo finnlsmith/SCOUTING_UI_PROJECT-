@@ -161,25 +161,28 @@ async def game_phases(filename: str):
             if row.get('type') == 'Shot':
                 shot_outcome = str(row.get('shot_outcome', '')).lower()
                 if shot_outcome in ['woodwork', 'post', 'saved to post']:
-                    # Check if there's a Goal or Own Goal within 30 seconds BEFORE this event
+                    # Check if there are ANY other shots within 30 seconds AFTER this event
+                    # If there are other shots, the last shot in that sequence should divide the phase, not this one
                     should_be_divider = True
-                    # Look back 30 seconds
-                    lookback_start_tsec = max(0, tsec - 30)
-                    time_mask = (ev['tsec'] >= lookback_start_tsec) & (ev['tsec'] < tsec)
+                    # Look forward 30 seconds
+                    lookahead_end_tsec = tsec + 30
+                    time_mask = (ev['tsec'] > tsec) & (ev['tsec'] <= lookahead_end_tsec)
                     
                     if period_val is not None and 'period' in ev.columns:
                         # Filter to same period
                         period_int = pd.to_numeric(ev['period'], errors='coerce')
                         same_period_mask = (period_int == period_val) & pd.notna(period_int)
-                        lookback_events = ev[same_period_mask & time_mask]
+                        lookahead_events = ev[same_period_mask & time_mask]
                     else:
                         # No period filtering if period_val is None
-                        lookback_events = ev[time_mask]
+                        lookahead_events = ev[time_mask]
                     
-                    # Check for Goal or Own Goal in lookback window
-                    if not lookback_events.empty:
-                        goal_in_window = lookback_events.apply(is_goal, axis=1).any()
-                        if goal_in_window:
+                    # Check for ANY other shots in lookahead window
+                    if not lookahead_events.empty:
+                        other_shots = lookahead_events[lookahead_events['type'] == 'Shot']
+                        if not other_shots.empty:
+                            # There are other shots in the next 30 seconds, so don't make this a divider
+                            # The last shot in that sequence will divide the phase instead
                             should_be_divider = False
                     
                     if should_be_divider:
