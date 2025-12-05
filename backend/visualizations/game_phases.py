@@ -20,6 +20,9 @@ from collections import OrderedDict
 
 from utils.coords import _to_xy
 from visualizations.helpers import to_point, point_in_rect
+from config.settings import TEAM_COLORS
+import plotly.graph_objects as go
+from utils.pitch import make_pitch
 
 
 async def game_phases(filename: str):
@@ -708,6 +711,178 @@ async def game_phases(filename: str):
                             'event_type': 'own_goal'
                         })
 
+                # ===== PASSING NETWORK DATA PER TEAM =====
+                def generate_phase_passing_network(phase_events_df, team_name, flip=False):
+                    """Generate passing network data for a team in this phase."""
+                    try:
+                        # Filter to this team's completed passes
+                        passes = phase_events_df[
+                            (phase_events_df['type'] == 'Pass') & 
+                            (phase_events_df['team'] == team_name)
+                        ].copy()
+                        
+                        if passes.empty or 'pass_outcome' not in passes.columns:
+                            return None
+                        
+                        # Only completed passes (pass_outcome is NaN)
+                        passes = passes[passes['pass_outcome'].isna()].copy()
+                        if passes.empty:
+                            return None
+                        
+                        # Get coordinates
+                        passes[['sx', 'sy']] = passes['location'].apply(_to_xy).to_list()
+                        passes[['ex', 'ey']] = passes['pass_end_location'].apply(_to_xy).to_list()
+                        
+                        # Remove passes with invalid coordinates
+                        passes = passes[
+                            passes['sx'].notna() & passes['sy'].notna() &
+                            passes['ex'].notna() & passes['ey'].notna()
+                        ].copy()
+                        
+                        if passes.empty:
+                            return None
+                        
+                        # Create player IDs from names
+                        if 'player' in passes.columns:
+                            passes['src_name'] = passes['player'].astype(str)
+                        if 'pass_recipient' in passes.columns:
+                            passes['dst_name'] = passes['pass_recipient'].astype(str)
+                        
+                        # Create consistent IDs from names
+                        all_names = set()
+                        if 'src_name' in passes.columns:
+                            all_names.update(passes['src_name'].dropna().astype(str))
+                        if 'dst_name' in passes.columns:
+                            all_names.update(passes['dst_name'].dropna().astype(str))
+                        
+                        name_to_id = {n: i for i, n in enumerate(sorted(all_names))}
+                        passes['src_id'] = passes['src_name'].map(name_to_id) if 'src_name' in passes.columns else None
+                        passes['dst_id'] = passes['dst_name'].map(name_to_id) if 'dst_name' in passes.columns else None
+                        
+                        # Map id -> display name
+                        id_to_name = {}
+                        if 'player' in passes.columns:
+                            id_to_name.update(
+                                passes[['src_id', 'player']].dropna().drop_duplicates('src_id')
+                                .set_index('src_id')['player'].astype(str).to_dict()
+                            )
+                        if 'pass_recipient' in passes.columns:
+                            id_to_name.update(
+                                passes[['dst_id', 'pass_recipient']].dropna().drop_duplicates('dst_id')
+                                .set_index('dst_id')['pass_recipient'].astype(str).to_dict()
+                            )
+                        
+                        # Touches (all events for the team in this phase)
+                        touches = (
+                            phase_events_df.loc[
+                                (phase_events_df['team'] == team_name) & 
+                                phase_events_df['player'].notna()
+                            ]
+                            .groupby('player', as_index=False)
+                            .size()
+                            .rename(columns={'size': 'touches', 'player': 'player_name'})
+                        )
+                        
+                        # Map player names to IDs
+                        if not touches.empty and 'player_name' in touches.columns:
+                            touches['player_id'] = touches['player_name'].astype(str).map(name_to_id)
+                            touches = touches[touches['player_id'].notna()]
+                        
+                        # Average positions: mean of start (as passer) + end (as receiver)
+                        start_pos = passes.groupby('src_id')[['sx', 'sy']].mean().rename(columns={'sx': 'x_s', 'sy': 'y_s'})
+                        recv_pos = passes.groupby('dst_id')[['ex', 'ey']].mean().rename(columns={'ex': 'x_r', 'ey': 'y_r'})
+                        recv_pos.index.name = 'src_id'
+                        avg_pos = start_pos.join(recv_pos, how='outer').reset_index(names=['player_id'])
+                        avg_pos['x'] = avg_pos[['x_s', 'x_r']].mean(axis=1, skipna=True)
+                        avg_pos['y'] = avg_pos[['y_s', 'y_r']].mean(axis=1, skipna=True)
+                        avg_pos = avg_pos[['player_id', 'x', 'y']]
+                        
+                        # Edges: pass counts between pairs
+                        edges = (
+                            passes.groupby(['src_id', 'dst_id'], dropna=True)
+                            .size().rename('count').reset_index()
+                            .rename(columns={'src_id': 'player_id', 'dst_id': 'pass_recipient_id'})
+                        )
+                        edges = edges[edges['count'] >= 1]  # At least 1 pass
+                        
+                        # Nodes table
+                        nodes = avg_pos.merge(touches[['player_id', 'touches']], on='player_id', how='left')
+                        nodes['touches'] = nodes['touches'].fillna(0).astype(int)
+                        nodes['name'] = nodes['player_id'].map(id_to_name).fillna(nodes['player_id'].astype(str))
+                        
+                        if flip:
+                            nodes['x'] = 120 - nodes['x']
+                        
+                        # Merge node coords onto edges
+                        edges = edges.merge(
+                            nodes[['player_id', 'x', 'y']].rename(columns={'player_id': 'player_id_src', 'x': 'sx', 'y': 'sy'}),
+                            left_on='player_id', right_on='player_id_src', how='left'
+                        ).merge(
+                            nodes[['player_id', 'x', 'y']].rename(columns={'player_id': 'player_id_dst', 'x': 'ex', 'y': 'ey'}),
+                            left_on='pass_recipient_id', right_on='player_id_dst', how='left'
+                        )
+                        
+                        # Build Plotly figure
+                        fig = go.Figure()
+                        
+                        # Edges: gray lines, width ~ log(pass count)
+                        if not edges.empty:
+                            for r in edges.itertuples(index=False):
+                                sx, sy, ex, ey = float(r.sx), float(r.sy), float(r.ex), float(r.ey)
+                                if pd.isna(sx) or pd.isna(sy) or pd.isna(ex) or pd.isna(ey):
+                                    continue
+                                width = float(0.5 + 0.5 * np.log1p(int(r.count)))
+                                fig.add_trace(go.Scatter(
+                                    x=[sx, ex], y=[sy, ey],
+                                    mode='lines',
+                                    line=dict(width=width, color='gray'),
+                                    opacity=0.5,
+                                    hoverinfo='text',
+                                    text=f"{id_to_name.get(r.player_id, r.player_id)} → {id_to_name.get(r.pass_recipient_id, r.pass_recipient_id)}<br>passes: {int(r.count)}",
+                                    showlegend=False,
+                                ))
+                        
+                        # Nodes: size ~ touches
+                        if not nodes.empty:
+                            size_list = (14 + 0.045 * nodes['touches']).clip(lower=8, upper=32).astype(float).tolist()
+                            touches_list = nodes['touches'].astype(int).tolist()
+                            x_list = nodes['x'].astype(float).tolist()
+                            y_list = nodes['y'].astype(float).tolist()
+                            text_list = nodes['name'].astype(str).tolist()
+                            
+                            team_color = TEAM_COLORS.get(team_name, '#1f77b4')
+                            fig.add_trace(go.Scatter(
+                                x=x_list, y=y_list,
+                                mode='markers+text',
+                                text=text_list,
+                                textposition='top center',
+                                marker=dict(size=size_list, line=dict(width=2, color='black'), color=team_color),
+                                hoverinfo='text',
+                                textfont=dict(size=11),
+                                name='players',
+                                customdata=[[t] for t in touches_list],
+                                hovertemplate='<b>%{text}</b><br>touches: %{customdata[0]}<extra></extra>',
+                            ))
+                        
+                        fig = make_pitch(fig)
+                        fig.update_layout(
+                            title=f'Passing Network — {team_name} (size ~ touches)',
+                            xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
+                            yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
+                            plot_bgcolor='white', height=600, width=900
+                        )
+                        fig.update_yaxes(autorange='reversed')
+                        
+                        return fig.to_dict()
+                    except Exception as e:
+                        # Return None on error (don't break phase metrics)
+                        return None
+                
+                # Generate passing networks for both teams
+                passing_networks = {}
+                passing_networks[home_team] = generate_phase_passing_network(ev_phase, home_team, flip=False)
+                passing_networks[away_team] = generate_phase_passing_network(ev_phase, away_team, flip=True)
+
                 phase_metrics.append({
                     'phase_idx': ph['phase_idx'],
                     'start_minute': sm,
@@ -728,6 +903,7 @@ async def game_phases(filename: str):
                     'score_at_start': score_start_counts,
                     'score_at_end': score_end_counts,
                     'shot_map_data': shot_map_data,
+                    'passing_networks': passing_networks,
                 })
 
         result = {

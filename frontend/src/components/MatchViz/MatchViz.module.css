@@ -869,6 +869,34 @@
   flex-direction: column;
 }
 
+/* Passing Networks in Phase */
+.phasePassingNetworksContainer {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 2px solid #e0e0e0;
+}
+
+.phasePassingNetworksGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.phasePassingNetworkCard {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.phasePassingNetworkPlot {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .metricsContainer {
   margin-top: 0;
 }
