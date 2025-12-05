@@ -158,35 +158,69 @@ async def game_phases(filename: str):
                     score_after = (score[home_team], score[away_team])
 
             # Woodwork/Post/Saved to Post as phase divider (with 30-second caveat)
+            # Logic: If there's another shot within 30 seconds AFTER a Woodwork/Post/Saved to Post shot,
+            # the phase should end with that later shot. Otherwise, end with the Woodwork/Post shot.
             if row.get('type') == 'Shot':
                 shot_outcome = str(row.get('shot_outcome', '')).lower()
+                
+                # Check if this shot is within 30 seconds of a previous Woodwork/Post/Saved to Post shot
+                # If so, and this is the last shot in that sequence, make it a divider
+                lookback_start_tsec = max(0, tsec - 30)
+                time_mask_back = (ev['tsec'] >= lookback_start_tsec) & (ev['tsec'] < tsec)
+                
+                if period_val is not None and 'period' in ev.columns:
+                    period_int = pd.to_numeric(ev['period'], errors='coerce')
+                    same_period_mask_back = (period_int == period_val) & pd.notna(period_int)
+                    lookback_events = ev[same_period_mask_back & time_mask_back]
+                else:
+                    lookback_events = ev[time_mask_back]
+                
+                # Check for Woodwork/Post/Saved to Post in lookback window
+                if not lookback_events.empty:
+                    woodwork_shots = lookback_events[
+                        (lookback_events['type'] == 'Shot') & 
+                        (lookback_events['shot_outcome'].astype(str).str.lower().isin(['woodwork', 'post', 'saved to post']))
+                    ]
+                    if not woodwork_shots.empty:
+                        # Found a Woodwork/Post/Saved to Post shot in the last 30 seconds
+                        # Check if this is the last shot within 30 seconds of that Woodwork shot
+                        woodwork_tsec = woodwork_shots['tsec'].max()  # Get the most recent one
+                        woodwork_lookahead_end = woodwork_tsec + 30
+                        
+                        # Check if there are any shots after this one within 30 seconds of the Woodwork shot
+                        time_mask_forward = (ev['tsec'] > tsec) & (ev['tsec'] <= woodwork_lookahead_end)
+                        if period_val is not None and 'period' in ev.columns:
+                            period_int = pd.to_numeric(ev['period'], errors='coerce')
+                            same_period_mask_forward = (period_int == period_val) & pd.notna(period_int)
+                            future_events = ev[same_period_mask_forward & time_mask_forward]
+                        else:
+                            future_events = ev[time_mask_forward]
+                        
+                        future_shots = future_events[future_events['type'] == 'Shot']
+                        if future_shots.empty:
+                            # This is the last shot in the sequence, make it a divider
+                            reasons.append('woodwork_post')
+                
+                # Also handle the case where this IS a Woodwork/Post/Saved to Post shot
                 if shot_outcome in ['woodwork', 'post', 'saved to post']:
                     # Check if there are ANY other shots within 30 seconds AFTER this event
-                    # If there are other shots, the last shot in that sequence should divide the phase, not this one
-                    should_be_divider = True
-                    # Look forward 30 seconds
                     lookahead_end_tsec = tsec + 30
-                    time_mask = (ev['tsec'] > tsec) & (ev['tsec'] <= lookahead_end_tsec)
+                    time_mask_forward = (ev['tsec'] > tsec) & (ev['tsec'] <= lookahead_end_tsec)
                     
                     if period_val is not None and 'period' in ev.columns:
-                        # Filter to same period
                         period_int = pd.to_numeric(ev['period'], errors='coerce')
-                        same_period_mask = (period_int == period_val) & pd.notna(period_int)
-                        lookahead_events = ev[same_period_mask & time_mask]
+                        same_period_mask_forward = (period_int == period_val) & pd.notna(period_int)
+                        lookahead_events = ev[same_period_mask_forward & time_mask_forward]
                     else:
-                        # No period filtering if period_val is None
-                        lookahead_events = ev[time_mask]
+                        lookahead_events = ev[time_mask_forward]
                     
                     # Check for ANY other shots in lookahead window
-                    if not lookahead_events.empty:
-                        other_shots = lookahead_events[lookahead_events['type'] == 'Shot']
-                        if not other_shots.empty:
-                            # There are other shots in the next 30 seconds, so don't make this a divider
-                            # The last shot in that sequence will divide the phase instead
-                            should_be_divider = False
-                    
-                    if should_be_divider:
-                        reasons.append('woodwork_post')
+                    other_shots = lookahead_events[lookahead_events['type'] == 'Shot'] if not lookahead_events.empty else pd.DataFrame()
+                    if other_shots.empty:
+                        # No other shots in the next 30 seconds, so this Woodwork/Post shot should divide the phase
+                        # (But only if we haven't already added it as a divider from the backward check above)
+                        if 'woodwork_post' not in reasons:
+                            reasons.append('woodwork_post')
 
             if reasons:
                 if key not in marks:
