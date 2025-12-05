@@ -500,6 +500,7 @@ export default function MatchViz() {
                         <tr className={styles.tableHeader}>
                           <th className={styles.tableHeaderCell}>#</th>
                           <th className={styles.tableHeaderCell}>When</th>
+                          <th className={styles.tableHeaderCell}>Team</th>
                           <th className={styles.tableHeaderCell}>Who</th>
                           <th className={styles.tableHeaderCell}>Type</th>
                           <th className={styles.tableHeaderCell}>xG</th>
@@ -516,6 +517,7 @@ export default function MatchViz() {
                           >
                             <td className={styles.tableCell}>{idx + 1}</td>
                             <td className={styles.tableCell}>{m.when}</td>
+                            <td className={styles.tableCell}>{m.team}</td>
                             <td className={styles.tableCell}>{m.who}</td>
                             <td className={styles.tableCell}>{m.event_type}</td>
                             <td className={styles.tableCell}>{m.xg !== undefined && m.xg !== null ? m.xg : ''}</td>
@@ -1062,6 +1064,7 @@ export default function MatchViz() {
                                 <thead>
                                   <tr className={styles.tableHeader}>
                                     <th className={styles.phaseMomentsHeaderCell}>When</th>
+                                    <th className={styles.phaseMomentsHeaderCell}>Team</th>
                                     <th className={styles.phaseMomentsHeaderCell}>Who</th>
                                     <th className={styles.phaseMomentsHeaderCell}>Type</th>
                                     <th className={styles.phaseMomentsHeaderCell}>xG</th>
@@ -1080,6 +1083,7 @@ export default function MatchViz() {
                                         style={{cursor: 'pointer'}}
                                       >
                                         <td className={styles.phaseMomentsCell}>{moment.when}</td>
+                                        <td className={styles.phaseMomentsCell}>{moment.team}</td>
                                         <td className={styles.phaseMomentsCell}>{moment.who}</td>
                                         <td className={styles.phaseMomentsCell}>{moment.event_type}</td>
                                         <td className={styles.phaseMomentsCell}>{moment.xg !== undefined && moment.xg !== null ? moment.xg : ''}</td>
