@@ -692,6 +692,45 @@ export default function MatchViz() {
                               </tbody>
                             </table>
                             </div>
+                            
+                            {/* Passing Networks below stats table */}
+                            {m && m.passing_networks && (
+                              <div className={styles.phasePassingNetworksContainer}>
+                                <h3 className={styles.phaseVisualizationTitle}>Passing Networks</h3>
+                                <div className={styles.phasePassingNetworksStack}>
+                                  {m.passing_networks[gamePhaseTeams.home] && (
+                                    <div className={styles.phasePassingNetworkCard}>
+                                      <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.home}</div>
+                                      <div className={styles.phasePassingNetworkPlot}>
+                                        <Suspense fallback={<PlotSkeleton />}>
+                                          <ShotMapPlot 
+                                            displayFig={m.passing_networks[gamePhaseTeams.home]} 
+                                            flipSides={false} 
+                                            plotLoading={false} 
+                                            customSize={{ width: 600, height: 400 }} 
+                                          />
+                                        </Suspense>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {m.passing_networks[gamePhaseTeams.away] && (
+                                    <div className={styles.phasePassingNetworkCard}>
+                                      <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.away}</div>
+                                      <div className={styles.phasePassingNetworkPlot}>
+                                        <Suspense fallback={<PlotSkeleton />}>
+                                          <ShotMapPlot 
+                                            displayFig={m.passing_networks[gamePhaseTeams.away]} 
+                                            flipSides={true} 
+                                            plotLoading={false} 
+                                            customSize={{ width: 600, height: 400 }} 
+                                          />
+                                        </Suspense>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
                             
                           {/* Right column: Visualizations */}
@@ -1034,45 +1073,6 @@ export default function MatchViz() {
                         </div>
                       )}
                         </div>
-                        
-                        {/* Passing Networks below phase stats and visualizations */}
-                        {m && m.passing_networks && (
-                          <div className={styles.phasePassingNetworksContainer}>
-                            <h3 className={styles.phaseVisualizationTitle}>Passing Networks</h3>
-                            <div className={styles.phasePassingNetworksGrid}>
-                              {m.passing_networks[gamePhaseTeams.home] && (
-                                <div className={styles.phasePassingNetworkCard}>
-                                  <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.home}</div>
-                                  <div className={styles.phasePassingNetworkPlot}>
-                                    <Suspense fallback={<PlotSkeleton />}>
-                                      <ShotMapPlot 
-                                        displayFig={m.passing_networks[gamePhaseTeams.home]} 
-                                        flipSides={false} 
-                                        plotLoading={false} 
-                                        customSize={{ width: 900, height: 600 }} 
-                                      />
-                                    </Suspense>
-                                  </div>
-                                </div>
-                              )}
-                              {m.passing_networks[gamePhaseTeams.away] && (
-                                <div className={styles.phasePassingNetworkCard}>
-                                  <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.away}</div>
-                                  <div className={styles.phasePassingNetworkPlot}>
-                                    <Suspense fallback={<PlotSkeleton />}>
-                                      <ShotMapPlot 
-                                        displayFig={m.passing_networks[gamePhaseTeams.away]} 
-                                        flipSides={true} 
-                                        plotLoading={false} 
-                                        customSize={{ width: 900, height: 600 }} 
-                                      />
-                                    </Suspense>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
                         
                         {/* RIGHT SIDE: Key Moments for this phase */}
                         <div className={styles.phaseMomentsColumn}>
