@@ -692,15 +692,15 @@ export default function MatchViz() {
                             </table>
                               </div>
                               
-                              {/* Substitutions table */}
-                              {m.substitutions && (m.substitutions[gamePhaseTeams.home]?.length > 0 || m.substitutions[gamePhaseTeams.away]?.length > 0) && (
+                              {/* Substitutions table - always show if substitutions data exists */}
+                              {m.substitutions && (
                                 <div className={styles.phaseSubstitutionsContainer}>
                                   <h3 className={styles.phaseSubstitutionsTitle}>Substitutions</h3>
                                   <div className={styles.phaseSubstitutionsGrid}>
                                     {/* Home team substitutions */}
                                     <div className={styles.phaseSubstitutionsTeamColumn}>
                                       <div className={styles.phaseSubstitutionsTeamLabel}>{gamePhaseTeams.home}</div>
-                                      {m.substitutions[gamePhaseTeams.home]?.length > 0 ? (
+                                      {Array.isArray(m.substitutions[gamePhaseTeams.home]) && m.substitutions[gamePhaseTeams.home].length > 0 ? (
                                         <table className={styles.phaseSubstitutionsTable}>
                                           <thead>
                                             <tr>
@@ -731,7 +731,7 @@ export default function MatchViz() {
                                     {/* Away team substitutions */}
                                     <div className={styles.phaseSubstitutionsTeamColumn}>
                                       <div className={styles.phaseSubstitutionsTeamLabel}>{gamePhaseTeams.away}</div>
-                                      {m.substitutions[gamePhaseTeams.away]?.length > 0 ? (
+                                      {Array.isArray(m.substitutions[gamePhaseTeams.away]) && m.substitutions[gamePhaseTeams.away].length > 0 ? (
                                         <table className={styles.phaseSubstitutionsTable}>
                                           <thead>
                                             <tr>
