@@ -693,17 +693,7 @@
   border-color: #444;
 }
 
-/* Layout: Phase content + Key Moments side-by-side */
-.phaseWithMomentsLayout {
-  display: flex;
-  gap: 32px;
-  align-items: flex-start;
-}
-
-.phaseContentColumn {
-  flex: 0 0 65%;
-  min-width: 600px;
-}
+/* Removed phaseWithMomentsLayout and phaseContentColumn - no longer needed */
 
 .phaseMomentsColumn {
   flex: 1;
@@ -851,15 +841,31 @@
   color: #999;
 }
 
-/* Two-column layout for stats and visualizations within phase */
-.phaseTwoColumnLayout {
-  display: grid;
-  grid-template-columns: 40% 60%;
-  gap: 24px;
+/* Stats at top (full width) */
+.phaseStatsTopContainer {
+  width: 100%;
   margin-top: 12px;
+  margin-bottom: 20px;
 }
 
-.phaseStatsColumn {
+/* Divider line between stats and three-column layout */
+.phaseDivider {
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to right, transparent, #e0e0e0, transparent);
+  margin: 20px 0;
+}
+
+/* Three-column layout below divider: Left=Passing Networks, Middle=Key Events/Box Entry, Right=Key Moments */
+.phaseThreeColumnLayout {
+  display: grid;
+  grid-template-columns: 30% 40% 30%;
+  gap: 24px;
+  margin-top: 20px;
+  align-items: flex-start;
+}
+
+.phasePassingNetworksColumn {
   display: flex;
   flex-direction: column;
 }
@@ -871,9 +877,6 @@
 
 /* Passing Networks in Phase */
 .phasePassingNetworksContainer {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 2px solid #e0e0e0;
   width: 100%;
 }
 
@@ -938,7 +941,7 @@
   color: var(--color-text-dark);
 }
 
-/* Phase Metrics Table */
+/* Phase Metrics Table - Bigger font and wider */
 .phaseMetricsTable {
   width: 100%;
   border-collapse: collapse;
@@ -953,16 +956,16 @@
 }
 
 .phaseMetricsHeaderCell {
-  padding: 12px 16px;
+  padding: 14px 20px;
   text-align: left;
   font-weight: var(--font-weight-bold);
-  font-size: 15px;
+  font-size: 18px;
   color: var(--color-text-dark);
   border-bottom: 2px solid #e0e0e0;
 }
 
 .phaseMetricsHeaderCell:first-child {
-  width: 30%;
+  width: 35%;
 }
 
 .phaseMetricsRow {
@@ -978,18 +981,18 @@
 }
 
 .phaseMetricsLabelCell {
-  padding: 10px 16px;
+  padding: 12px 20px;
   font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .phaseMetricsValueCell {
-  padding: 10px 16px;
+  padding: 12px 20px;
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-dark);
   text-align: left;
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .loadingText {
@@ -1008,7 +1011,7 @@
 .shotMapsContainer {
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 2px solid #e0e0e0;
+  /* Removed border-top - no divider above key events */
 }
 
 /* Phase Visualization Titles (Key Events, Box Entry Maps) */

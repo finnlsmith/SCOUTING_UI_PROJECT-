@@ -606,10 +606,7 @@ export default function MatchViz() {
                     
                     return (
                     <div key={idx} className={styles.gamePhaseCard}>
-                      <div className={styles.phaseWithMomentsLayout}>
-                        {/* LEFT SIDE: Phase content */}
-                        <div className={styles.phaseContentColumn}>
-                          <div className={styles.gamePhaseHeader}>
+                      <div className={styles.gamePhaseHeader}>
                       <div className={styles.gamePhaseTitle}>Game Phase {ph.phase_idx}</div>
                       <div className={styles.gamePhaseTime}>
                         <b>From: </b>{`${ph.start_minute}:${String(ph.start_second).padStart(2, '0')}`} <b>— To: </b>{ph.end_minute !== null ? `${ph.end_minute}:${String(ph.end_second).padStart(2,'0')}` : 'End'}
@@ -628,12 +625,12 @@ export default function MatchViz() {
                           Phase ended by: {ph.break_reasons.map(r => r === "half_end" ? "Half Ended" : r).join(', ')}
                         </div>
                       )}
-                          </div>
-                          
-                          {m && (
-                        <div className={styles.phaseTwoColumnLayout}>
-                          {/* Left column: Stats table */}
-                          <div className={styles.phaseStatsColumn}>
+                      </div>
+                      
+                      {m && (
+                        <>
+                          {/* Stats table at top */}
+                          <div className={styles.phaseStatsTopContainer}>
                           <div className={styles.metricsContainer}>
                             <table className={styles.phaseMetricsTable}>
                               <thead>
@@ -692,48 +689,55 @@ export default function MatchViz() {
                               </tbody>
                             </table>
                             </div>
-                            
-                            {/* Passing Networks below stats table */}
-                            {m && m.passing_networks && (
-                              <div className={styles.phasePassingNetworksContainer}>
-                                <h3 className={styles.phaseVisualizationTitle}>Passing Networks</h3>
-                                <div className={styles.phasePassingNetworksStack}>
-                                  <div className={styles.phasePassingNetworkCard}>
-                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.home}</div>
-                                    <div className={styles.phasePassingNetworkPlot}>
-                                      <Suspense fallback={<PlotSkeleton />}>
-                                        <ShotMapPlot 
-                                          displayFig={m.passing_networks[gamePhaseTeams.home] || null} 
-                                          flipSides={false} 
-                                          plotLoading={false} 
-                                          customSize={{ width: 900, height: 600 }} 
-                                        />
-                                      </Suspense>
+                          </div>
+                          
+                          {/* Divider line */}
+                          <div className={styles.phaseDivider}></div>
+                          
+                          {/* Three-column layout below divider: Left=Passing Networks, Middle=Key Events/Box Entry, Right=Key Moments */}
+                          <div className={styles.phaseThreeColumnLayout}>
+                            {/* LEFT: Passing Networks */}
+                            <div className={styles.phasePassingNetworksColumn}>
+                              {m.passing_networks && (
+                                <div className={styles.phasePassingNetworksContainer}>
+                                  <h3 className={styles.phaseVisualizationTitle}>Passing Networks</h3>
+                                  <div className={styles.phasePassingNetworksStack}>
+                                    <div className={styles.phasePassingNetworkCard}>
+                                      <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.home}</div>
+                                      <div className={styles.phasePassingNetworkPlot}>
+                                        <Suspense fallback={<PlotSkeleton />}>
+                                          <ShotMapPlot 
+                                            displayFig={m.passing_networks[gamePhaseTeams.home] || null} 
+                                            flipSides={false} 
+                                            plotLoading={false} 
+                                            customSize={{ width: 900, height: 600 }} 
+                                          />
+                                        </Suspense>
+                                      </div>
                                     </div>
-                                  </div>
-                                  <div className={styles.phasePassingNetworkCard}>
-                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.away}</div>
-                                    <div className={styles.phasePassingNetworkPlot}>
-                                      <Suspense fallback={<PlotSkeleton />}>
-                                        <ShotMapPlot 
-                                          displayFig={m.passing_networks[gamePhaseTeams.away] || null} 
-                                          flipSides={true} 
-                                          plotLoading={false} 
-                                          customSize={{ width: 900, height: 600 }} 
-                                        />
-                                      </Suspense>
+                                    <div className={styles.phasePassingNetworkCard}>
+                                      <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.away}</div>
+                                      <div className={styles.phasePassingNetworkPlot}>
+                                        <Suspense fallback={<PlotSkeleton />}>
+                                          <ShotMapPlot 
+                                            displayFig={m.passing_networks[gamePhaseTeams.away] || null} 
+                                            flipSides={true} 
+                                            plotLoading={false} 
+                                            customSize={{ width: 900, height: 600 }} 
+                                          />
+                                        </Suspense>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            )}
-                          </div>
+                              )}
+                            </div>
                             
-                          {/* Right column: Visualizations */}
-                          <div className={styles.phaseVisualizationsColumn}>
-                            {/* Key Events (shots, red cards, own goals) */}
-                            {m.shot_map_data && (
-                              <div className={styles.shotMapsContainer}>
+                            {/* MIDDLE: Key Events and Box Entry Maps */}
+                            <div className={styles.phaseVisualizationsColumn}>
+                              {/* Key Events (shots, red cards, own goals) */}
+                              {m.shot_map_data && (
+                                <div className={styles.shotMapsContainer}>
                                 <h3 className={styles.phaseVisualizationTitle}>Key Events (shots, red cards, own goals)</h3>
                                 <div className={styles.shotMapsGrid}>
                                   {/* Home team event map */}
@@ -1065,13 +1069,10 @@ export default function MatchViz() {
                                 </div>
                               </div>
                             )}
-                          </div>
-                        </div>
-                      )}
-                        </div>
-                        
-                        {/* RIGHT SIDE: Key Moments for this phase */}
-                        <div className={styles.phaseMomentsColumn}>
+                            </div>
+                            
+                            {/* RIGHT: Key Moments */}
+                            <div className={styles.phaseMomentsColumn}>
                           <h3 className={styles.phaseMomentsTitle}>
                             Key Moments
                             {phaseMoments.length > 0 && (
@@ -1145,8 +1146,10 @@ export default function MatchViz() {
                               )}
                             </>
                           )}
-                        </div>
-                      </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                     );
                   })}
