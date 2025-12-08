@@ -707,7 +707,7 @@ export default function MatchViz() {
                                             displayFig={m.passing_networks[gamePhaseTeams.home]} 
                                             flipSides={false} 
                                             plotLoading={false} 
-                                            customSize={{ width: 600, height: 400 }} 
+                                            customSize={{ width: 900, height: 600 }} 
                                           />
                                         </Suspense>
                                       </div>
@@ -722,7 +722,7 @@ export default function MatchViz() {
                                             displayFig={m.passing_networks[gamePhaseTeams.away]} 
                                             flipSides={true} 
                                             plotLoading={false} 
-                                            customSize={{ width: 600, height: 400 }} 
+                                            customSize={{ width: 900, height: 600 }} 
                                           />
                                         </Suspense>
                                       </div>
