@@ -780,6 +780,96 @@
   margin-top: 8px;
 }
 
+/* Substitutions Table */
+.phaseSubstitutionsContainer {
+  width: 100%;
+}
+
+.phaseSubstitutionsTitle {
+  font-size: 20px;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 12px;
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .phaseSubstitutionsTitle {
+  color: white;
+}
+
+.phaseSubstitutionsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.phaseSubstitutionsTeamColumn {
+  display: flex;
+  flex-direction: column;
+}
+
+.phaseSubstitutionsTeamLabel {
+  font-size: 16px;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 8px;
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .phaseSubstitutionsTeamLabel {
+  color: white;
+}
+
+.phaseSubstitutionsTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-bg-white);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  font-size: 14px;
+}
+
+.phaseSubstitutionsTable thead {
+  background: #f5f5f7;
+}
+
+.phaseSubstitutionsHeaderCell {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+  font-size: 13px;
+  color: var(--color-text-dark);
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.phaseSubstitutionsRow {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.phaseSubstitutionsRow:hover {
+  background: #fafafa;
+}
+
+.phaseSubstitutionsRow:last-child {
+  border-bottom: none;
+}
+
+.phaseSubstitutionsCell {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--color-text-dark);
+}
+
+.noSubstitutionsPlaceholder {
+  padding: 16px;
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  font-style: italic;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
 .gamePhaseHeader {
   margin-bottom: 20px;
   padding-bottom: 16px;
@@ -843,9 +933,17 @@
 
 /* Stats at top (half width) */
 .phaseStatsTopContainer {
-  width: 50%;
+  width: 100%;
   margin-top: 12px;
   margin-bottom: 20px;
+}
+
+/* Layout for stats and substitutions side by side */
+.phaseStatsAndSubsLayout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: flex-start;
 }
 
 /* Divider line between stats and three-column layout */

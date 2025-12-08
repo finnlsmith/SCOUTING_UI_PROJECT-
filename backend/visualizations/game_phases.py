@@ -140,9 +140,26 @@ async def game_phases(filename: str):
                     if not team or not player_on or team not in [home_team, away_team]:
                         continue
                     
+                    # Get player going off
+                    player_off = sub_row.get('player')
+                    
+                    # Get position of player going off from starting XI
+                    player_position_off = None
+                    if team in starting_xis:
+                        try:
+                            for item in starting_xis[team]:
+                                if isinstance(item, dict) and 'player' in item and 'name' in item['player']:
+                                    if item['player']['name'] == player_off:
+                                        player_position_off = item.get('position', {}).get('name', 'Unknown') if isinstance(item.get('position'), dict) else 'Unknown'
+                                        break
+                        except Exception:
+                            pass
+                    
                     sub_event = {
                         'team': team,
+                        'player_off': str(player_off) if player_off else None,
                         'player_on': str(player_on),
+                        'position_off': player_position_off,
                         'minute': minute,
                         'second': second,
                         'period': period_val,
@@ -488,6 +505,28 @@ async def game_phases(filename: str):
                     home_team: current_subs[home_team].copy(),
                     away_team: current_subs[away_team].copy()
                 }
+                
+                # Track substitutions that occurred in this phase (for display)
+                phase_substitutions = {home_team: [], away_team: []}
+                phase_start_tsec = sm * 60 + ss
+                phase_end_tsec = em * 60 + es
+                
+                for sub_event in substitution_events:
+                    sub_tsec = sub_event['tsec']
+                    sub_period = sub_event.get('period')
+                    period_match = (sp is None and sub_period is None) or (sp == sub_period)
+                    
+                    # Check if substitution happened during this phase (inclusive at start, exclusive at end for phase boundaries)
+                    if period_match and phase_start_tsec <= sub_tsec < phase_end_tsec:
+                        team = sub_event['team']
+                        if team in phase_substitutions:
+                            phase_substitutions[team].append({
+                                'player_off': sub_event.get('player_off'),
+                                'player_on': sub_event.get('player_on'),
+                                'position_off': sub_event.get('position_off'),
+                                'minute': sub_event['minute'],
+                                'second': sub_event['second']
+                            })
 
                 # Time range: exclude start instant; include end instant
                 base_mask = (
@@ -1111,6 +1150,7 @@ async def game_phases(filename: str):
                     'score_at_end': score_end_counts,
                     'shot_map_data': shot_map_data,
                     'passing_networks': passing_networks,
+                    'substitutions': phase_substitutions,
                 })
 
         result = {

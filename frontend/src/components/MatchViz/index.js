@@ -629,10 +629,12 @@ export default function MatchViz() {
                       
                       {m && (
                         <>
-                          {/* Stats table at top */}
+                          {/* Stats table and Substitutions at top */}
                           <div className={styles.phaseStatsTopContainer}>
-                          <div className={styles.metricsContainer}>
-                            <table className={styles.phaseMetricsTable}>
+                            <div className={styles.phaseStatsAndSubsLayout}>
+                              {/* Stats table */}
+                              <div className={styles.metricsContainer}>
+                                <table className={styles.phaseMetricsTable}>
                               <thead>
                                 <tr>
                                   <th className={styles.phaseMetricsHeaderCell}></th>
@@ -688,6 +690,77 @@ export default function MatchViz() {
                                 </tr>
                               </tbody>
                             </table>
+                              </div>
+                              
+                              {/* Substitutions table */}
+                              {m.substitutions && (m.substitutions[gamePhaseTeams.home]?.length > 0 || m.substitutions[gamePhaseTeams.away]?.length > 0) && (
+                                <div className={styles.phaseSubstitutionsContainer}>
+                                  <h3 className={styles.phaseSubstitutionsTitle}>Substitutions</h3>
+                                  <div className={styles.phaseSubstitutionsGrid}>
+                                    {/* Home team substitutions */}
+                                    <div className={styles.phaseSubstitutionsTeamColumn}>
+                                      <div className={styles.phaseSubstitutionsTeamLabel}>{gamePhaseTeams.home}</div>
+                                      {m.substitutions[gamePhaseTeams.home]?.length > 0 ? (
+                                        <table className={styles.phaseSubstitutionsTable}>
+                                          <thead>
+                                            <tr>
+                                              <th className={styles.phaseSubstitutionsHeaderCell}>Time</th>
+                                              <th className={styles.phaseSubstitutionsHeaderCell}>Off</th>
+                                              <th className={styles.phaseSubstitutionsHeaderCell}>Position</th>
+                                              <th className={styles.phaseSubstitutionsHeaderCell}>On</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {m.substitutions[gamePhaseTeams.home].map((sub, subIdx) => (
+                                              <tr key={subIdx} className={styles.phaseSubstitutionsRow}>
+                                                <td className={styles.phaseSubstitutionsCell}>
+                                                  {sub.minute}:{String(sub.second).padStart(2, '0')}
+                                                </td>
+                                                <td className={styles.phaseSubstitutionsCell}>{sub.player_off || '—'}</td>
+                                                <td className={styles.phaseSubstitutionsCell}>{sub.position_off || '—'}</td>
+                                                <td className={styles.phaseSubstitutionsCell}>{sub.player_on || '—'}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      ) : (
+                                        <div className={styles.noSubstitutionsPlaceholder}>No substitutions</div>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Away team substitutions */}
+                                    <div className={styles.phaseSubstitutionsTeamColumn}>
+                                      <div className={styles.phaseSubstitutionsTeamLabel}>{gamePhaseTeams.away}</div>
+                                      {m.substitutions[gamePhaseTeams.away]?.length > 0 ? (
+                                        <table className={styles.phaseSubstitutionsTable}>
+                                          <thead>
+                                            <tr>
+                                              <th className={styles.phaseSubstitutionsHeaderCell}>Time</th>
+                                              <th className={styles.phaseSubstitutionsHeaderCell}>Off</th>
+                                              <th className={styles.phaseSubstitutionsHeaderCell}>Position</th>
+                                              <th className={styles.phaseSubstitutionsHeaderCell}>On</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {m.substitutions[gamePhaseTeams.away].map((sub, subIdx) => (
+                                              <tr key={subIdx} className={styles.phaseSubstitutionsRow}>
+                                                <td className={styles.phaseSubstitutionsCell}>
+                                                  {sub.minute}:{String(sub.second).padStart(2, '0')}
+                                                </td>
+                                                <td className={styles.phaseSubstitutionsCell}>{sub.player_off || '—'}</td>
+                                                <td className={styles.phaseSubstitutionsCell}>{sub.position_off || '—'}</td>
+                                                <td className={styles.phaseSubstitutionsCell}>{sub.player_on || '—'}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      ) : (
+                                        <div className={styles.noSubstitutionsPlaceholder}>No substitutions</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                           
