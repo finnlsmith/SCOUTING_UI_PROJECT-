@@ -38,6 +38,11 @@ async def game_phases(filename: str):
     Raises:
         HTTPException: File processing errors
     """
+    # Configuration: Substitution grouping window (in seconds)
+    # Substitutions within this window in the same period are grouped together
+    # Only the first substitution in each group creates a phase divider
+    SUBSTITUTION_GROUPING_WINDOW_SECONDS = 150
+    
     from cache import cache, s3
     
     cache_key = f"phases:{filename}:json"
@@ -69,6 +74,26 @@ async def game_phases(filename: str):
                 "phase_metrics": []
             }))
         home_team, away_team = team_names[:2]
+        
+        # Get starting XIs for both teams to track substitutions
+        starting_xis = {}
+        subs_by_team = {home_team: set(), away_team: set()}  # Track which players are subs
+        
+        if 'type' in events.columns:
+            starting_xi_rows = events[events['type'] == 'Starting XI']
+            for _, row in starting_xi_rows.iterrows():
+                team = row.get('team')
+                if team and team in [home_team, away_team]:
+                    try:
+                        tactics_str = row.get('tactics', '')
+                        if isinstance(tactics_str, str):
+                            tactics = ast.literal_eval(tactics_str) if tactics_str else {}
+                        else:
+                            tactics = tactics_str
+                        if 'lineup' in tactics:
+                            starting_xis[team] = tactics['lineup']
+                    except Exception:
+                        pass
 
         # Prepare sortable/time helper columns
         ev = events.copy()
@@ -89,6 +114,82 @@ async def game_phases(filename: str):
             sort_cols.extend(['minute_int', 'second_int'])
         if sort_cols:
             ev = ev.sort_values(sort_cols)
+        
+        # Group substitutions by 90-second windows within same period (after time columns are ready)
+        substitution_groups = []  # List of groups, each group is a list of substitution events
+        substitution_events = []  # Track all substitutions with timing
+        substitution_phase_dividers = set()  # Track (minute, second, period) of phase-dividing subs
+        
+        if 'type' in ev.columns:
+            substitution_rows = ev[ev['type'] == 'Substitution'].copy()
+            if not substitution_rows.empty:
+                # Sort by period, then time
+                substitution_rows = substitution_rows.sort_values(['period', 'minute_int', 'second_int'])
+                
+                # Group substitutions: within same period, group those within 90 seconds of the first sub in group
+                current_group = None
+                
+                for _, sub_row in substitution_rows.iterrows():
+                    team = sub_row.get('team')
+                    player_on = sub_row.get('substitution_replacement')
+                    minute = int(sub_row.get('minute_int', 0) or 0)
+                    second = int(sub_row.get('second_int', 0) or 0)
+                    period_val = int(sub_row.get('period')) if 'period' in sub_row and pd.notna(sub_row.get('period')) else None
+                    tsec = int(sub_row.get('tsec', minute * 60 + second))
+                    
+                    if not team or not player_on or team not in [home_team, away_team]:
+                        continue
+                    
+                    sub_event = {
+                        'team': team,
+                        'player_on': str(player_on),
+                        'minute': minute,
+                        'second': second,
+                        'period': period_val,
+                        'tsec': tsec
+                    }
+                    
+                    # Check if this sub belongs to current group or starts a new one
+                    if current_group is None:
+                        # Start first group
+                        current_group = {
+                            'period': period_val,
+                            'first_tsec': tsec,
+                            'subs': [sub_event]
+                        }
+                    else:
+                        # Check if same period and within grouping window of first sub in group
+                        same_period = (current_group['period'] == period_val) or (current_group['period'] is None and period_val is None)
+                        within_window = (tsec - current_group['first_tsec']) <= SUBSTITUTION_GROUPING_WINDOW_SECONDS
+                        
+                        if same_period and within_window:
+                            # Add to current group
+                            current_group['subs'].append(sub_event)
+                        else:
+                            # Start new group
+                            substitution_groups.append(current_group)
+                            current_group = {
+                                'period': period_val,
+                                'first_tsec': tsec,
+                                'subs': [sub_event]
+                            }
+                
+                # Add last group
+                if current_group is not None:
+                    substitution_groups.append(current_group)
+                
+                # Mark phase dividers and flatten substitution_events for tracking
+                for group in substitution_groups:
+                    # First sub in group is the phase divider
+                    first_sub = group['subs'][0]
+                    key = (first_sub['minute'], first_sub['second'], first_sub['period'])
+                    substitution_phase_dividers.add(key)
+                    
+                    # Add all subs in group to substitution_events for tracking
+                    for sub_event in group['subs']:
+                        substitution_events.append(sub_event)
+                        # Track subs by team
+                        subs_by_team[sub_event['team']].add(sub_event['player_on'])
 
         # Collect Half Start times by period
         half_starts_by_period = {}
@@ -224,6 +325,12 @@ async def game_phases(filename: str):
                         # (But only if we haven't already added it as a divider from the backward check above)
                         if 'woodwork_post' not in reasons:
                             reasons.append('woodwork_post')
+            
+            # Substitution as phase divider (only if it's the first sub in a 90-second group)
+            if row.get('type') == 'Substitution':
+                # Check if this substitution is a phase divider (first in its group)
+                if key in substitution_phase_dividers:
+                    reasons.append('substitution')
 
             if reasons:
                 if key not in marks:
@@ -300,6 +407,11 @@ async def game_phases(filename: str):
                     'break_reasons': ['match_end'],
                 })
 
+        # Track subs per phase: accumulate subs from all previous phases
+        # subs_by_phase[phase_idx] = {team: set of player names who are subs}
+        subs_by_phase = {}
+        current_subs = {home_team: set(), away_team: set()}  # Accumulate subs as we go through phases
+        
         # Right penalty box and final-third rectangles
         penalty_box_rect = (102, 18, 120, 62)
         final_third_rect = (80, 0, 120, 80)
@@ -334,6 +446,48 @@ async def game_phases(filename: str):
                 em = ph.get('end_minute'); em = int(em) if em is not None else sm
                 es = ph.get('end_second'); es = int(es) if es is not None else ss
                 sp = ph.get('start_period'); sp = int(sp) if sp is not None else None
+                ep = ph.get('end_period'); ep = int(ep) if ep is not None else sp
+                
+                # Track substitutions that occurred at the START of this phase or during the 90-second window
+                # If a phase starts with a substitution (phase divider), mark all subs from that 90-second group
+                phase_start_tsec = sm * 60 + ss
+                phase_end_tsec = em * 60 + es
+                
+                # Find if this phase starts with a substitution (phase divider)
+                phase_start_key = (sm, ss, sp)
+                phase_starts_with_sub = phase_start_key in substitution_phase_dividers
+                
+                if phase_starts_with_sub:
+                    # Find the substitution group that this phase divider belongs to
+                    for group in substitution_groups:
+                        first_sub = group['subs'][0]
+                        if (first_sub['minute'], first_sub['second'], first_sub['period']) == phase_start_key:
+                            # Mark all players subbed on during this 90-second window (all subs in the group)
+                            for sub_event in group['subs']:
+                                team = sub_event['team']
+                                player_on = sub_event['player_on']
+                                if team in current_subs:
+                                    current_subs[team].add(player_on)
+                            break
+                else:
+                    # Check for any substitutions during this phase (not phase dividers, but still mark them)
+                    for sub_event in substitution_events:
+                        sub_tsec = sub_event['tsec']
+                        sub_period = sub_event.get('period')
+                        period_match = (sp is None and sub_period is None) or (sp == sub_period)
+                        if period_match:
+                            # Check if substitution happened during this phase
+                            if phase_start_tsec < sub_tsec <= phase_end_tsec:
+                                team = sub_event['team']
+                                player_on = sub_event['player_on']
+                                if team in current_subs:
+                                    current_subs[team].add(player_on)
+                
+                # Store current subs for this phase (includes all subs from previous phases + any in this phase)
+                subs_by_phase[ph['phase_idx']] = {
+                    home_team: current_subs[home_team].copy(),
+                    away_team: current_subs[away_team].copy()
+                }
 
                 # Time range: exclude start instant; include end instant
                 base_mask = (
@@ -727,8 +881,17 @@ async def game_phases(filename: str):
                     fig.update_yaxes(autorange='reversed')
                     return fig.to_dict()
                 
-                def generate_phase_passing_network(phase_events_df, team_name, flip=False):
-                    """Generate passing network data for a team in this phase."""
+                def generate_phase_passing_network(phase_events_df, team_name, flip=False, subs_set=None):
+                    """Generate passing network data for a team in this phase.
+                    
+                    Args:
+                        phase_events_df: Events for this phase
+                        team_name: Team name
+                        flip: Whether to flip coordinates
+                        subs_set: Set of player names who are subs (to mark with bright ring)
+                    """
+                    if subs_set is None:
+                        subs_set = set()
                     try:
                         # Filter to this team's completed passes
                         passes = phase_events_df[
@@ -866,6 +1029,11 @@ async def game_phases(filename: str):
                             text_list = nodes['name'].astype(str).tolist()
                             
                             team_color = TEAM_COLORS.get(team_name, '#1f77b4')
+                            
+                            # Identify which players are subs
+                            is_sub_list = [str(name) in subs_set for name in text_list]
+                            
+                            # Add regular player nodes
                             fig.add_trace(go.Scatter(
                                 x=x_list, y=y_list,
                                 mode='markers+text',
@@ -878,6 +1046,29 @@ async def game_phases(filename: str):
                                 customdata=[[t] for t in touches_list],
                                 hovertemplate='<b>%{text}</b><br>touches: %{customdata[0]}<extra></extra>',
                             ))
+                            
+                            # Add bright colored rings for subs (larger outer ring)
+                            sub_x = [x_list[i] for i in range(len(x_list)) if is_sub_list[i]]
+                            sub_y = [y_list[i] for i in range(len(y_list)) if is_sub_list[i]]
+                            sub_sizes = [size_list[i] + 8 for i in range(len(size_list)) if is_sub_list[i]]  # +8 for ring
+                            sub_text = [text_list[i] for i in range(len(text_list)) if is_sub_list[i]]
+                            
+                            if sub_x:  # Only add if there are subs
+                                fig.add_trace(go.Scatter(
+                                    x=sub_x, y=sub_y,
+                                    mode='markers',
+                                    marker=dict(
+                                        size=sub_sizes,
+                                        line=dict(width=3, color='#FFD700'),  # Bright gold/yellow ring
+                                        color='rgba(255, 215, 0, 0)',  # Transparent fill
+                                        symbol='circle'
+                                    ),
+                                    hoverinfo='text',
+                                    text=sub_text,
+                                    hovertemplate='<b>%{text}</b> (Substitute)<extra></extra>',
+                                    name='subs',
+                                    showlegend=False,
+                                ))
                         
                         fig = make_pitch(fig)
                         fig.update_layout(
@@ -893,10 +1084,11 @@ async def game_phases(filename: str):
                         # Return blank pitch on error (don't break phase metrics)
                         return _empty_passing_fig(f'Passing Network — {team_name} (error generating network)')
                 
-                # Generate passing networks for both teams
+                # Generate passing networks for both teams (with subs tracking)
+                phase_subs = subs_by_phase.get(ph['phase_idx'], {home_team: set(), away_team: set()})
                 passing_networks = {}
-                passing_networks[home_team] = generate_phase_passing_network(ev_phase, home_team, flip=False)
-                passing_networks[away_team] = generate_phase_passing_network(ev_phase, away_team, flip=True)
+                passing_networks[home_team] = generate_phase_passing_network(ev_phase, home_team, flip=False, subs_set=phase_subs.get(home_team, set()))
+                passing_networks[away_team] = generate_phase_passing_network(ev_phase, away_team, flip=True, subs_set=phase_subs.get(away_team, set()))
 
                 phase_metrics.append({
                     'phase_idx': ph['phase_idx'],

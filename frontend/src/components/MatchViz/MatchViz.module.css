@@ -841,9 +841,9 @@
   color: #999;
 }
 
-/* Stats at top (full width) */
+/* Stats at top (half width) */
 .phaseStatsTopContainer {
-  width: 100%;
+  width: 50%;
   margin-top: 12px;
   margin-bottom: 20px;
 }
