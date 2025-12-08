@@ -512,6 +512,9 @@ async def game_phases(filename: str):
                 phase_end_tsec = em * 60 + es
                 phase_start_key = (sm, ss, sp)
                 
+                # Track which substitutions we've already added (to avoid duplicates)
+                added_sub_keys = set()
+                
                 # Check if this phase STARTS with a substitution (phase divider)
                 # Substitutions should only appear in the phase that STARTS with them, not the one that ends with them
                 phase_starts_with_sub = phase_start_key in substitution_phase_dividers
@@ -521,8 +524,14 @@ async def game_phases(filename: str):
                     for group in substitution_groups:
                         first_sub = group['subs'][0]
                         if (first_sub['minute'], first_sub['second'], first_sub['period']) == phase_start_key:
+                            # Add all substitutions from this group (both phase divider and others in the 150s window)
                             for sub_event in group['subs']:
                                 team = sub_event['team']
+                                sub_key = (sub_event['minute'], sub_event['second'], sub_event.get('period'))
+                                
+                                # Mark this sub as added
+                                added_sub_keys.add(sub_key)
+                                
                                 if team in phase_substitutions:
                                     phase_substitutions[team].append({
                                         'player_off': sub_event.get('player_off'),
@@ -533,19 +542,20 @@ async def game_phases(filename: str):
                                     })
                             break
                 
-                # Also check for any other substitutions during this phase (not phase dividers)
+                # Also check for any other substitutions during this phase (not already added, and not phase dividers)
                 for sub_event in substitution_events:
                     sub_tsec = sub_event['tsec']
                     sub_period = sub_event.get('period')
                     sub_key = (sub_event['minute'], sub_event['second'], sub_period)
                     period_match = (sp is None and sub_period is None) or (sp == sub_period)
                     
-                    # Skip if already added as a phase divider
-                    if sub_key in substitution_phase_dividers:
+                    # Skip if already added (from phase divider group) or if it's a phase divider
+                    if sub_key in added_sub_keys or sub_key in substitution_phase_dividers:
                         continue
                     
                     # Check if substitution happened during this phase (after start, before or at end)
-                    if period_match and phase_start_tsec < sub_tsec <= phase_end_tsec:
+                    # But exclude substitutions at phase boundaries (they belong to the phase that starts with them)
+                    if period_match and phase_start_tsec < sub_tsec < phase_end_tsec:
                         team = sub_event['team']
                         if team in phase_substitutions:
                             phase_substitutions[team].append({
