@@ -1043,6 +1043,163 @@ async def game_phases(filename: str):
                             touches['player_id'] = touches['player_name'].astype(str).map(name_to_id)
                             touches = touches[touches['player_id'].notna()]
                         
+                        # Calculate player action metrics for color coding
+                        player_actions = {}
+                        
+                        # Helper to parse location
+                        def parse_loc(loc_val):
+                            if isinstance(loc_val, (list, tuple)) and len(loc_val) >= 2:
+                                return float(loc_val[0]), float(loc_val[1])
+                            if isinstance(loc_val, str):
+                                try:
+                                    arr = json.loads(loc_val)
+                                    if isinstance(arr, (list, tuple)) and len(arr) >= 2:
+                                        return float(arr[0]), float(arr[1])
+                                except:
+                                    try:
+                                        arr = ast.literal_eval(loc_val)
+                                        if isinstance(arr, (list, tuple)) and len(arr) >= 2:
+                                            return float(arr[0]), float(arr[1])
+                                    except:
+                                        pass
+                            return (np.nan, np.nan)
+                        
+                        # GREEN: xG from shots
+                        shots_phase = phase_events_df[
+                            (phase_events_df['type'] == 'Shot') & 
+                            (phase_events_df['team'] == team_name) &
+                            phase_events_df['player'].notna()
+                        ]
+                        for _, shot_row in shots_phase.iterrows():
+                            player = str(shot_row.get('player', ''))
+                            # Try different xG column names
+                            xg_val = 0.0
+                            if 'shot_statsbomb_xg' in shot_row and pd.notna(shot_row.get('shot_statsbomb_xg')):
+                                xg_val = float(shot_row.get('shot_statsbomb_xg'))
+                            elif 'xg' in shot_row and pd.notna(shot_row.get('xg')):
+                                xg_val = float(shot_row.get('xg'))
+                            
+                            if player not in player_actions:
+                                player_actions[player] = {'xg': 0.0, 'yellow_actions': 0, 'red_actions': 0}
+                            player_actions[player]['xg'] += xg_val
+                        
+                        # YELLOW: Progressive passes, final third passes, box passes, carries
+                        # Progressive passes: end in final third (x >= 80) AND travel >= 10 pythagorean distance AND gain in X
+                        # OR don't end in final third BUT start at x >= 60 AND gain at least 15 in X
+                        passes_phase = phase_events_df[
+                            (phase_events_df['type'] == 'Pass') & 
+                            (phase_events_df['team'] == team_name) &
+                            phase_events_df['player'].notna()
+                        ]
+                        # Filter out incomplete passes (keep NaN/completed passes)
+                        if 'pass_outcome' in passes_phase.columns:
+                            passes_phase = passes_phase[
+                                passes_phase['pass_outcome'].isna() | 
+                                (passes_phase['pass_outcome'] != 'Incomplete')
+                            ]
+                        for _, pass_row in passes_phase.iterrows():
+                            player = str(pass_row.get('player', ''))
+                            if player not in player_actions:
+                                player_actions[player] = {'xg': 0.0, 'yellow_actions': 0, 'red_actions': 0}
+                            
+                            start_loc = parse_loc(pass_row.get('location'))
+                            end_loc = parse_loc(pass_row.get('pass_end_location'))
+                            
+                            if pd.isna(start_loc[0]) or pd.isna(end_loc[0]):
+                                continue
+                            
+                            start_x, start_y = start_loc
+                            end_x, end_y = end_loc
+                            
+                            # Check if progressive pass
+                            is_progressive = False
+                            if end_x >= 80:  # Ends in final third
+                                dist = np.sqrt((end_x - start_x)**2 + (end_y - start_y)**2)
+                                if dist >= 10 and end_x > start_x:  # Travel >= 10 and gain in X
+                                    is_progressive = True
+                            elif start_x >= 60:  # Starts at x >= 60
+                                if end_x - start_x >= 15:  # Gain at least 15 in X
+                                    is_progressive = True
+                            
+                            # Check if final third pass (ends in final third, x >= 80)
+                            is_final_third = end_x >= 80
+                            
+                            # Check if box pass (ends in box: x >= 102, y between 18-62)
+                            is_box_pass = end_x >= 102 and 18 <= end_y <= 62
+                            
+                            if is_progressive or is_final_third or is_box_pass:
+                                player_actions[player]['yellow_actions'] += 1
+                        
+                        # YELLOW: Carries where carry_end_location x >= 80
+                        carries_phase = phase_events_df[
+                            (phase_events_df['type'] == 'Carry') & 
+                            (phase_events_df['team'] == team_name) &
+                            phase_events_df['player'].notna()
+                        ]
+                        for _, carry_row in carries_phase.iterrows():
+                            player = str(carry_row.get('player', ''))
+                            if player not in player_actions:
+                                player_actions[player] = {'xg': 0.0, 'yellow_actions': 0, 'red_actions': 0}
+                            
+                            end_loc = parse_loc(carry_row.get('carry_end_location'))
+                            if not pd.isna(end_loc[0]) and end_loc[0] >= 80:
+                                player_actions[player]['yellow_actions'] += 1
+                        
+                        # RED: Defensive actions (tackles, interceptions, clearances)
+                        tackles_phase = phase_events_df[
+                            (phase_events_df['type'] == 'Tackle') & 
+                            (phase_events_df['team'] == team_name) &
+                            phase_events_df['player'].notna()
+                        ]
+                        for _, tackle_row in tackles_phase.iterrows():
+                            player = str(tackle_row.get('player', ''))
+                            if player not in player_actions:
+                                player_actions[player] = {'xg': 0.0, 'yellow_actions': 0, 'red_actions': 0}
+                            player_actions[player]['red_actions'] += 1
+                        
+                        interceptions_phase = phase_events_df[
+                            (phase_events_df['type'] == 'Interception') & 
+                            (phase_events_df['team'] == team_name) &
+                            phase_events_df['player'].notna()
+                        ]
+                        for _, int_row in interceptions_phase.iterrows():
+                            player = str(int_row.get('player', ''))
+                            if player not in player_actions:
+                                player_actions[player] = {'xg': 0.0, 'yellow_actions': 0, 'red_actions': 0}
+                            player_actions[player]['red_actions'] += 1
+                        
+                        clearances_phase = phase_events_df[
+                            (phase_events_df['type'] == 'Clearance') & 
+                            (phase_events_df['team'] == team_name) &
+                            phase_events_df['player'].notna()
+                        ]
+                        for _, clear_row in clearances_phase.iterrows():
+                            player = str(clear_row.get('player', ''))
+                            if player not in player_actions:
+                                player_actions[player] = {'xg': 0.0, 'yellow_actions': 0, 'red_actions': 0}
+                            player_actions[player]['red_actions'] += 1
+                        
+                        # Convert actions to RGB colors
+                        def actions_to_color(xg, yellow_count, red_count):
+                            # Grey base
+                            base_grey = 120
+                            r, g, b = base_grey, base_grey, base_grey
+                            
+                            # Green: 0 xG = 0 green, 2+ xG = 255 green (linear)
+                            green_intensity = min(255, int((xg / 2.0) * 255)) if xg > 0 else 0
+                            g = min(255, base_grey + green_intensity)
+                            
+                            # Yellow: 0 actions = 0 yellow, 20+ actions = 255 yellow (linear)
+                            yellow_intensity = min(255, int((yellow_count / 20.0) * 255)) if yellow_count > 0 else 0
+                            r = min(255, base_grey + yellow_intensity)
+                            g = min(255, g + yellow_intensity)
+                            
+                            # Red: 0 actions = 0 red, 20+ actions = 255 red (linear)
+                            red_intensity = min(255, int((red_count / 20.0) * 255)) if red_count > 0 else 0
+                            r = min(255, base_grey + red_intensity)
+                            
+                            return f'rgb({r}, {g}, {b})'
+                        
                         # Average positions: mean of start (as passer) + end (as receiver)
                         start_pos = passes.groupby('src_id')[['sx', 'sy']].mean().rename(columns={'sx': 'x_s', 'sy': 'y_s'})
                         recv_pos = passes.groupby('dst_id')[['ex', 'ey']].mean().rename(columns={'ex': 'x_r', 'ey': 'y_r'})
@@ -1097,26 +1254,31 @@ async def game_phases(filename: str):
                                     showlegend=False,
                                 ))
                         
-                        # Nodes: size ~ touches
+                        # Nodes: size ~ touches (increased for phase-specific networks)
                         if not nodes.empty:
-                            size_list = (14 + 0.045 * nodes['touches']).clip(lower=8, upper=32).astype(float).tolist()
+                            size_list = (20 + 0.08 * nodes['touches']).clip(lower=12, upper=45).astype(float).tolist()
                             touches_list = nodes['touches'].astype(int).tolist()
                             x_list = nodes['x'].astype(float).tolist()
                             y_list = nodes['y'].astype(float).tolist()
                             text_list = nodes['name'].astype(str).tolist()
                             
-                            team_color = TEAM_COLORS.get(team_name, '#1f77b4')
+                            # Calculate colors based on actions
+                            color_list = []
+                            for name in text_list:
+                                actions = player_actions.get(str(name), {'xg': 0.0, 'yellow_actions': 0, 'red_actions': 0})
+                                color = actions_to_color(actions['xg'], actions['yellow_actions'], actions['red_actions'])
+                                color_list.append(color)
                             
                             # Identify which players are subs
                             is_sub_list = [str(name) in subs_set for name in text_list]
                             
-                            # Add regular player nodes
+                            # Add regular player nodes with action-based colors
                             fig.add_trace(go.Scatter(
                                 x=x_list, y=y_list,
                                 mode='markers+text',
                                 text=text_list,
                                 textposition='top center',
-                                marker=dict(size=size_list, line=dict(width=2, color='black'), color=team_color),
+                                marker=dict(size=size_list, line=dict(width=2, color='black'), color=color_list),
                                 hoverinfo='text',
                                 textfont=dict(size=11),
                                 name='players',
@@ -1127,7 +1289,7 @@ async def game_phases(filename: str):
                             # Add bright colored rings for subs (larger outer ring)
                             sub_x = [x_list[i] for i in range(len(x_list)) if is_sub_list[i]]
                             sub_y = [y_list[i] for i in range(len(y_list)) if is_sub_list[i]]
-                            sub_sizes = [size_list[i] + 8 for i in range(len(size_list)) if is_sub_list[i]]  # +8 for ring
+                            sub_sizes = [size_list[i] + 10 for i in range(len(size_list)) if is_sub_list[i]]  # +10 for ring (increased proportionally)
                             sub_text = [text_list[i] for i in range(len(text_list)) if is_sub_list[i]]
                             
                             if sub_x:  # Only add if there are subs
