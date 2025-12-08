@@ -712,6 +712,21 @@ async def game_phases(filename: str):
                         })
 
                 # ===== PASSING NETWORK DATA PER TEAM =====
+                def _empty_passing_fig(title):
+                    """Return a blank pitch figure."""
+                    fig = go.Figure()
+                    fig = make_pitch(fig)
+                    fig.update_layout(
+                        title=title,
+                        xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
+                        yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
+                        plot_bgcolor='white',
+                        height=600,
+                        width=900
+                    )
+                    fig.update_yaxes(autorange='reversed')
+                    return fig.to_dict()
+                
                 def generate_phase_passing_network(phase_events_df, team_name, flip=False):
                     """Generate passing network data for a team in this phase."""
                     try:
@@ -722,12 +737,12 @@ async def game_phases(filename: str):
                         ].copy()
                         
                         if passes.empty or 'pass_outcome' not in passes.columns:
-                            return None
+                            return _empty_passing_fig(f'Passing Network — {team_name} (no pass data)')
                         
                         # Only completed passes (pass_outcome is NaN)
                         passes = passes[passes['pass_outcome'].isna()].copy()
                         if passes.empty:
-                            return None
+                            return _empty_passing_fig(f'Passing Network — {team_name} (no completed passes)')
                         
                         # Get coordinates
                         passes[['sx', 'sy']] = passes['location'].apply(_to_xy).to_list()
@@ -740,7 +755,7 @@ async def game_phases(filename: str):
                         ].copy()
                         
                         if passes.empty:
-                            return None
+                            return _empty_passing_fig(f'Passing Network — {team_name} (no valid pass locations)')
                         
                         # Create player IDs from names
                         if 'player' in passes.columns:
@@ -875,8 +890,8 @@ async def game_phases(filename: str):
                         
                         return fig.to_dict()
                     except Exception as e:
-                        # Return None on error (don't break phase metrics)
-                        return None
+                        # Return blank pitch on error (don't break phase metrics)
+                        return _empty_passing_fig(f'Passing Network — {team_name} (error generating network)')
                 
                 # Generate passing networks for both teams
                 passing_networks = {}

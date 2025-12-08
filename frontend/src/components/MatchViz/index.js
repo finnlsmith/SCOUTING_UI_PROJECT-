@@ -698,36 +698,32 @@ export default function MatchViz() {
                               <div className={styles.phasePassingNetworksContainer}>
                                 <h3 className={styles.phaseVisualizationTitle}>Passing Networks</h3>
                                 <div className={styles.phasePassingNetworksStack}>
-                                  {m.passing_networks[gamePhaseTeams.home] && (
-                                    <div className={styles.phasePassingNetworkCard}>
-                                      <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.home}</div>
-                                      <div className={styles.phasePassingNetworkPlot}>
-                                        <Suspense fallback={<PlotSkeleton />}>
-                                          <ShotMapPlot 
-                                            displayFig={m.passing_networks[gamePhaseTeams.home]} 
-                                            flipSides={false} 
-                                            plotLoading={false} 
-                                            customSize={{ width: 900, height: 600 }} 
-                                          />
-                                        </Suspense>
-                                      </div>
+                                  <div className={styles.phasePassingNetworkCard}>
+                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.home}</div>
+                                    <div className={styles.phasePassingNetworkPlot}>
+                                      <Suspense fallback={<PlotSkeleton />}>
+                                        <ShotMapPlot 
+                                          displayFig={m.passing_networks[gamePhaseTeams.home] || null} 
+                                          flipSides={false} 
+                                          plotLoading={false} 
+                                          customSize={{ width: 900, height: 600 }} 
+                                        />
+                                      </Suspense>
                                     </div>
-                                  )}
-                                  {m.passing_networks[gamePhaseTeams.away] && (
-                                    <div className={styles.phasePassingNetworkCard}>
-                                      <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.away}</div>
-                                      <div className={styles.phasePassingNetworkPlot}>
-                                        <Suspense fallback={<PlotSkeleton />}>
-                                          <ShotMapPlot 
-                                            displayFig={m.passing_networks[gamePhaseTeams.away]} 
-                                            flipSides={true} 
-                                            plotLoading={false} 
-                                            customSize={{ width: 900, height: 600 }} 
-                                          />
-                                        </Suspense>
-                                      </div>
+                                  </div>
+                                  <div className={styles.phasePassingNetworkCard}>
+                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.away}</div>
+                                    <div className={styles.phasePassingNetworkPlot}>
+                                      <Suspense fallback={<PlotSkeleton />}>
+                                        <ShotMapPlot 
+                                          displayFig={m.passing_networks[gamePhaseTeams.away] || null} 
+                                          flipSides={true} 
+                                          plotLoading={false} 
+                                          customSize={{ width: 900, height: 600 }} 
+                                        />
+                                      </Suspense>
                                     </div>
-                                  )}
+                                  </div>
                                 </div>
                               </div>
                             )}
