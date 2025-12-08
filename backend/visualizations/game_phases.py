@@ -511,34 +511,16 @@ async def game_phases(filename: str):
                 phase_start_tsec = sm * 60 + ss
                 phase_end_tsec = em * 60 + es
                 phase_start_key = (sm, ss, sp)
-                phase_end_key = (em, es, ep)
                 
-                # Check if this phase starts OR ends with a substitution (phase divider)
+                # Check if this phase STARTS with a substitution (phase divider)
+                # Substitutions should only appear in the phase that STARTS with them, not the one that ends with them
                 phase_starts_with_sub = phase_start_key in substitution_phase_dividers
-                phase_ends_with_sub = phase_end_key in substitution_phase_dividers
                 
                 # If phase starts with a substitution, include all subs from that group
                 if phase_starts_with_sub:
                     for group in substitution_groups:
                         first_sub = group['subs'][0]
                         if (first_sub['minute'], first_sub['second'], first_sub['period']) == phase_start_key:
-                            for sub_event in group['subs']:
-                                team = sub_event['team']
-                                if team in phase_substitutions:
-                                    phase_substitutions[team].append({
-                                        'player_off': sub_event.get('player_off'),
-                                        'player_on': sub_event.get('player_on'),
-                                        'position_off': sub_event.get('position_off'),
-                                        'minute': sub_event['minute'],
-                                        'second': sub_event['second']
-                                    })
-                            break
-                
-                # If phase ends with a substitution, include all subs from that group
-                if phase_ends_with_sub and not phase_starts_with_sub:  # Don't double-count if same sub
-                    for group in substitution_groups:
-                        first_sub = group['subs'][0]
-                        if (first_sub['minute'], first_sub['second'], first_sub['period']) == phase_end_key:
                             for sub_event in group['subs']:
                                 team = sub_event['team']
                                 if team in phase_substitutions:
