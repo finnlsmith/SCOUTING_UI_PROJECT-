@@ -27,9 +27,9 @@
   background: var(--color-button-primary);
   color: var(--color-text-primary);
   border: none;
-  padding: 20px 70px;
+  padding: 24px 80px;
   border-radius: var(--radius-xl);
-  font-size: var(--font-size-xl);
+  font-size: 22px;
   font-weight: var(--font-weight-semibold);
   box-shadow: var(--shadow-button-lg);
   min-width: auto;
@@ -40,9 +40,9 @@
   background: var(--color-button-secondary);
   color: var(--color-text-primary);
   border: none;
-  padding: 20px 70px;
+  padding: 24px 80px;
   border-radius: var(--radius-xl);
-  font-size: var(--font-size-xl);
+  font-size: 22px;
   font-weight: var(--font-weight-semibold);
   box-shadow: var(--shadow-button-lg);
   min-width: auto;

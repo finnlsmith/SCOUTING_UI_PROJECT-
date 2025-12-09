@@ -634,6 +634,7 @@ export default function MatchViz() {
                             <div className={styles.phaseStatsAndSubsLayout}>
                               {/* Stats table */}
                               <div className={styles.metricsContainer}>
+                                <h3 className={styles.phaseStatsTitle}>Phase Stats</h3>
                                 <table className={styles.phaseMetricsTable}>
                               <thead>
                                 <tr>

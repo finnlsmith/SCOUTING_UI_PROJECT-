@@ -231,9 +231,19 @@
 }
 
 .teamLogo {
-  width: 100px;
-  height: 100px;
+  width: 140px;
+  height: 140px;
   object-fit: contain;
+  border: 4px solid #ddd;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  padding: 4px;
+  background: white;
+}
+
+[data-theme="dark"] .teamLogo {
+  border-color: #555;
+  background: #2a2a2a;
 }
 
 .teamName {
@@ -1013,6 +1023,17 @@
 
 .metricsContainer {
   margin-top: 0;
+}
+
+.phaseStatsTitle {
+  font-size: 24px;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 16px;
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .phaseStatsTitle {
+  color: white;
 }
 
 .metricsGrid {
