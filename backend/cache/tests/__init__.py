@@ -1,4 +1,0 @@
-"""
-Cache system tests.
-"""
-
