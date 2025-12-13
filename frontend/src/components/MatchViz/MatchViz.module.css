@@ -5,8 +5,15 @@
 }
 
 .content {
-  max-width: 1310px;
+  max-width: 100%;
   margin: 0 auto;
+  padding: 0 40px;
+}
+
+/* Page Header - Tournament title and match selector */
+.pageHeader {
+  text-align: center;
+  margin-bottom: 30px;
 }
 
 .tournamentTitle {
@@ -17,7 +24,290 @@
 }
 
 .matchSelection {
-  margin-bottom: 30px;
+  margin-bottom: 0;
+}
+
+/* Section Divider */
+.sectionDivider {
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to right, transparent, var(--color-border-dark), transparent);
+  margin: 40px 0;
+}
+
+/* Match Timeline - Sequential List */
+.matchTimeline {
+  margin: 32px auto 40px auto;
+  padding: 20px 0;
+  max-width: 500px;
+}
+
+.timelineList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timelineRow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.timelineHomeCell {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  padding-right: 16px;
+}
+
+.timelineMinuteCell {
+  flex: 0 0 50px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-card);
+  padding: 6px 0;
+  border-radius: 4px;
+}
+
+[data-theme="dark"] .timelineMinuteCell {
+  background: #1a1a1a;
+  color: #aaa;
+}
+
+.timelineAwayCell {
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
+  padding-left: 16px;
+}
+
+.timelineEventContent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.timelinePlayerName {
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .timelinePlayerName {
+  color: #ddd;
+}
+
+.timelineIcon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+[data-theme="dark"] .timelineIcon {
+  border-color: #333;
+}
+
+.timelineMarkerLabel {
+  display: block;
+  padding: 4px 8px;
+  background: var(--color-bg-card);
+  border: 2px solid var(--color-border-dark);
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .timelineMarkerLabel {
+  background: #1a1a1a;
+  border-color: #444;
+  color: #aaa;
+}
+
+.timelineEventLeft {
+  position: absolute;
+  right: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding-right: 20px;
+  z-index: 3;
+}
+
+.timelineEventRight {
+  position: absolute;
+  left: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 8px;
+  padding-left: 20px;
+  z-index: 3;
+}
+
+.timelineEventDot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  cursor: default;
+}
+
+[data-theme="dark"] .timelineEventDot {
+  border-color: #333;
+}
+
+.timelineEventLabel {
+  font-size: 12px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-card);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+[data-theme="dark"] .timelineEventLabel {
+  color: #aaa;
+  background: #1a1a1a;
+}
+
+/* Entire Match Section */
+.entireMatchTitle {
+  font-size: 48px;
+  font-weight: var(--font-weight-extrabold);
+  margin-bottom: 24px;
+  text-align: left;
+  color: var(--color-text-primary);
+}
+
+/* Visualization Header - above Shot Maps/Passing Network */
+.visualizationHeader {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 40px;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-md);
+  min-height: 160px;
+}
+
+.vizHeaderContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 900px;
+  gap: 40px;
+}
+
+.vizHeaderTeamSection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.vizHeaderTeamSection:last-child {
+  flex-direction: row-reverse;
+}
+
+.teamLogo {
+  width: 140px;
+  height: 140px;
+  object-fit: contain;
+  border: 4px solid #ddd;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  padding: 4px;
+  background: white;
+}
+
+[data-theme="dark"] .teamLogo {
+  border-color: #555;
+  background: #2a2a2a;
+}
+
+.teamName {
+  font-size: 28px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .teamName {
+  color: #333;
+}
+
+.vizHeaderScoreSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.vizHeaderScore {
+  font-size: 56px;
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-text-dark);
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .vizHeaderScore {
+  color: #222;
+}
+
+.vizHeaderMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+}
+
+.vizHeaderStage {
+  font-size: 16px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .vizHeaderStage {
+  color: #555;
+}
+
+.vizHeaderDate {
+  font-size: 16px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+}
+
+[data-theme="dark"] .vizHeaderDate {
+  color: #666;
+}
+
+.vizHeaderSeparator {
+  font-size: 16px;
+  color: var(--color-text-tertiary);
+}
+
+[data-theme="dark"] .vizHeaderSeparator {
+  color: #666;
 }
 
 .sectionTitle {
@@ -32,45 +322,62 @@
   margin: 0 auto;
 }
 
-.mainRow {
+/* ========================================
+   ENTIRE MATCH ROW (Match Facts Sidebar + Visualizations)
+   ======================================== */
+.entireMatchRow {
   display: flex;
   align-items: flex-start;
-  gap: var(--spacing-3xl);
+  gap: 32px;
   margin-bottom: 54px;
+  width: 100%;
 }
 
-.matchFacts {
-  flex: 1;
-  min-width: 295px;
+/* Match Facts Sidebar (Left) */
+.matchFactsSidebar {
+  flex: 0 0 500px;
+  min-width: 500px;
+  max-width: 500px;
 }
 
 .matchFactsTitle {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-medium);
+  font-size: 42px;
+  font-weight: var(--font-weight-extrabold);
   margin-bottom: var(--spacing-lg);
   text-align: center;
+  color: var(--color-text-primary);
 }
 
 .matchFactsCard {
   box-shadow: var(--shadow-lg);
   border-radius: var(--radius-2xl);
   background: var(--color-bg-card);
-  padding: 17px;
-  min-height: 230px;
-  max-width: 350px;
-  margin: 0 auto;
+  padding: 24px;
+  min-height: 280px;
 }
 
-.shotMaps {
-  flex: 2;
-  min-width: 340px;
+/* Visualizations Container (Right Side) */
+.visualizationsContainer {
+  flex: 1;
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.shotMapsColumn {
+  flex: 0 1 auto;
+  min-width: 400px;
+  max-width: 1000px;
   text-align: center;
 }
 
 .shotMapsTitle {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-medium);
+  font-size: 52px;
+  font-weight: var(--font-weight-extrabold);
   margin-bottom: var(--spacing-lg);
+  color: var(--color-text-primary);
+  text-align: center;
 }
 
 .flipSidesContainer {
@@ -81,9 +388,23 @@
   gap: 28px;
 }
 
+.flipSidesContainerCentered {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 12px 20px;
+  background: var(--color-bg-card-alt);
+  border-radius: var(--radius-lg);
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .flipSidesLabel {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-normal);
+  color: black;
 }
 
 .flipSidesCheckbox {
@@ -147,21 +468,24 @@
 
 .shotMapPlot {
   margin: var(--spacing-lg) auto 0;
-  width: 330px;
+  width: 100%;
+  max-width: 1000px;
   display: flex;
   justify-content: center;
 }
 
-.passingNetwork {
-  flex: 1.42;
-  min-width: 295px;
+.passingNetworkColumn {
+  flex: 0 1 auto;
+  min-width: 400px;
+  max-width: 1000px;
 }
 
 .passingNetworkTitle {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-medium);
+  font-size: 38px;
+  font-weight: var(--font-weight-bold);
   margin-bottom: var(--spacing-lg);
   text-align: center;
+  color: var(--color-text-primary);
 }
 
 .passingNetworkButtons {
@@ -178,7 +502,8 @@
 
 .passingNetworkPlot {
   margin: var(--spacing-lg) auto 0;
-  max-width: 540px;
+  max-width: 1000px;
+  width: 100%;
 }
 
 .keyMoments {
@@ -322,14 +647,16 @@
 
 .gamePhases {
   margin: 52px 0 0;
-  max-width: 980px;
+  max-width: 100%;
+  width: 100%;
 }
 
 .gamePhasesTitle {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-medium);
-  color: #f9f9ff;
-  margin-bottom: 3px;
+  font-size: 36px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: 20px;
+  text-align: left;
 }
 
 .gamePhasesLoading {
@@ -362,42 +689,351 @@
   background: var(--color-bg-card-alt);
   border: 2px solid var(--color-border-dark);
   border-radius: 11px;
-  padding: var(--spacing-xl) var(--spacing-lg);
+  padding: var(--spacing-xl) var(--spacing-2xl);
   box-shadow: var(--shadow-xl);
   min-height: 60px;
+  max-width: 100%;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Dark theme specific: dark background for phase cards */
+[data-theme="dark"] .gamePhaseCard {
+  background: #1a1a1a;
+  border-color: #444;
+}
+
+/* Removed phaseWithMomentsLayout and phaseContentColumn - no longer needed */
+
+.phaseMomentsColumn {
+  flex: 1;
+  min-width: 300px;
+}
+
+.phaseMomentsTitle {
+  font-size: 26px;
+  font-weight: var(--font-weight-bold);
+  margin-bottom: 16px;
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .phaseMomentsTitle {
+  color: white;
+}
+
+.phaseMomentsTable {
+  width: 100%;
+  font-size: 17px;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.phaseMomentsHeaderCell {
+  padding: 12px 14px;
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+  font-size: 15px;
+  background: #f5f5f7;
+  color: var(--color-text-dark);
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.phaseMomentsRow {
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+
+.phaseMomentsRow:hover {
+  background: #fafafa;
+}
+
+.phaseMomentsRowSelected {
+  composes: phaseMomentsRow;
+  background: var(--color-highlight);
+  font-weight: var(--font-weight-semibold);
+}
+
+.phaseMomentsCell {
+  padding: 14px 14px;
+  font-size: 16px;
+  color: var(--color-text-dark);
+}
+
+.noMomentsPlaceholder {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+  font-size: 15px;
+  font-style: italic;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.phaseSceneViewer {
+  margin-top: 16px;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  min-height: 100px;
+}
+
+.phaseSceneImage {
+  max-width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+/* Substitutions Table */
+.phaseSubstitutionsContainer {
+  width: 100%;
+}
+
+.phaseSubstitutionsTitle {
+  font-size: 20px;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 12px;
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .phaseSubstitutionsTitle {
+  color: white;
+}
+
+.phaseSubstitutionsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.phaseSubstitutionsTeamColumn {
+  display: flex;
+  flex-direction: column;
+}
+
+.phaseSubstitutionsTeamLabel {
+  font-size: 16px;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 8px;
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .phaseSubstitutionsTeamLabel {
+  color: white;
+}
+
+.phaseSubstitutionsTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-bg-white);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  font-size: 14px;
+}
+
+.phaseSubstitutionsTable thead {
+  background: #f5f5f7;
+}
+
+.phaseSubstitutionsHeaderCell {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+  font-size: 13px;
+  color: var(--color-text-dark);
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.phaseSubstitutionsRow {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.phaseSubstitutionsRow:hover {
+  background: #fafafa;
+}
+
+.phaseSubstitutionsRow:last-child {
+  border-bottom: none;
+}
+
+.phaseSubstitutionsCell {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--color-text-dark);
+}
+
+.noSubstitutionsPlaceholder {
+  padding: 16px;
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  font-style: italic;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.gamePhaseHeader {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e0e0e0;
 }
 
 .gamePhaseTitle {
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-lg);
-  color: black;
+  font-weight: var(--font-weight-extrabold);
+  font-size: 36px;
+  color: var(--color-text-dark);
+  margin-bottom: 14px;
+}
+
+[data-theme="dark"] .gamePhaseTitle {
+  color: white;
 }
 
 .gamePhaseTime {
-  margin: var(--spacing-sm) 0;
-  font-size: 15px;
+  margin: 12px 0;
+  font-size: 24px;
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
 }
 
+[data-theme="dark"] .gamePhaseTime {
+  color: #aaa;
+}
+
 .gamePhaseScore {
-  font-size: 15px;
-  color: black;
+  font-size: 28px;
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-text-dark);
+  margin: 10px 0;
+}
+
+[data-theme="dark"] .gamePhaseScore {
+  color: white;
 }
 
 .gamePhaseGoalInfo {
-  margin-top: 6px;
-  font-size: var(--font-size-sm);
+  margin-top: 12px;
+  font-size: 22px;
+  font-weight: var(--font-weight-semibold);
   color: #357;
 }
 
+[data-theme="dark"] .gamePhaseGoalInfo {
+  color: #6FB1FF;
+}
+
 .gamePhaseBreakReasons {
-  margin-top: 6px;
-  font-size: 13px;
+  margin-top: 12px;
+  font-size: 20px;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-tertiary);
 }
 
-.metricsContainer {
+[data-theme="dark"] .gamePhaseBreakReasons {
+  color: #999;
+}
+
+/* Stats at top (half width) */
+.phaseStatsTopContainer {
+  width: 100%;
   margin-top: 12px;
+  margin-bottom: 20px;
+}
+
+/* Layout for stats and substitutions side by side */
+.phaseStatsAndSubsLayout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+/* Divider line between stats and three-column layout */
+.phaseDivider {
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to right, transparent, #e0e0e0, transparent);
+  margin: 20px 0;
+}
+
+/* Three-column layout below divider: Left=Passing Networks, Middle=Key Events/Box Entry, Right=Key Moments */
+.phaseThreeColumnLayout {
+  display: grid;
+  grid-template-columns: 30% 40% 30%;
+  gap: 24px;
+  margin-top: 20px;
+  align-items: flex-start;
+}
+
+.phasePassingNetworksColumn {
+  display: flex;
+  flex-direction: column;
+}
+
+.phaseVisualizationsColumn {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Passing Networks in Phase */
+.phasePassingNetworksContainer {
+  width: 100%;
+}
+
+.phasePassingNetworksStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.phasePassingNetworkCard {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 4px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.phasePassingNetworkPlot {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  min-height: 550px;
+}
+
+.phasePassingNetworkPlot > * {
+  width: 100% !important;
+  max-width: 100%;
+  height: auto;
+}
+
+.metricsContainer {
+  margin-top: 0;
+}
+
+.phaseStatsTitle {
+  font-size: 24px;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 16px;
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .phaseStatsTitle {
+  color: white;
 }
 
 .metricsGrid {
@@ -424,7 +1060,7 @@
   color: var(--color-text-dark);
 }
 
-/* Phase Metrics Table */
+/* Phase Metrics Table - Bigger font and wider */
 .phaseMetricsTable {
   width: 100%;
   border-collapse: collapse;
@@ -439,16 +1075,16 @@
 }
 
 .phaseMetricsHeaderCell {
-  padding: 12px 16px;
+  padding: 14px 20px;
   text-align: left;
   font-weight: var(--font-weight-bold);
-  font-size: 15px;
+  font-size: 18px;
   color: var(--color-text-dark);
   border-bottom: 2px solid #e0e0e0;
 }
 
 .phaseMetricsHeaderCell:first-child {
-  width: 40%;
+  width: 35%;
 }
 
 .phaseMetricsRow {
@@ -464,18 +1100,18 @@
 }
 
 .phaseMetricsLabelCell {
-  padding: 10px 16px;
+  padding: 12px 20px;
   font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .phaseMetricsValueCell {
-  padding: 10px 16px;
+  padding: 12px 20px;
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-dark);
   text-align: left;
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .loadingText {
@@ -494,14 +1130,19 @@
 .shotMapsContainer {
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 2px solid #e0e0e0;
+  /* Removed border-top - no divider above key events */
 }
 
-.shotMapsTitle {
-  font-size: 18px;
+/* Phase Visualization Titles (Key Events, Box Entry Maps) */
+.phaseVisualizationTitle {
+  font-size: 20px;
   font-weight: var(--font-weight-semibold);
   margin-bottom: 14px;
-  color: black;
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .phaseVisualizationTitle {
+  color: white;
 }
 
 .shotMapsGrid {
@@ -541,12 +1182,36 @@
   font-size: 13px;
   color: #333;
   flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+[data-theme="dark"] .shotMapLegend {
+  color: white;
 }
 
 .shotMapLegend span {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.shotOutcomeLegend {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  font-size: 11px;
+  color: #666;
+  flex-wrap: wrap;
+}
+
+[data-theme="dark"] .shotOutcomeLegend {
+  color: #ccc;
+}
+
+.shotOutcomeLegend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .legendDot {
@@ -597,5 +1262,46 @@
   height: 3px;
   display: inline-block;
   border: none;
+}
+
+/* Shot Outcome Legend Icons */
+.legendWhiteX {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  position: relative;
+  background: linear-gradient(45deg, transparent 40%, white 40%, white 60%, transparent 60%),
+              linear-gradient(-45deg, transparent 40%, white 40%, white 60%, transparent 60%);
+  border: 1px solid black;
+  border-radius: 2px;
+}
+
+.legendRedCircle {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  border-radius: 50%;
+  border: 2px solid red;
+  background: transparent;
+}
+
+.legendRedX {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  position: relative;
+  background: linear-gradient(45deg, transparent 40%, red 40%, red 60%, transparent 60%),
+              linear-gradient(-45deg, transparent 40%, red 40%, red 60%, transparent 60%);
+}
+
+.legendQuestion {
+  width: 12px;
+  height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  color: purple;
 }
 

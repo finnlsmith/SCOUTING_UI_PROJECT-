@@ -9,15 +9,6 @@ async function _fetchJson(url) {
   return res.json();
 }
 
-// Helper to flip x (and optionally y) for away team traces
-function flipTraceX(trace, pitchLength = 120) {
-  const newTrace = { ...trace };
-  if (Array.isArray(newTrace.x)) {
-    newTrace.x = newTrace.x.map(v => (typeof v === "number" ? pitchLength - v : v));
-  }
-  return newTrace;
-}
-
 export default function useVisualization() {
   const [figData, setFigData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -83,24 +74,57 @@ export default function useVisualization() {
       const awayColor = TEAM_COLORS[away] || "#ff7f0e";
       const result = {
         data: [
-          ...(homeData.data || []).map((t) => ({
-            ...t,
-            marker: {
-              ...(t.marker || {}),
-              colorscale: [ [0, "white"], [1, homeColor] ], showscale: false,
-            },
-            name: `${home} – ${t.name ?? "Shot"}`,
-          })),
-          ...(awayData.data || []).map((t) => ({
-            ...flipTraceX(t, 120),
-            marker: {
-              ...(t.marker || {}),
-              colorscale: [ [0, "white"], [1, awayColor] ], showscale: false,
-            },
-            name: `${away} – ${t.name ?? "Shot"}`,
-          })),
+          // Home team traces - preserve backend Goal styling (black outline)
+          ...(homeData.data || []).map((t) => {
+            const isGoalTrace = t.name === 'Goal';
+            return {
+              ...t,
+              marker: {
+                ...(t.marker || {}),
+                colorscale: [ [0, "white"], [1, homeColor] ],
+                showscale: false,
+                // Keep black outline for goals, otherwise use team color
+                line: isGoalTrace 
+                  ? { color: 'black', width: 3 }
+                  : { color: homeColor, width: 1 }
+              },
+              name: isGoalTrace ? `${home} Goal` : `${home}`,
+            };
+          }),
+          // Away team traces - preserve backend Goal styling (black outline)
+          ...(awayData.data || []).map((t) => {
+            const isGoalTrace = t.name === 'Goal';
+            return {
+              ...t,
+              marker: {
+                ...(t.marker || {}),
+                colorscale: [ [0, "white"], [1, awayColor] ],
+                showscale: false,
+                // Keep black outline for goals, otherwise use team color
+                line: isGoalTrace 
+                  ? { color: 'black', width: 3 }
+                  : { color: awayColor, width: 1 }
+              },
+              name: isGoalTrace ? `${away} Goal` : `${away}`,
+            };
+          }),
         ],
-        layout: { ...(homeData.layout || {}), title: `Shot Map — ${home} vs ${away}` },
+        layout: { 
+          ...(homeData.layout || {}),
+          title: `Shot Map — ${home} vs ${away}`,
+          showlegend: true,
+          legend: {
+            x: 0.5,
+            y: 1.05,
+            xanchor: 'center',
+            yanchor: 'bottom',
+            orientation: 'h',
+            bgcolor: 'rgba(255,255,255,0.8)',
+            bordercolor: '#ccc',
+            borderwidth: 1,
+            font: { size: 14, weight: 'bold' }
+          }
+        },
       };
       return result;
     } catch (err) {
@@ -117,6 +141,39 @@ export default function useVisualization() {
     try {
       const url = `${BACKEND_URL}/match/${encodeURIComponent(filename)}/passing_network?team=${encodeURIComponent(team)}&min_passes=${minPasses}&flip=${flip}`;
       const data = await _fetchJson(url);
+      
+      // Scale marker sizes to be more proportional
+      if (data && data.data) {
+        data.data = data.data.map(trace => {
+          if (trace.marker && trace.marker.size) {
+            // If size is an array, scale each value
+            if (Array.isArray(trace.marker.size)) {
+              const sizes = trace.marker.size;
+              const minSize = Math.min(...sizes);
+              const maxSize = Math.max(...sizes);
+              const range = maxSize - minSize;
+              
+              // Apply power scaling to make differences more pronounced
+              const scaledSizes = sizes.map(s => {
+                if (range === 0) return s;
+                const normalized = (s - minSize) / range;
+                const scaled = Math.pow(normalized, 0.5); // Power of 0.5 creates more dramatic differences
+                return minSize + (scaled * range * 2.5); // Multiply by 2.5 for larger overall sizes
+              });
+              
+              return {
+                ...trace,
+                marker: {
+                  ...trace.marker,
+                  size: scaledSizes
+                }
+              };
+            }
+          }
+          return trace;
+        });
+      }
+      
       return data;
     } catch (err) {
       console.error("Passing network fetch failed:", err);

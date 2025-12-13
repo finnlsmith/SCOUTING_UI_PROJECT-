@@ -98,10 +98,137 @@ export default function MatchViz() {
 
         {selectedMatch && (
           <>
-            {/* Main 3-panel row */}
-            <div className={styles.mainRow}>
-              {/* Match Facts */}
-              <div className={styles.matchFacts}>
+            <div className={styles.sectionDivider}></div>
+            
+            {/* Score/Round/Date Header */}
+            <div className={styles.visualizationHeader}>
+              <div className={styles.vizHeaderContent}>
+                <div className={styles.vizHeaderTeamSection}>
+                  <img 
+                    src={`${BACKEND_URL}/team-logo/${encodeURIComponent(stats.home_team)}`} 
+                    alt={stats.home_team}
+                    className={styles.teamLogo}
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                  <span className={styles.teamName}>{stats.home_team}</span>
+                </div>
+                <div className={styles.vizHeaderScoreSection}>
+                  <span className={styles.vizHeaderScore}>
+                    {Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "0 - 0"}
+              </span>
+                  <div className={styles.vizHeaderMeta}>
+                    {stats.competition_stage && <span className={styles.vizHeaderStage}>{stats.competition_stage}</span>}
+                    {selectedLabel && stats.competition_stage && <span className={styles.vizHeaderSeparator}>|</span>}
+                    {selectedLabel && <span className={styles.vizHeaderDate}>{selectedLabel.match(/\d{4}-\d{2}-\d{2}/)?.[0] || ""}</span>}
+                  </div>
+                </div>
+                <div className={styles.vizHeaderTeamSection}>
+                  <span className={styles.teamName}>{stats.away_team}</span>
+                  <img 
+                    src={`${BACKEND_URL}/team-logo/${encodeURIComponent(stats.away_team)}`} 
+                    alt={stats.away_team}
+                    className={styles.teamLogo}
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ========================================
+                MATCH TIMELINE - Sequential list of Goals, Red Cards, Own Goals
+                ======================================== */}
+            {importantMoments.length > 0 && (
+              <div className={styles.matchTimeline}>
+                <div className={styles.timelineList}>
+                  {/* Combine goals, own goals, and red cards, then sort by time */}
+                  {importantMoments
+                    .filter(moment => {
+                      return (moment.event_type === 'Shot' && moment.outcome === 'Goal') ||
+                             moment.event_type === 'Own Goal For' ||
+                             moment.event_type === 'Own Goal Against' ||
+                             moment.event_type === 'Red Card';
+                    })
+                    .sort((a, b) => {
+                      const [aMin] = a.when ? a.when.split(':').map(Number) : [0];
+                      const [bMin] = b.when ? b.when.split(':').map(Number) : [0];
+                      return aMin - bMin;
+                    })
+                    .map((moment, idx) => {
+                      const [min] = moment.when ? moment.when.split(':').map(Number) : [0];
+                      
+                      // Determine which team scored (own goals benefit the other team)
+                      const isOwnGoal = moment.event_type === 'Own Goal For' || moment.event_type === 'Own Goal Against';
+                      const isRedCard = moment.event_type === 'Red Card';
+                      let displayTeam = moment.team;
+                      
+                      if (moment.event_type === 'Own Goal For') {
+                        displayTeam = moment.team;
+                      } else if (moment.event_type === 'Own Goal Against') {
+                        displayTeam = moment.team === stats.home_team ? stats.away_team : stats.home_team;
+                      }
+                      
+                      const isHomeTeam = displayTeam === stats.home_team;
+                      
+                      // Icon and color
+                      let icon = '⚽';
+                      let color = isOwnGoal ? '#FF9800' : '#4CAF50';
+                      if (isRedCard) {
+                        icon = '🟥';
+                        color = '#D32F2F';
+                      }
+                      
+                      // Get player last name
+                      const playerName = moment.who || '';
+                      const lastName = playerName.includes(' ') ? playerName.split(' ').pop() : playerName;
+                      
+                      return (
+                        <div key={idx} className={styles.timelineRow}>
+                          {/* Home team side */}
+                          <div className={styles.timelineHomeCell}>
+                            {isHomeTeam && (
+                              <div className={styles.timelineEventContent}>
+                                <span className={styles.timelinePlayerName}>{lastName}</span>
+                                <div className={styles.timelineIcon} style={{ backgroundColor: color, borderRadius: isRedCard ? '3px' : '50%' }}>
+                                  {icon}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Minute in center */}
+                          <div className={styles.timelineMinuteCell}>
+                            {min}'
+                          </div>
+                          
+                          {/* Away team side */}
+                          <div className={styles.timelineAwayCell}>
+                            {!isHomeTeam && (
+                              <div className={styles.timelineEventContent}>
+                                <div className={styles.timelineIcon} style={{ backgroundColor: color, borderRadius: isRedCard ? '3px' : '50%' }}>
+                                  {icon}
+                                </div>
+                                <span className={styles.timelinePlayerName}>{lastName}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+            
+            {/* ========================================
+                ENTIRE MATCH SECTION 
+                ======================================== */}
+            <h2 className={styles.entireMatchTitle}>Entire Match</h2>
+
+            {/* ========================================
+                MAIN CONTENT ROW: MATCH FACTS + VISUALIZATIONS
+                ======================================== */}
+            <div className={styles.entireMatchRow}>
+              {/* --- MATCH FACTS SIDEBAR (LEFT) --- */}
+              <div className={styles.matchFactsSidebar}>
                 <h2 className={styles.matchFactsTitle}>Match Facts</h2>
                 <div className={styles.matchFactsCard}>
                   <Scoreboard {...formatScoreboardProps(stats)} />
@@ -119,9 +246,15 @@ export default function MatchViz() {
                       onChange={(e) => setFlipSides(e.target.checked)}
                       className={styles.flipSidesCheckbox}
                     />
-                    Flip Sides
+                  Flip Sides (applies to both)
                   </label>
                 </div>
+
+              {/* --- VISUALIZATIONS CONTAINER (RIGHT SIDE) --- */}
+              <div className={styles.visualizationsContainer}>
+                {/* --- SHOT MAPS COLUMN --- */}
+                <div className={styles.shotMapsColumn}>
+                <h2 className={styles.shotMapsTitle}>Shot Map</h2>
                 <div className={styles.buttonGroup}>
                   <button
                     onClick={async () => {

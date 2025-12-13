@@ -20,6 +20,9 @@ from collections import OrderedDict
 
 from utils.coords import _to_xy
 from visualizations.helpers import to_point, point_in_rect
+from config.settings import TEAM_COLORS
+import plotly.graph_objects as go
+from utils.pitch import make_pitch
 
 
 async def game_phases(filename: str):
@@ -35,6 +38,11 @@ async def game_phases(filename: str):
     Raises:
         HTTPException: File processing errors
     """
+    # Configuration: Substitution grouping window (in seconds)
+    # Substitutions within this window in the same period are grouped together
+    # Only the first substitution in each group creates a phase divider
+    SUBSTITUTION_GROUPING_WINDOW_SECONDS = 150
+    
     from cache import cache, s3
     
     cache_key = f"phases:{filename}:json"
@@ -66,6 +74,26 @@ async def game_phases(filename: str):
                 "phase_metrics": []
             }))
         home_team, away_team = team_names[:2]
+        
+        # Get starting XIs for both teams to track substitutions
+        starting_xis = {}
+        subs_by_team = {home_team: set(), away_team: set()}  # Track which players are subs
+        
+        if 'type' in events.columns:
+            starting_xi_rows = events[events['type'] == 'Starting XI']
+            for _, row in starting_xi_rows.iterrows():
+                team = row.get('team')
+                if team and team in [home_team, away_team]:
+                    try:
+                        tactics_str = row.get('tactics', '')
+                        if isinstance(tactics_str, str):
+                            tactics = ast.literal_eval(tactics_str) if tactics_str else {}
+                        else:
+                            tactics = tactics_str
+                        if 'lineup' in tactics:
+                            starting_xis[team] = tactics['lineup']
+                    except Exception:
+                        pass
 
         # Prepare sortable/time helper columns
         ev = events.copy()
@@ -86,6 +114,99 @@ async def game_phases(filename: str):
             sort_cols.extend(['minute_int', 'second_int'])
         if sort_cols:
             ev = ev.sort_values(sort_cols)
+        
+        # Group substitutions by 90-second windows within same period (after time columns are ready)
+        substitution_groups = []  # List of groups, each group is a list of substitution events
+        substitution_events = []  # Track all substitutions with timing
+        substitution_phase_dividers = set()  # Track (minute, second, period) of phase-dividing subs
+        
+        if 'type' in ev.columns:
+            substitution_rows = ev[ev['type'] == 'Substitution'].copy()
+            if not substitution_rows.empty:
+                # Sort by period, then time
+                substitution_rows = substitution_rows.sort_values(['period', 'minute_int', 'second_int'])
+                
+                # Group substitutions: within same period, group those within 90 seconds of the first sub in group
+                current_group = None
+                
+                for _, sub_row in substitution_rows.iterrows():
+                    team = sub_row.get('team')
+                    player_on = sub_row.get('substitution_replacement')
+                    minute = int(sub_row.get('minute_int', 0) or 0)
+                    second = int(sub_row.get('second_int', 0) or 0)
+                    period_val = int(sub_row.get('period')) if 'period' in sub_row and pd.notna(sub_row.get('period')) else None
+                    tsec = int(sub_row.get('tsec', minute * 60 + second))
+                    
+                    if not team or not player_on or team not in [home_team, away_team]:
+                        continue
+                    
+                    # Get player going off
+                    player_off = sub_row.get('player')
+                    
+                    # Get position of player going off from starting XI
+                    player_position_off = None
+                    if team in starting_xis:
+                        try:
+                            for item in starting_xis[team]:
+                                if isinstance(item, dict) and 'player' in item and 'name' in item['player']:
+                                    if item['player']['name'] == player_off:
+                                        player_position_off = item.get('position', {}).get('name', 'Unknown') if isinstance(item.get('position'), dict) else 'Unknown'
+                                        break
+                        except Exception:
+                            pass
+                    
+                    sub_event = {
+                        'team': team,
+                        'player_off': str(player_off) if player_off else None,
+                        'player_on': str(player_on),
+                        'position_off': player_position_off,
+                        'minute': minute,
+                        'second': second,
+                        'period': period_val,
+                        'tsec': tsec
+                    }
+                    
+                    # Check if this sub belongs to current group or starts a new one
+                    if current_group is None:
+                        # Start first group
+                        current_group = {
+                            'period': period_val,
+                            'first_tsec': tsec,
+                            'subs': [sub_event]
+                        }
+                    else:
+                        # Check if same period and within grouping window of first sub in group
+                        same_period = (current_group['period'] == period_val) or (current_group['period'] is None and period_val is None)
+                        within_window = (tsec - current_group['first_tsec']) <= SUBSTITUTION_GROUPING_WINDOW_SECONDS
+                        
+                        if same_period and within_window:
+                            # Add to current group
+                            current_group['subs'].append(sub_event)
+                        else:
+                            # Start new group
+                            substitution_groups.append(current_group)
+                            current_group = {
+                                'period': period_val,
+                                'first_tsec': tsec,
+                                'subs': [sub_event]
+                            }
+                
+                # Add last group
+                if current_group is not None:
+                    substitution_groups.append(current_group)
+                
+                # Mark phase dividers and flatten substitution_events for tracking
+                for group in substitution_groups:
+                    # First sub in group is the phase divider
+                    first_sub = group['subs'][0]
+                    key = (first_sub['minute'], first_sub['second'], first_sub['period'])
+                    substitution_phase_dividers.add(key)
+                    
+                    # Add all subs in group to substitution_events for tracking
+                    for sub_event in group['subs']:
+                        substitution_events.append(sub_event)
+                        # Track subs by team
+                        subs_by_team[sub_event['team']].add(sub_event['player_on'])
 
         # Collect Half Start times by period
         half_starts_by_period = {}
@@ -156,6 +277,77 @@ async def game_phases(filename: str):
                     }
                     reasons.append('goal')
                     score_after = (score[home_team], score[away_team])
+
+            # Woodwork/Post/Saved to Post as phase divider (with 30-second caveat)
+            # Logic: If there's another shot within 30 seconds AFTER a Woodwork/Post/Saved to Post shot,
+            # the phase should end with that later shot. Otherwise, end with the Woodwork/Post shot.
+            if row.get('type') == 'Shot':
+                shot_outcome = str(row.get('shot_outcome', '')).lower()
+                
+                # Check if this shot is within 30 seconds of a previous Woodwork/Post/Saved to Post shot
+                # If so, and this is the last shot in that sequence, make it a divider
+                lookback_start_tsec = max(0, tsec - 30)
+                time_mask_back = (ev['tsec'] >= lookback_start_tsec) & (ev['tsec'] < tsec)
+                
+                if period_val is not None and 'period' in ev.columns:
+                    period_int = pd.to_numeric(ev['period'], errors='coerce')
+                    same_period_mask_back = (period_int == period_val) & pd.notna(period_int)
+                    lookback_events = ev[same_period_mask_back & time_mask_back]
+                else:
+                    lookback_events = ev[time_mask_back]
+                
+                # Check for Woodwork/Post/Saved to Post in lookback window
+                if not lookback_events.empty:
+                    woodwork_shots = lookback_events[
+                        (lookback_events['type'] == 'Shot') & 
+                        (lookback_events['shot_outcome'].astype(str).str.lower().isin(['woodwork', 'post', 'saved to post']))
+                    ]
+                    if not woodwork_shots.empty:
+                        # Found a Woodwork/Post/Saved to Post shot in the last 30 seconds
+                        # Check if this is the last shot within 30 seconds of that Woodwork shot
+                        woodwork_tsec = woodwork_shots['tsec'].max()  # Get the most recent one
+                        woodwork_lookahead_end = woodwork_tsec + 30
+                        
+                        # Check if there are any shots after this one within 30 seconds of the Woodwork shot
+                        time_mask_forward = (ev['tsec'] > tsec) & (ev['tsec'] <= woodwork_lookahead_end)
+                        if period_val is not None and 'period' in ev.columns:
+                            period_int = pd.to_numeric(ev['period'], errors='coerce')
+                            same_period_mask_forward = (period_int == period_val) & pd.notna(period_int)
+                            future_events = ev[same_period_mask_forward & time_mask_forward]
+                        else:
+                            future_events = ev[time_mask_forward]
+                        
+                        future_shots = future_events[future_events['type'] == 'Shot']
+                        if future_shots.empty:
+                            # This is the last shot in the sequence, make it a divider
+                            reasons.append('woodwork_post')
+                
+                # Also handle the case where this IS a Woodwork/Post/Saved to Post shot
+                if shot_outcome in ['woodwork', 'post', 'saved to post']:
+                    # Check if there are ANY other shots within 30 seconds AFTER this event
+                    lookahead_end_tsec = tsec + 30
+                    time_mask_forward = (ev['tsec'] > tsec) & (ev['tsec'] <= lookahead_end_tsec)
+                    
+                    if period_val is not None and 'period' in ev.columns:
+                        period_int = pd.to_numeric(ev['period'], errors='coerce')
+                        same_period_mask_forward = (period_int == period_val) & pd.notna(period_int)
+                        lookahead_events = ev[same_period_mask_forward & time_mask_forward]
+                    else:
+                        lookahead_events = ev[time_mask_forward]
+                    
+                    # Check for ANY other shots in lookahead window
+                    other_shots = lookahead_events[lookahead_events['type'] == 'Shot'] if not lookahead_events.empty else pd.DataFrame()
+                    if other_shots.empty:
+                        # No other shots in the next 30 seconds, so this Woodwork/Post shot should divide the phase
+                        # (But only if we haven't already added it as a divider from the backward check above)
+                        if 'woodwork_post' not in reasons:
+                            reasons.append('woodwork_post')
+            
+            # Substitution as phase divider (only if it's the first sub in a 90-second group)
+            if row.get('type') == 'Substitution':
+                # Check if this substitution is a phase divider (first in its group)
+                if key in substitution_phase_dividers:
+                    reasons.append('substitution')
 
             if reasons:
                 if key not in marks:
@@ -232,6 +424,11 @@ async def game_phases(filename: str):
                     'break_reasons': ['match_end'],
                 })
 
+        # Track subs per phase: accumulate subs from all previous phases
+        # subs_by_phase[phase_idx] = {team: set of player names who are subs}
+        subs_by_phase = {}
+        current_subs = {home_team: set(), away_team: set()}  # Accumulate subs as we go through phases
+        
         # Right penalty box and final-third rectangles
         penalty_box_rect = (102, 18, 120, 62)
         final_third_rect = (80, 0, 120, 80)
@@ -266,6 +463,108 @@ async def game_phases(filename: str):
                 em = ph.get('end_minute'); em = int(em) if em is not None else sm
                 es = ph.get('end_second'); es = int(es) if es is not None else ss
                 sp = ph.get('start_period'); sp = int(sp) if sp is not None else None
+                ep = ph.get('end_period'); ep = int(ep) if ep is not None else sp
+                
+                # Track substitutions that occurred at the START of this phase or during the 90-second window
+                # If a phase starts with a substitution (phase divider), mark all subs from that 90-second group
+                phase_start_tsec = sm * 60 + ss
+                phase_end_tsec = em * 60 + es
+                
+                # Find if this phase starts with a substitution (phase divider)
+                phase_start_key = (sm, ss, sp)
+                phase_starts_with_sub = phase_start_key in substitution_phase_dividers
+                
+                if phase_starts_with_sub:
+                    # Find the substitution group that this phase divider belongs to
+                    for group in substitution_groups:
+                        first_sub = group['subs'][0]
+                        if (first_sub['minute'], first_sub['second'], first_sub['period']) == phase_start_key:
+                            # Mark all players subbed on during this 90-second window (all subs in the group)
+                            for sub_event in group['subs']:
+                                team = sub_event['team']
+                                player_on = sub_event['player_on']
+                                if team in current_subs:
+                                    current_subs[team].add(player_on)
+                            break
+                else:
+                    # Check for any substitutions during this phase (not phase dividers, but still mark them)
+                    for sub_event in substitution_events:
+                        sub_tsec = sub_event['tsec']
+                        sub_period = sub_event.get('period')
+                        period_match = (sp is None and sub_period is None) or (sp == sub_period)
+                        if period_match:
+                            # Check if substitution happened during this phase
+                            if phase_start_tsec < sub_tsec <= phase_end_tsec:
+                                team = sub_event['team']
+                                player_on = sub_event['player_on']
+                                if team in current_subs:
+                                    current_subs[team].add(player_on)
+                
+                # Store current subs for this phase (includes all subs from previous phases + any in this phase)
+                subs_by_phase[ph['phase_idx']] = {
+                    home_team: current_subs[home_team].copy(),
+                    away_team: current_subs[away_team].copy()
+                }
+                
+                # Track substitutions that occurred in this phase (for display)
+                phase_substitutions = {home_team: [], away_team: []}
+                phase_start_tsec = sm * 60 + ss
+                phase_end_tsec = em * 60 + es
+                phase_start_key = (sm, ss, sp)
+                
+                # Track which substitutions we've already added (to avoid duplicates)
+                added_sub_keys = set()
+                
+                # Check if this phase STARTS with a substitution (phase divider)
+                # Substitutions should only appear in the phase that STARTS with them, not the one that ends with them
+                phase_starts_with_sub = phase_start_key in substitution_phase_dividers
+                
+                # If phase starts with a substitution, include all subs from that group
+                if phase_starts_with_sub:
+                    for group in substitution_groups:
+                        first_sub = group['subs'][0]
+                        if (first_sub['minute'], first_sub['second'], first_sub['period']) == phase_start_key:
+                            # Add all substitutions from this group (both phase divider and others in the 150s window)
+                            for sub_event in group['subs']:
+                                team = sub_event['team']
+                                sub_key = (sub_event['minute'], sub_event['second'], sub_event.get('period'))
+                                
+                                # Mark this sub as added
+                                added_sub_keys.add(sub_key)
+                                
+                                if team in phase_substitutions:
+                                    phase_substitutions[team].append({
+                                        'player_off': sub_event.get('player_off'),
+                                        'player_on': sub_event.get('player_on'),
+                                        'position_off': sub_event.get('position_off'),
+                                        'minute': sub_event['minute'],
+                                        'second': sub_event['second']
+                                    })
+                            break
+                
+                # Also check for any other substitutions during this phase (not already added, and not phase dividers)
+                for sub_event in substitution_events:
+                    sub_tsec = sub_event['tsec']
+                    sub_period = sub_event.get('period')
+                    sub_key = (sub_event['minute'], sub_event['second'], sub_period)
+                    period_match = (sp is None and sub_period is None) or (sp == sub_period)
+                    
+                    # Skip if already added (from phase divider group) or if it's a phase divider
+                    if sub_key in added_sub_keys or sub_key in substitution_phase_dividers:
+                        continue
+                    
+                    # Check if substitution happened during this phase (after start, before or at end)
+                    # But exclude substitutions at phase boundaries (they belong to the phase that starts with them)
+                    if period_match and phase_start_tsec < sub_tsec < phase_end_tsec:
+                        team = sub_event['team']
+                        if team in phase_substitutions:
+                            phase_substitutions[team].append({
+                                'player_off': sub_event.get('player_off'),
+                                'player_on': sub_event.get('player_on'),
+                                'position_off': sub_event.get('position_off'),
+                                'minute': sub_event['minute'],
+                                'second': sub_event['second']
+                            })
 
                 # Time range: exclude start instant; include end instant
                 base_mask = (
@@ -340,54 +639,108 @@ async def game_phases(filename: str):
                             away_poss_final.add(int(r['possession']))
                 final_third_entries_dedup = {home_team: len(home_poss_final), away_team: len(away_poss_final)}
 
+                # Helper function to determine box entry outcome color
+                def get_box_entry_color(row, team_name, ev_phase_df):
+                    """Check next 10 seconds for goal, own goal, or shot"""
+                    if 'timestamp' not in row.index or 'minute_int' not in row.index or 'second_int' not in row.index:
+                        return '#FF9800'  # default carry color or '#2196F3' for pass
+                    
+                    entry_timestamp = row.get('timestamp')
+                    entry_minute = row.get('minute_int')
+                    entry_second = row.get('second_int')
+                    
+                    if pd.isna(entry_timestamp) or pd.isna(entry_minute) or pd.isna(entry_second):
+                        return '#FF9800'
+                    
+                    # Look for events in next 10 seconds
+                    future_events = ev_phase_df[
+                        (ev_phase_df['minute_int'] == entry_minute) & (ev_phase_df['second_int'] > entry_second) & (ev_phase_df['second_int'] <= entry_second + 10) |
+                        (ev_phase_df['minute_int'] == entry_minute + 1) & (ev_phase_df['second_int'] <= (entry_second + 10) % 60)
+                    ]
+                    
+                    # Check for goal by same team
+                    goals = future_events[
+                        (future_events['type'] == 'Shot') & 
+                        (future_events.get('shot_outcome') == 'Goal') &
+                        (future_events['possession_team'] == team_name)
+                    ]
+                    if not goals.empty:
+                        return '#00C853'  # Green for goal
+                    
+                    # Check for own goal for (helps attacking team)
+                    own_goals = future_events[
+                        (future_events['type'] == 'Own Goal For') &
+                        (future_events['team'] == team_name)
+                    ]
+                    if not own_goals.empty:
+                        return '#69F0AE'  # Light green for own goal
+                    
+                    # Check for any shot by same team
+                    shots = future_events[
+                        (future_events['type'] == 'Shot') &
+                        (future_events['possession_team'] == team_name)
+                    ]
+                    if not shots.empty:
+                        return '#FFF59D'  # Pale yellow for shot
+                    
+                    return None  # Use default type-based color
+
                 # Box entries dedup (by possession across carries and passes)
                 home_poss_box, away_poss_box = set(), set()
                 home_box_locations, away_box_locations = [], []
                 
                 if not carry_phase.empty and 'possession' in carry_phase.columns:
-                    cb = carry_phase[(carry_phase['in_box']) & carry_phase['team'].notna()]
-                    for _, r in cb[['team', 'possession', 'start_point', 'point']].iterrows():
+                    cb = carry_phase[(carry_phase['in_box']) & carry_phase['team'].notna()].copy()
+                    for idx, r in cb.iterrows():
                         poss_num = int(r['possession'])
                         if r['team'] == home_team:
                             if poss_num not in home_poss_box:
                                 home_poss_box.add(poss_num)
                                 if r['start_point'] and r['point']:
+                                    color = get_box_entry_color(r, home_team, ev_phase)
                                     home_box_locations.append({
                                         'x1': r['start_point'][0], 'y1': r['start_point'][1],
                                         'x2': r['point'][0], 'y2': r['point'][1],
-                                        'type': 'carry'
+                                        'type': 'carry',
+                                        'color': color
                                     })
                         elif r['team'] == away_team:
                             if poss_num not in away_poss_box:
                                 away_poss_box.add(poss_num)
                                 if r['start_point'] and r['point']:
+                                    color = get_box_entry_color(r, away_team, ev_phase)
                                     away_box_locations.append({
                                         'x1': r['start_point'][0], 'y1': r['start_point'][1],
                                         'x2': r['point'][0], 'y2': r['point'][1],
-                                        'type': 'carry'
+                                        'type': 'carry',
+                                        'color': color
                                     })
                 
                 if not pass_phase.empty and 'possession' in pass_phase.columns:
-                    pb = pass_phase[(pass_phase['in_box']) & pass_phase['team'].notna()]
-                    for _, r in pb[['team', 'possession', 'start_point', 'point']].iterrows():
+                    pb = pass_phase[(pass_phase['in_box']) & pass_phase['team'].notna()].copy()
+                    for idx, r in pb.iterrows():
                         poss_num = int(r['possession'])
                         if r['team'] == home_team:
                             if poss_num not in home_poss_box:
                                 home_poss_box.add(poss_num)
                                 if r['start_point'] and r['point']:
+                                    color = get_box_entry_color(r, home_team, ev_phase)
                                     home_box_locations.append({
                                         'x1': r['start_point'][0], 'y1': r['start_point'][1],
                                         'x2': r['point'][0], 'y2': r['point'][1],
-                                        'type': 'pass'
+                                        'type': 'pass',
+                                        'color': color  #0==0
                                     })
                         elif r['team'] == away_team:
                             if poss_num not in away_poss_box:
                                 away_poss_box.add(poss_num)
                                 if r['start_point'] and r['point']:
+                                    color = get_box_entry_color(r, away_team, ev_phase)
                                     away_box_locations.append({
                                         'x1': r['start_point'][0], 'y1': r['start_point'][1],
                                         'x2': r['point'][0], 'y2': r['point'][1],
-                                        'type': 'pass'
+                                        'type': 'pass',
+                                        'color': color
                                     })
                 
                 box_entries_dedup = {home_team: len(home_poss_box), away_team: len(away_poss_box)}
@@ -589,6 +942,393 @@ async def game_phases(filename: str):
                             'event_type': 'own_goal'
                         })
 
+                # ===== PASSING NETWORK DATA PER TEAM =====
+                def _empty_passing_fig(title):
+                    """Return a blank pitch figure."""
+                    fig = go.Figure()
+                    fig = make_pitch(fig)
+                    fig.update_layout(
+                        title=title,
+                        xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
+                        yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
+                        plot_bgcolor='white',
+                        height=600,
+                        width=900
+                    )
+                    fig.update_yaxes(autorange='reversed')
+                    return fig.to_dict()
+                
+                def generate_phase_passing_network(phase_events_df, team_name, flip=False, subs_set=None):
+                    """Generate passing network data for a team in this phase.
+                    
+                    Args:
+                        phase_events_df: Events for this phase
+                        team_name: Team name
+                        flip: Whether to flip coordinates
+                        subs_set: Set of player names who are subs (to mark with bright ring)
+                    """
+                    if subs_set is None:
+                        subs_set = set()
+                    try:
+                        # Filter to this team's completed passes
+                        passes = phase_events_df[
+                            (phase_events_df['type'] == 'Pass') & 
+                            (phase_events_df['team'] == team_name)
+                        ].copy()
+                        
+                        if passes.empty or 'pass_outcome' not in passes.columns:
+                            return _empty_passing_fig(f'Passing Network — {team_name} (no pass data)')
+                        
+                        # Only completed passes (pass_outcome is NaN)
+                        passes = passes[passes['pass_outcome'].isna()].copy()
+                        if passes.empty:
+                            return _empty_passing_fig(f'Passing Network — {team_name} (no completed passes)')
+                        
+                        # Get coordinates
+                        passes[['sx', 'sy']] = passes['location'].apply(_to_xy).to_list()
+                        passes[['ex', 'ey']] = passes['pass_end_location'].apply(_to_xy).to_list()
+                        
+                        # Remove passes with invalid coordinates
+                        passes = passes[
+                            passes['sx'].notna() & passes['sy'].notna() &
+                            passes['ex'].notna() & passes['ey'].notna()
+                        ].copy()
+                        
+                        if passes.empty:
+                            return _empty_passing_fig(f'Passing Network — {team_name} (no valid pass locations)')
+                        
+                        # Create player IDs from names
+                        if 'player' in passes.columns:
+                            passes['src_name'] = passes['player'].astype(str)
+                        if 'pass_recipient' in passes.columns:
+                            passes['dst_name'] = passes['pass_recipient'].astype(str)
+                        
+                        # Create consistent IDs from names
+                        all_names = set()
+                        if 'src_name' in passes.columns:
+                            all_names.update(passes['src_name'].dropna().astype(str))
+                        if 'dst_name' in passes.columns:
+                            all_names.update(passes['dst_name'].dropna().astype(str))
+                        
+                        name_to_id = {n: i for i, n in enumerate(sorted(all_names))}
+                        passes['src_id'] = passes['src_name'].map(name_to_id) if 'src_name' in passes.columns else None
+                        passes['dst_id'] = passes['dst_name'].map(name_to_id) if 'dst_name' in passes.columns else None
+                        
+                        # Map id -> display name
+                        id_to_name = {}
+                        if 'player' in passes.columns:
+                            id_to_name.update(
+                                passes[['src_id', 'player']].dropna().drop_duplicates('src_id')
+                                .set_index('src_id')['player'].astype(str).to_dict()
+                            )
+                        if 'pass_recipient' in passes.columns:
+                            id_to_name.update(
+                                passes[['dst_id', 'pass_recipient']].dropna().drop_duplicates('dst_id')
+                                .set_index('dst_id')['pass_recipient'].astype(str).to_dict()
+                            )
+                        
+                        # Touches (all events for the team in this phase)
+                        touches = (
+                            phase_events_df.loc[
+                                (phase_events_df['team'] == team_name) & 
+                                phase_events_df['player'].notna()
+                            ]
+                            .groupby('player', as_index=False)
+                            .size()
+                            .rename(columns={'size': 'touches', 'player': 'player_name'})
+                        )
+                        
+                        # Map player names to IDs
+                        if not touches.empty and 'player_name' in touches.columns:
+                            touches['player_id'] = touches['player_name'].astype(str).map(name_to_id)
+                            touches = touches[touches['player_id'].notna()]
+                        
+                        # Calculate player action metrics for color coding
+                        player_actions = {}
+                        
+                        # Helper to parse location
+                        def parse_loc(loc_val):
+                            if isinstance(loc_val, (list, tuple)) and len(loc_val) >= 2:
+                                return float(loc_val[0]), float(loc_val[1])
+                            if isinstance(loc_val, str):
+                                try:
+                                    arr = json.loads(loc_val)
+                                    if isinstance(arr, (list, tuple)) and len(arr) >= 2:
+                                        return float(arr[0]), float(arr[1])
+                                except:
+                                    try:
+                                        arr = ast.literal_eval(loc_val)
+                                        if isinstance(arr, (list, tuple)) and len(arr) >= 2:
+                                            return float(arr[0]), float(arr[1])
+                                    except:
+                                        pass
+                            return (np.nan, np.nan)
+                        
+                        # GREEN: xG from shots
+                        shots_phase = phase_events_df[
+                            (phase_events_df['type'] == 'Shot') & 
+                            (phase_events_df['team'] == team_name) &
+                            phase_events_df['player'].notna()
+                        ]
+                        for _, shot_row in shots_phase.iterrows():
+                            player = str(shot_row.get('player', ''))
+                            # Try different xG column names
+                            xg_val = 0.0
+                            if 'shot_statsbomb_xg' in shot_row and pd.notna(shot_row.get('shot_statsbomb_xg')):
+                                xg_val = float(shot_row.get('shot_statsbomb_xg'))
+                            elif 'xg' in shot_row and pd.notna(shot_row.get('xg')):
+                                xg_val = float(shot_row.get('xg'))
+                            
+                            if player not in player_actions:
+                                player_actions[player] = {'xg': 0.0, 'yellow_actions': 0, 'red_actions': 0}
+                            player_actions[player]['xg'] += xg_val
+                        
+                        # YELLOW: Progressive passes, final third passes, box passes, carries
+                        # Progressive passes: end in final third (x >= 80) AND travel >= 10 pythagorean distance AND gain in X
+                        # OR don't end in final third BUT start at x >= 60 AND gain at least 15 in X
+                        passes_phase = phase_events_df[
+                            (phase_events_df['type'] == 'Pass') & 
+                            (phase_events_df['team'] == team_name) &
+                            phase_events_df['player'].notna()
+                        ]
+                        # Filter out incomplete passes (keep NaN/completed passes)
+                        if 'pass_outcome' in passes_phase.columns:
+                            passes_phase = passes_phase[
+                                passes_phase['pass_outcome'].isna() | 
+                                (passes_phase['pass_outcome'] != 'Incomplete')
+                            ]
+                        for _, pass_row in passes_phase.iterrows():
+                            player = str(pass_row.get('player', ''))
+                            if player not in player_actions:
+                                player_actions[player] = {'xg': 0.0, 'yellow_actions': 0, 'red_actions': 0}
+                            
+                            start_loc = parse_loc(pass_row.get('location'))
+                            end_loc = parse_loc(pass_row.get('pass_end_location'))
+                            
+                            if pd.isna(start_loc[0]) or pd.isna(end_loc[0]):
+                                continue
+                            
+                            start_x, start_y = start_loc
+                            end_x, end_y = end_loc
+                            
+                            # Check if progressive pass
+                            is_progressive = False
+                            if end_x >= 80:  # Ends in final third
+                                dist = np.sqrt((end_x - start_x)**2 + (end_y - start_y)**2)
+                                if dist >= 10 and end_x > start_x:  # Travel >= 10 and gain in X
+                                    is_progressive = True
+                            elif start_x >= 60:  # Starts at x >= 60
+                                if end_x - start_x >= 15:  # Gain at least 15 in X
+                                    is_progressive = True
+                            
+                            # Check if final third pass (ends in final third, x >= 80)
+                            is_final_third = end_x >= 80
+                            
+                            # Check if box pass (ends in box: x >= 102, y between 18-62)
+                            is_box_pass = end_x >= 102 and 18 <= end_y <= 62
+                            
+                            if is_progressive or is_final_third or is_box_pass:
+                                player_actions[player]['yellow_actions'] += 1
+                        
+                        # YELLOW: Carries where carry_end_location x >= 80
+                        carries_phase = phase_events_df[
+                            (phase_events_df['type'] == 'Carry') & 
+                            (phase_events_df['team'] == team_name) &
+                            phase_events_df['player'].notna()
+                        ]
+                        for _, carry_row in carries_phase.iterrows():
+                            player = str(carry_row.get('player', ''))
+                            if player not in player_actions:
+                                player_actions[player] = {'xg': 0.0, 'yellow_actions': 0, 'red_actions': 0}
+                            
+                            end_loc = parse_loc(carry_row.get('carry_end_location'))
+                            if not pd.isna(end_loc[0]) and end_loc[0] >= 80:
+                                player_actions[player]['yellow_actions'] += 1
+                        
+                        # RED: Defensive actions (tackles, interceptions, clearances)
+                        tackles_phase = phase_events_df[
+                            (phase_events_df['type'] == 'Tackle') & 
+                            (phase_events_df['team'] == team_name) &
+                            phase_events_df['player'].notna()
+                        ]
+                        for _, tackle_row in tackles_phase.iterrows():
+                            player = str(tackle_row.get('player', ''))
+                            if player not in player_actions:
+                                player_actions[player] = {'xg': 0.0, 'yellow_actions': 0, 'red_actions': 0}
+                            player_actions[player]['red_actions'] += 1
+                        
+                        interceptions_phase = phase_events_df[
+                            (phase_events_df['type'] == 'Interception') & 
+                            (phase_events_df['team'] == team_name) &
+                            phase_events_df['player'].notna()
+                        ]
+                        for _, int_row in interceptions_phase.iterrows():
+                            player = str(int_row.get('player', ''))
+                            if player not in player_actions:
+                                player_actions[player] = {'xg': 0.0, 'yellow_actions': 0, 'red_actions': 0}
+                            player_actions[player]['red_actions'] += 1
+                        
+                        clearances_phase = phase_events_df[
+                            (phase_events_df['type'] == 'Clearance') & 
+                            (phase_events_df['team'] == team_name) &
+                            phase_events_df['player'].notna()
+                        ]
+                        for _, clear_row in clearances_phase.iterrows():
+                            player = str(clear_row.get('player', ''))
+                            if player not in player_actions:
+                                player_actions[player] = {'xg': 0.0, 'yellow_actions': 0, 'red_actions': 0}
+                            player_actions[player]['red_actions'] += 1
+                        
+                        # Convert actions to RGB colors
+                        def actions_to_color(xg, yellow_count, red_count):
+                            # Grey base
+                            base_grey = 120
+                            r, g, b = base_grey, base_grey, base_grey
+                            
+                            # Green: 0 xG = 0 green, 2+ xG = 255 green (linear)
+                            green_intensity = min(255, int((xg / 2.0) * 255)) if xg > 0 else 0
+                            g = min(255, base_grey + green_intensity)
+                            
+                            # Yellow: 0 actions = 0 yellow, 20+ actions = 255 yellow (linear)
+                            yellow_intensity = min(255, int((yellow_count / 20.0) * 255)) if yellow_count > 0 else 0
+                            r = min(255, base_grey + yellow_intensity)
+                            g = min(255, g + yellow_intensity)
+                            
+                            # Red: 0 actions = 0 red, 20+ actions = 255 red (linear)
+                            red_intensity = min(255, int((red_count / 20.0) * 255)) if red_count > 0 else 0
+                            r = min(255, base_grey + red_intensity)
+                            
+                            return f'rgb({r}, {g}, {b})'
+                        
+                        # Average positions: mean of start (as passer) + end (as receiver)
+                        start_pos = passes.groupby('src_id')[['sx', 'sy']].mean().rename(columns={'sx': 'x_s', 'sy': 'y_s'})
+                        recv_pos = passes.groupby('dst_id')[['ex', 'ey']].mean().rename(columns={'ex': 'x_r', 'ey': 'y_r'})
+                        recv_pos.index.name = 'src_id'
+                        avg_pos = start_pos.join(recv_pos, how='outer').reset_index(names=['player_id'])
+                        avg_pos['x'] = avg_pos[['x_s', 'x_r']].mean(axis=1, skipna=True)
+                        avg_pos['y'] = avg_pos[['y_s', 'y_r']].mean(axis=1, skipna=True)
+                        avg_pos = avg_pos[['player_id', 'x', 'y']]
+                        
+                        # Edges: pass counts between pairs
+                        edges = (
+                            passes.groupby(['src_id', 'dst_id'], dropna=True)
+                            .size().rename('count').reset_index()
+                            .rename(columns={'src_id': 'player_id', 'dst_id': 'pass_recipient_id'})
+                        )
+                        edges = edges[edges['count'] >= 1]  # At least 1 pass
+                        
+                        # Nodes table
+                        nodes = avg_pos.merge(touches[['player_id', 'touches']], on='player_id', how='left')
+                        nodes['touches'] = nodes['touches'].fillna(0).astype(int)
+                        nodes['name'] = nodes['player_id'].map(id_to_name).fillna(nodes['player_id'].astype(str))
+                        
+                        if flip:
+                            nodes['x'] = 120 - nodes['x']
+                        
+                        # Merge node coords onto edges
+                        edges = edges.merge(
+                            nodes[['player_id', 'x', 'y']].rename(columns={'player_id': 'player_id_src', 'x': 'sx', 'y': 'sy'}),
+                            left_on='player_id', right_on='player_id_src', how='left'
+                        ).merge(
+                            nodes[['player_id', 'x', 'y']].rename(columns={'player_id': 'player_id_dst', 'x': 'ex', 'y': 'ey'}),
+                            left_on='pass_recipient_id', right_on='player_id_dst', how='left'
+                        )
+                        
+                        # Build Plotly figure
+                        fig = go.Figure()
+                        
+                        # Edges: gray lines, width ~ log(pass count)
+                        if not edges.empty:
+                            for r in edges.itertuples(index=False):
+                                sx, sy, ex, ey = float(r.sx), float(r.sy), float(r.ex), float(r.ey)
+                                if pd.isna(sx) or pd.isna(sy) or pd.isna(ex) or pd.isna(ey):
+                                    continue
+                                width = float(0.5 + 0.5 * np.log1p(int(r.count)))
+                                fig.add_trace(go.Scatter(
+                                    x=[sx, ex], y=[sy, ey],
+                                    mode='lines',
+                                    line=dict(width=width, color='gray'),
+                                    opacity=0.5,
+                                    hoverinfo='text',
+                                    text=f"{id_to_name.get(r.player_id, r.player_id)} → {id_to_name.get(r.pass_recipient_id, r.pass_recipient_id)}<br>passes: {int(r.count)}",
+                                    showlegend=False,
+                                ))
+                        
+                        # Nodes: size ~ touches (increased for phase-specific networks)
+                        if not nodes.empty:
+                            size_list = (20 + 0.08 * nodes['touches']).clip(lower=12, upper=45).astype(float).tolist()
+                            touches_list = nodes['touches'].astype(int).tolist()
+                            x_list = nodes['x'].astype(float).tolist()
+                            y_list = nodes['y'].astype(float).tolist()
+                            text_list = nodes['name'].astype(str).tolist()
+                            
+                            # Calculate colors based on actions
+                            color_list = []
+                            for name in text_list:
+                                actions = player_actions.get(str(name), {'xg': 0.0, 'yellow_actions': 0, 'red_actions': 0})
+                                color = actions_to_color(actions['xg'], actions['yellow_actions'], actions['red_actions'])
+                                color_list.append(color)
+                            
+                            # Identify which players are subs
+                            is_sub_list = [str(name) in subs_set for name in text_list]
+                            
+                            # Add regular player nodes with action-based colors
+                            fig.add_trace(go.Scatter(
+                                x=x_list, y=y_list,
+                                mode='markers+text',
+                                text=text_list,
+                                textposition='top center',
+                                marker=dict(size=size_list, line=dict(width=2, color='black'), color=color_list),
+                                hoverinfo='text',
+                                textfont=dict(size=11),
+                                name='players',
+                                customdata=[[t] for t in touches_list],
+                                hovertemplate='<b>%{text}</b><br>touches: %{customdata[0]}<extra></extra>',
+                            ))
+                            
+                            # Add bright colored rings for subs (larger outer ring)
+                            sub_x = [x_list[i] for i in range(len(x_list)) if is_sub_list[i]]
+                            sub_y = [y_list[i] for i in range(len(y_list)) if is_sub_list[i]]
+                            sub_sizes = [size_list[i] + 10 for i in range(len(size_list)) if is_sub_list[i]]  # +10 for ring (increased proportionally)
+                            sub_text = [text_list[i] for i in range(len(text_list)) if is_sub_list[i]]
+                            
+                            if sub_x:  # Only add if there are subs
+                                fig.add_trace(go.Scatter(
+                                    x=sub_x, y=sub_y,
+                                    mode='markers',
+                                    marker=dict(
+                                        size=sub_sizes,
+                                        line=dict(width=3, color='#FFD700'),  # Bright gold/yellow ring
+                                        color='rgba(255, 215, 0, 0)',  # Transparent fill
+                                        symbol='circle'
+                                    ),
+                                    hoverinfo='text',
+                                    text=sub_text,
+                                    hovertemplate='<b>%{text}</b> (Substitute)<extra></extra>',
+                                    name='subs',
+                                    showlegend=False,
+                                ))
+                        
+                        fig = make_pitch(fig)
+                        fig.update_layout(
+                            title=f'Passing Network — {team_name} (size ~ touches)',
+                            xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
+                            yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
+                            plot_bgcolor='white', height=600, width=900
+                        )
+                        fig.update_yaxes(autorange='reversed')
+                        
+                        return fig.to_dict()
+                    except Exception as e:
+                        # Return blank pitch on error (don't break phase metrics)
+                        return _empty_passing_fig(f'Passing Network — {team_name} (error generating network)')
+                
+                # Generate passing networks for both teams (with subs tracking)
+                phase_subs = subs_by_phase.get(ph['phase_idx'], {home_team: set(), away_team: set()})
+                passing_networks = {}
+                passing_networks[home_team] = generate_phase_passing_network(ev_phase, home_team, flip=False, subs_set=phase_subs.get(home_team, set()))
+                passing_networks[away_team] = generate_phase_passing_network(ev_phase, away_team, flip=True, subs_set=phase_subs.get(away_team, set()))
+
                 phase_metrics.append({
                     'phase_idx': ph['phase_idx'],
                     'start_minute': sm,
@@ -609,6 +1349,8 @@ async def game_phases(filename: str):
                     'score_at_start': score_start_counts,
                     'score_at_end': score_end_counts,
                     'shot_map_data': shot_map_data,
+                    'passing_networks': passing_networks,
+                    'substitutions': phase_substitutions,
                 })
 
         result = {

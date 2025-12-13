@@ -1,11 +1,12 @@
 .select {
   width: 100%;
-  padding: var(--spacing-sm);
-  font-size: var(--font-size-base);
+  padding: 16px 20px;
+  font-size: 18px;
   border-radius: var(--radius-sm);
   border: 1.1px solid #aaa;
   background: var(--color-bg-white);
   margin-bottom: 7px;
+  min-height: 50px;
 }
 
 .select:focus {
