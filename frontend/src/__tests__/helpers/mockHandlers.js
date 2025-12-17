@@ -4,12 +4,12 @@
 // Use require for compatibility with Jest
 const { http, HttpResponse } = require('msw');
 
-// Base URL for API
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+// Base URL for API (hooks use /api suffix)
+const API_BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000/api';
 
 export const handlers = [
-  // GET /api/matches
-  http.get(`${API_BASE}/api/matches`, () => {
+  // GET /matches
+  http.get(`${API_BASE}/matches`, () => {
     return HttpResponse.json([
       {
         file: 'events_3788741.csv',
@@ -26,8 +26,8 @@ export const handlers = [
     ]);
   }),
 
-  // GET /api/match/{filename}/viz
-  http.get(`${API_BASE}/api/match/:filename/viz`, ({ params }) => {
+  // GET /match/{filename}/viz
+  http.get(`${API_BASE}/match/:filename/viz`, ({ params }) => {
     const { filename } = params;
     
     if (filename === 'nonexistent.csv') {
@@ -56,8 +56,8 @@ export const handlers = [
     });
   }),
 
-  // GET /api/match/{filename}/important_moments
-  http.get(`${API_BASE}/api/match/:filename/important_moments`, ({ params }) => {
+  // GET /match/{filename}/important_moments
+  http.get(`${API_BASE}/match/:filename/important_moments`, ({ params }) => {
     const { filename } = params;
     
     if (filename === 'nonexistent.csv') {
@@ -87,8 +87,8 @@ export const handlers = [
     ]);
   }),
 
-  // GET /api/match/{filename}/game_phases
-  http.get(`${API_BASE}/api/match/:filename/game_phases`, ({ params }) => {
+  // GET /match/{filename}/game_phases
+  http.get(`${API_BASE}/match/:filename/game_phases`, ({ params }) => {
     const { filename } = params;
     
     if (filename === 'nonexistent.csv') {
@@ -109,8 +109,8 @@ export const handlers = [
     ]);
   }),
 
-  // POST /api/upload
-  http.post(`${API_BASE}/api/upload`, async ({ request }) => {
+  // POST /upload
+  http.post(`${API_BASE}/upload`, async ({ request }) => {
     // Mock file upload response
     return HttpResponse.json({
       data: [
