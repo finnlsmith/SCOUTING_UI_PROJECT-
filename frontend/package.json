@@ -18,6 +18,7 @@
     "react-app-rewired": "^2.2.1"
   },
   "devDependencies": {
+    "msw": "^2.12.3",
     "webpack-bundle-analyzer": "^4.10.2"
   },
   "scripts": {
