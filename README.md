@@ -65,13 +65,27 @@ Exploratory data analysis notebooks:
 ```
 
 ---
-
 ## Prerequisites
 
-* **Python 3.10+** (3.11 works too)
-* **Jupyter** (Notebook or Lab)
+* **Python 3.11.9** (vetted and tested)
+* **Jupyter Notebook** (Notebook or Lab)
 
-The code uses only widely available libraries (e.g., `pandas`, `numpy`, `matplotlib`). All are pinned in `requirements.txt`.
+---
+
+## Vetted Environment (Recommended)
+
+This project has been **tested and validated on Python 3.11.9**.
+
+To reproduce the working environment:
+
+```bash
+# From project root
+python3.11 -m venv venv311
+source venv311/bin/activate
+
+pip install -r requirements.txt
+jupyter notebook
+```
 
 ---
 
@@ -124,6 +138,8 @@ npm start
 
 ### Notebooks Setup
 
+Recommended: use the **Vetted Environment (Recommended)** instructions above.
+
 ```bash
 # From project root
 python -m venv .venv
@@ -135,7 +151,8 @@ pip install -r requirements.txt
 jupyter notebook
 ```
 
-(Conda users can `conda create -n euro20 python=3.10` and then `pip install -r requirements.txt` inside the env.)
+(Conda users should match the vetted version: `conda create -n euro20 python=3.11` and then `pip install -r requirements.txt` inside the env.)
+
 
 ---
 
