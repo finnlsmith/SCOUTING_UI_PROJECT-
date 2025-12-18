@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import { TEAM_COLORS } from "../../assets/teamColors";
-
-const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || "http://localhost:8000/api").replace(/\/+$/, "");
+import { BACKEND_URL } from "../../config/api";
 
 async function _fetchJson(url) {
   const res = await fetch(url);

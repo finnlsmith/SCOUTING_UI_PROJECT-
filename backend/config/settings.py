@@ -62,12 +62,38 @@ For issues or questions, contact the development team.
 # -----------------------------
 # CORS configuration
 # -----------------------------
-CORS_ORIGINS = [
-    "https://columbia-msds-f25-soccer-frontend.onrender.com",
-    "https://columbia-msds-f25-soccer.onrender.com",
-    "http://localhost:3000",
-    "http://localhost:5173",
-]
+# CORS_ORIGINS can be set via environment variable as comma-separated list
+# Example: CORS_ORIGINS=https://example.com,http://localhost:3000,http://localhost:5173
+_cors_origins_env = os.getenv("CORS_ORIGINS", "").strip()
+if _cors_origins_env:
+    # Parse comma-separated origins from environment variable
+    CORS_ORIGINS = [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
+else:
+    # Fallback to default origins for local development
+    # In production, CORS_ORIGINS should always be set via environment variable
+    # Check if we're in production (common indicators)
+    is_production = (
+        os.getenv("RENDER") is not None or  # Render.com
+        os.getenv("DYNO") is not None or    # Heroku
+        os.getenv("FLY_APP_NAME") is not None or  # Fly.io
+        os.getenv("VERCEL") is not None or  # Vercel
+        os.getenv("ENVIRONMENT", "").lower() == "production"
+    )
+    
+    if is_production:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            "⚠️  CORS_ORIGINS environment variable not set in production. "
+            "Using default origins. Please set CORS_ORIGINS for production deployment."
+        )
+    
+    CORS_ORIGINS = [
+        "https://columbia-msds-f25-soccer-frontend.onrender.com",
+        "https://columbia-msds-f25-soccer.onrender.com",
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ]
 
 
 # -----------------------------
