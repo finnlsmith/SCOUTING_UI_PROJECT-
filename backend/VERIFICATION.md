@@ -257,7 +257,7 @@ All should display correctly without JavaScript errors.
 
 ### Server won't start
 - Check `.env` file exists and has valid AWS credentials
-- Verify all dependencies installed: `pip install -r requirements.txt`
+- Verify all dependencies installed: `pip install -r requirements.txt` (from root) or `pip install -r ../requirements.txt` (from backend/)
 - Check port 8000 isn't already in use: `lsof -i :8000`
 
 ### /docs returns 404

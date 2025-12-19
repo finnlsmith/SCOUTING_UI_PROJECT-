@@ -1,9 +1,10 @@
 # ============================================
 # Columbia MSDS Soccer Analytics
-# Comprehensive Requirements
+# Canonical Requirements File
 # ============================================
-# All dependencies for notebooks AND backend API
-# Tested with Python 3.11.9
+# This is the SINGLE SOURCE OF TRUTH for all Python dependencies
+# Includes: notebooks, backend API, and testing dependencies
+# Tested with Python 3.11.9 (see .python-version for recommended version)
 
 # Core Data Science Stack
 # -----------------------

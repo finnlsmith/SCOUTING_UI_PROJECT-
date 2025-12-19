@@ -23,8 +23,8 @@ echo 'REDIS_URL="rediss://default:YOUR_TOKEN@YOUR_HOST:6379"' >> .env
 ### 2. Install Dependencies
 
 ```bash
-source ../venv-backend/bin/activate
-pip install -r requirements.txt
+source ../.venv/bin/activate  # or source .venv/bin/activate if venv is in backend/
+pip install -r ../requirements.txt  # Use root requirements.txt (canonical)
 ```
 
 ### 3. Start Server
