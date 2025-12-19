@@ -96,13 +96,15 @@ jupyter notebook
 1. **Create virtual environment and install dependencies:**
 
 ```bash
-cd backend
+# From project root (recommended) or backend directory
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r requirements.txt  # Use root requirements.txt (canonical)
 ```
+
+**Note:** Use `requirements.txt` (root) as the canonical source for all Python dependencies.
 
 2. **Configure environment variables:**
 

@@ -64,7 +64,8 @@ echo ""
 # Step 4: Install dependencies
 echo -e "${BLUE}Step 4: Installing dependencies...${NC}"
 cd "$BACKEND_DIR"
-pip install -r requirements.txt
+# Use canonical requirements.txt from project root
+pip install -r "$PROJECT_ROOT/requirements.txt"
 echo -e "${GREEN}✅ Dependencies installed${NC}"
 echo ""
 
@@ -72,7 +73,7 @@ echo ""
 echo -e "${BLUE}Step 5: Verifying installation...${NC}"
 python -c "import fastapi, cachetools, aioboto3, dotenv; print('✅ All packages installed!')" || {
     echo -e "${YELLOW}❌ Some packages missing. Reinstalling...${NC}"
-    pip install -r requirements.txt
+    pip install -r "$PROJECT_ROOT/requirements.txt"
 }
 echo ""
 
