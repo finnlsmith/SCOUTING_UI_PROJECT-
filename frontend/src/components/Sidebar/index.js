@@ -23,6 +23,14 @@ export default function Sidebar() {
             Home
           </Link>
 
+          {/* NEW: Tutorial */}
+          <Link
+            to="/tutorial"
+            className={location.pathname === "/tutorial" ? styles.linkActive : styles.link}
+          >
+            Tutorial
+          </Link>
+
           <Link
             to="#"
             className={styles.linkDisabled}

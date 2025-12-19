@@ -3,7 +3,7 @@
 # Comprehensive Requirements
 # ============================================
 # All dependencies for notebooks AND backend API
-# Tested with Python 3.10+ / 3.11
+# Tested with Python 3.11.9
 
 # Core Data Science Stack
 # -----------------------
