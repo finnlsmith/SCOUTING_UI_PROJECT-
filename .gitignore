@@ -18,6 +18,14 @@ aggregated/
 __pycache__/
 *.pyc
 
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+.hypothesis/
+
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
@@ -33,3 +41,7 @@ build/
 .env.*
 !.env.example
 .DS_Store
+
+# macOS
+.DS_Store
+DS_Store

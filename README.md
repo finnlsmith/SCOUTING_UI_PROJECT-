@@ -96,11 +96,18 @@ pip install -r requirements.txt
 # Copy the example file
 cp .env.example .env
 
-# Edit .env with your AWS credentials
+# Edit .env with your AWS credentials and CORS settings
+# Required variables:
 # AWS_REGION=us-east-2
 # S3_BUCKET_NAME=your-bucket-name
 # AWS_ACCESS_KEY_ID=your-key
 # AWS_SECRET_ACCESS_KEY=your-secret
+#
+# CORS Configuration (comma-separated, no spaces after commas):
+# For local development:
+# CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+# For production, include your frontend URL:
+# CORS_ORIGINS=https://your-frontend.com,http://localhost:3000
 ```
 
 3. **Run the API server:**
@@ -114,9 +121,30 @@ uvicorn app:app --reload
 
 ### Frontend Setup
 
+1. **Install dependencies:**
+
 ```bash
 cd frontend
 npm install
+```
+
+2. **Configure environment variables:**
+
+```bash
+# Copy the example file
+cp .env.example .env
+
+# Edit .env with your backend URL
+# For local development:
+# REACT_APP_BACKEND_URL=http://localhost:8000/api
+# For production:
+# REACT_APP_BACKEND_URL=https://your-backend-api.com/api
+# Note: REACT_APP_BACKEND_URL is required in production builds
+```
+
+3. **Start the development server:**
+
+```bash
 npm start
 
 # App will start at http://localhost:3000

@@ -18,10 +18,12 @@
     "react-app-rewired": "^2.2.1"
   },
   "devDependencies": {
+    "msw": "^2.12.3",
     "webpack-bundle-analyzer": "^4.10.2"
   },
   "scripts": {
     "start": "react-app-rewired start",
+    "prebuild": "node scripts/validate-env.js",
     "build": "react-app-rewired build",
     "build:analyze": "ANALYZE=true react-app-rewired build",
     "optimize:images": "node scripts/optimize-images.js",

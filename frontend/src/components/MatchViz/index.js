@@ -9,12 +9,11 @@ import Scoreboard from "../Scoreboard";
 // import ShotMapButtons from "../ShotMapButtons";
 // import PassingNetworkButtons from "../PassingNetworkButtons";
 import { PlotSkeleton } from "../LoadingSkeleton";
+import { BACKEND_URL } from "../../config/api";
 import styles from "./MatchViz.module.css";
 
 // Dynamically import heavy component for code splitting
 const ShotMapPlot = lazy(() => import("../ShotMapPlot"));
-
-const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000/api').replace(/\/+$/, '');
 
 export default function MatchViz() {
   const { matches, loading: matchesLoading, error: matchesError, setError: setMatchesError } = useMatchData();
