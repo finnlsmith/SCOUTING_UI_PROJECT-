@@ -49,12 +49,6 @@ export default function TutorialPage() {
     lineHeight: 1.8,
   };
 
-  const ol = {
-    margin: "10px 0 0",
-    paddingLeft: 22,
-    lineHeight: 1.9,
-  };
-
   const codeInline = {
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
     fontSize: 13,
