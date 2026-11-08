@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from routes.matches import router as matches_router
 from routes.system import router as system_router
+from routes.datasets import router as datasets_router
 from routes.visualizations import router as visualizations_router
 from config.settings import (
     API_TITLE,
@@ -76,4 +77,5 @@ app.add_middleware(
 # Register route modules
 app.include_router(matches_router)
 app.include_router(system_router)
+app.include_router(datasets_router)
 app.include_router(visualizations_router)
