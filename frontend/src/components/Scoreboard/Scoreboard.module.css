@@ -5,52 +5,51 @@
 }
 
 .scoreboard {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px 80px;
-  border: 1px solid #333;
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl) var(--spacing-2xl);
-  background-color: #000;
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  box-shadow: var(--shadow-sm);
-}
-
-.stage {
-  grid-column: 1 / span 2;
-  text-align: center;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: #b8b8b8;
-  margin-bottom: var(--spacing-sm);
+  padding: 4px 12px;
+  background: transparent;
 }
 
 .teamNames {
-  grid-column: 1 / span 2;
   display: flex;
   justify-content: space-between;
   font-weight: var(--font-weight-bold);
   font-size: 1.7rem;
-  color: #fff;
-  margin-bottom: 10px;
+  color: var(--color-text-primary);
+  padding: 14px 0 12px;
 }
 
-.label {
-  grid-column: 1 / span 2;
-  display: flex;
-  justify-content: space-between;
-  font-size: 1.3rem;
-  color: #b8b8b8;
-  font-weight: var(--font-weight-medium);
-  margin-top: 16px;
+/* home value | stat name | away value */
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  column-gap: 24px;
+  padding: 11px 0;
+  border-top: 1px solid var(--color-border-dark);
 }
 
-.values {
-  display: flex;
-  justify-content: space-between;
-  grid-column: 1 / span 2;
-  font-size: 1.6rem;
+.homeValue,
+.awayValue {
+  font-size: 1.5rem;
   font-weight: var(--font-weight-semibold);
-  color: #fff;
+  color: var(--color-text-primary);
 }
 
+.homeValue {
+  text-align: left;
+}
+
+.awayValue {
+  text-align: right;
+}
+
+.statLabel {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  opacity: 0.72;
+}

@@ -264,7 +264,7 @@ export default function MatchViz() {
           <>
             <div className={styles.sectionDivider}></div>
             
-            <div className={styles.scoreRow}>
+            <div className={styles.scoreCard}>
             {/* Score/Round/Date Header */}
             <div className={styles.visualizationHeader}>
               <div className={styles.vizHeaderContent}>

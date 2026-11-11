@@ -18,72 +18,32 @@ export default function Scoreboard({ stage, home, away, score, shots, shotsOnTar
   const homeAllChances = (homeBig !== "-" && homeOk !== "-") ? (parseInt(homeBig) + parseInt(homeOk)) : "-";
   const awayAllChances = (awayBig !== "-" && awayOk !== "-") ? (parseInt(awayBig) + parseInt(awayOk)) : "-";
   
+  const split = (v, i) => (v ? v.split(" - ")[i] : "-");
+
+  // One row: home value on the left, stat name in the middle, away value on the right
+  const rows = [
+    { label: "Shots (on Target)", home: `${homeShots} (${homeSoT})`, away: `${awayShots} (${awaySoT})` },
+    { label: "xG (pen.)", home: split(xg, 0), away: split(xg, 1) },
+    { label: "Chances (All/Big)", home: `${homeAllChances}/${homeBig}`, away: `${awayAllChances}/${awayBig}` },
+    { label: "Box Entries", home: split(boxEntries, 0), away: split(boxEntries, 1) },
+    { label: "Fouls Committed", home: split(fouls, 0), away: split(fouls, 1) },
+    { label: "Cards (yellow/red)", home: cardsLeft ?? "-", away: cardsRight ?? "-" },
+  ];
+
   return (
     <div className={styles.container}>
       <div className={styles.scoreboard}>
-        {/* Team names header for column alignment */}
         <div className={styles.teamNames}>
           <span>{home}</span>
           <span>{away}</span>
         </div>
-
-        {/* Shots (on Target) row - combined */}
-        <div className={styles.label}>
-          <span>Shots (on Target)</span>
-        </div>
-        <div className={styles.values}>
-          <span>{homeShots} ({homeSoT})</span>
-          <span>{awayShots} ({awaySoT})</span>
-        </div>
-        
-        {/* xG (pen.) label */}
-        <div className={styles.label}>
-          <span>xG (pen.)</span>
-        </div>
-        {/* xG values */}
-        <div className={styles.values}>
-          <span>{xg ? xg.split(" - ")[0] : "-"}</span>
-          <span>{xg ? xg.split(" - ")[1] : "-"}</span>
-        </div>
-
-        {/* Chances (All/Big) row - combined */}
-        <div className={styles.label}>
-          <span>Chances (All/Big)</span>
-        </div>
-        <div className={styles.values}>
-          <span>{homeAllChances}/{homeBig}</span>
-          <span>{awayAllChances}/{awayBig}</span>
-        </div>
-
-        {/* Box Entries label */}
-        <div className={styles.label}>
-          <span>Box Entries</span>
-        </div>
-        {/* Box Entries values */}
-        <div className={styles.values}>
-          <span>{boxEntries ? boxEntries.split(" - ")[0] : "-"}</span>
-          <span>{boxEntries ? boxEntries.split(" - ")[1] : "-"}</span>
-        </div>
-
-        {/* Fouls label */}
-        <div className={styles.label}>
-          <span>Fouls Committed</span>
-        </div>
-        {/* Fouls values */}
-        <div className={styles.values}>
-          <span>{fouls ? fouls.split(" - ")[0] : "-"}</span>
-          <span>{fouls ? fouls.split(" - ")[1] : "-"}</span>
-        </div>
-
-        {/* Cards label */}
-        <div className={styles.label}>
-          <span>Cards (yellow/red)</span>
-        </div>
-        {/* Cards values: format total (yellow/red) */}
-        <div className={styles.values}>
-          <span>{cardsLeft ?? '-'}</span>
-          <span>{cardsRight ?? '-'}</span>
-        </div>
+        {rows.map(r => (
+          <div key={r.label} className={styles.row}>
+            <span className={styles.homeValue}>{r.home}</span>
+            <span className={styles.statLabel}>{r.label}</span>
+            <span className={styles.awayValue}>{r.away}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
