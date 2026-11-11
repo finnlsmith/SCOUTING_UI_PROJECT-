@@ -16,7 +16,7 @@ from fastapi.encoders import jsonable_encoder
 from utils.coords import _to_xy
 from utils.pitch import make_pitch
 from config.settings import TEAM_COLORS
-from visualizations.helpers import parse_positions_cell
+from visualizations.helpers import parse_positions_cell, format_player_name
 
 
 async def passing_network_like_matplotlib(filename: str, team: str, min_passes: int = 1, flip: bool = False):
@@ -260,26 +260,38 @@ async def passing_network_like_matplotlib(filename: str, team: str, min_passes: 
                     showlegend=False,
                 ))
 
-        # Nodes: size ~ touches
+        # Nodes: marker AREA is proportional to touches (sizemode="area")
         if not nodes.empty:
-            size_list = (14 + 0.045 * nodes["touches"]).clip(lower=8, upper=32).astype(float).tolist()
             touches_list = nodes["touches"].astype(int).tolist()
             x_list = nodes["x"].astype(float).tolist()
             y_list = nodes["y"].astype(float).tolist()
-            text_list = nodes["name"].astype(str).tolist()
+            full_names = nodes["name"].astype(str).tolist()
+            # Short "F. Last" labels (no middle names); full name stays in the hover
+            text_list = [format_player_name(n) or n for n in full_names]
 
+            max_touches = max(max(touches_list), 1)
+            # Plotly draws the largest marker about 1.5x this number (measured in the browser:
+            # 28 gave 43.6px), so 18 gives a busiest-player bubble of roughly 28px.
+            max_diameter = 18.0
             team_color = TEAM_COLORS.get(team, "#1f77b4")
             fig.add_trace(go.Scatter(
                 x=x_list, y=y_list,
                 mode="markers+text",
                 text=text_list,
                 textposition="top center",
-                marker=dict(size=size_list, line=dict(width=2, color="black"), color=team_color),
+                marker=dict(
+                    size=touches_list,
+                    sizemode="area",
+                    sizeref=2.0 * max_touches / (max_diameter ** 2),
+                    sizemin=2,
+                    line=dict(width=2, color="black"),
+                    color=team_color,
+                ),
                 hoverinfo="text",
                 textfont=dict(size=11),
                 name="players",
-                customdata=[[t] for t in touches_list],
-                hovertemplate="<b>%{text}</b><br>touches: %{customdata[0]}<extra></extra>",
+                customdata=[[t, n] for t, n in zip(touches_list, full_names)],
+                hovertemplate="<b>%{customdata[1]}</b><br>touches: %{customdata[0]}<extra></extra>",
             ))
 
         fig = make_pitch(fig)

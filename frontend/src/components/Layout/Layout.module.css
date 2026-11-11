@@ -5,6 +5,7 @@
 
 .content {
   flex: 1;
+  min-width: 0; /* lets the page shrink to the screen instead of growing to its widest chart or image */
   color: var(--color-text-primary);
   padding: var(--spacing-2xl) var(--spacing-4xl);
 }

@@ -214,16 +214,28 @@ export default function MatchViz() {
       });
   };
 
+  // Goals, own goals and red cards in match order. Shown as "Key events" next to the score.
+  const keyEvents = importantMoments
+    .filter(moment => {
+      return (moment.event_type === 'Shot' && moment.outcome === 'Goal') ||
+                   moment.event_type === 'Own Goal For' ||
+                   moment.event_type === 'Own Goal Against' ||
+                   moment.event_type === 'Red Card';
+          })
+          .sort((a, b) => {
+            const [aMin] = a.when ? a.when.split(':').map(Number) : [0];
+            const [bMin] = b.when ? b.when.split(':').map(Number) : [0];
+            return aMin - bMin;
+          });
+
   return (
     <div className={styles.container}>
       <ErrorBanner error={globalError} onClose={handleClearError} />
       <div className={styles.content}>
-        {/* Tournament Title and Match Selection Header */}
-        <div className={styles.pageHeader}>
+        {/* Top bar: tournament name and match picker, top left */}
+        <div className={styles.topBar}>
           <h1 className={styles.tournamentTitle}>Euro 2020</h1>
-          <div className={styles.matchSelection}>
-            <h2 className={styles.sectionTitle}>Select a Match</h2>
-            <div className={styles.matchSelectorWrapper}>
+          <div className={styles.matchSelectorWrapper}>
               <MatchSelector
                 matches={matches}
                 selectedMatch={selectedMatch}
@@ -245,7 +257,6 @@ export default function MatchViz() {
                 }}
                 matchesLoading={matchesLoading}
               />
-            </div>
           </div>
         </div>
 
@@ -253,6 +264,7 @@ export default function MatchViz() {
           <>
             <div className={styles.sectionDivider}></div>
             
+            <div className={styles.scoreRow}>
             {/* Score/Round/Date Header */}
             <div className={styles.visualizationHeader}>
               <div className={styles.vizHeaderContent}>
@@ -291,21 +303,12 @@ export default function MatchViz() {
                 MATCH TIMELINE - Sequential list of Goals, Red Cards, Own Goals
                 ======================================== */}
             {importantMoments.length > 0 && (
+              <div className={styles.keyEventsPanel}>
+              <h2 className={styles.keyEventsTitle}>Key events</h2>
               <div className={styles.matchTimeline}>
+                {keyEvents.length === 0 && (<div className={styles.keyEventsEmpty}>No goals or red cards in this match.</div>)}
                 <div className={styles.timelineList}>
-                  {/* Combine goals, own goals, and red cards, then sort by time */}
-                  {importantMoments
-                    .filter(moment => {
-                      return (moment.event_type === 'Shot' && moment.outcome === 'Goal') ||
-                             moment.event_type === 'Own Goal For' ||
-                             moment.event_type === 'Own Goal Against' ||
-                             moment.event_type === 'Red Card';
-                    })
-                    .sort((a, b) => {
-                      const [aMin] = a.when ? a.when.split(':').map(Number) : [0];
-                      const [bMin] = b.when ? b.when.split(':').map(Number) : [0];
-                      return aMin - bMin;
-                    })
+                  {keyEvents
                     .map((moment, idx) => {
                       const [min] = moment.when ? moment.when.split(':').map(Number) : [0];
                       
@@ -369,21 +372,14 @@ export default function MatchViz() {
                     })}
                 </div>
               </div>
-            )}
+              </div>
+)}
+            </div>
             
-            {/* ========================================
-                ENTIRE MATCH SECTION 
-                ======================================== */}
-            <CollapsibleSection title="Entire Match" subtitle="Match facts, shot map and passing network for the whole game">
-
-            {/* ========================================
-                MAIN CONTENT ROW: MATCH FACTS + VISUALIZATIONS
-                ======================================== */}
-            <div className={styles.entireMatchRow}>
-              {/* --- MATCH FACTS SIDEBAR (LEFT) --- */}
-              <div className={styles.matchFactsSidebar}>
-                <h2 className={styles.matchFactsTitle}>Match Facts</h2>
-                <div className={styles.matchFactsCard}>
+            {/* Match facts: white numbers on a dark table */}
+            <div className={styles.matchFactsBlock}>
+              <h2 className={styles.matchFactsTitle}>Match facts</h2>
+              <div className={styles.matchFactsCard}>
                   <Scoreboard
                     stage={stats.competition_stage}
                     home={stats.home_team}
@@ -403,10 +399,10 @@ export default function MatchViz() {
                     cardsRight={(Number.isFinite(stats.away_cards_total) && Number.isFinite(stats.away_cards_yellow) && Number.isFinite(stats.away_cards_red)) ? `${stats.away_cards_total} (${stats.away_cards_yellow}/${stats.away_cards_red})` : "-"}
                     boxEntries={(Number.isFinite(stats.home_box_entries) && Number.isFinite(stats.away_box_entries)) ? `${stats.home_box_entries} - ${stats.away_box_entries}` : "-"}
                   />
-                </div>
               </div>
+            </div>
 
-              {/* --- FLIP SIDES CONTROL (applies to both Shot Map and Passing Network) --- */}
+            {/* Flip sides applies to both charts */}
               <div className={styles.flipSidesContainerCentered}>
                   <label className={styles.flipSidesLabel}>
                     <input
@@ -419,11 +415,17 @@ export default function MatchViz() {
                   </label>
                 </div>
 
-              {/* --- VISUALIZATIONS CONTAINER (RIGHT SIDE) --- */}
-              <div className={styles.visualizationsContainer}>
-                {/* --- SHOT MAPS COLUMN --- */}
-                <div className={styles.shotMapsColumn}>
+            {/* Shot map and passing network, side by side */}
+            <div className={styles.chartsRow}>
+              <div className={styles.chartColumn}>
                 <h2 className={styles.shotMapsTitle}>Shot Map</h2>
+                {shotMapFigData && (
+                  <div className={styles.shotMapPlot}>
+                    <Suspense fallback={<PlotSkeleton />}>
+                      <ShotMapPlot displayFig={shotMapFigData} flipSides={flipSides} plotLoading={plotLoading} fit />
+                    </Suspense>
+                  </div>
+                )}
                 <div className={styles.buttonGroup}>
                   <button onClick={async () => {
                     if (!canShoot) return;
@@ -447,18 +449,16 @@ export default function MatchViz() {
                     className={styles.resetButton}
                   >Reset Shot Map</button>
                 </div>
-                {shotMapFigData && (
-                  <div className={styles.shotMapPlot}>
+              </div>
+              <div className={styles.chartColumn}>
+                <h2 className={styles.passingNetworkTitle}>Passing Network</h2>
+                {passNetFigData && (
+                  <div className={styles.passingNetworkPlot}>
                     <Suspense fallback={<PlotSkeleton />}>
-                      <ShotMapPlot displayFig={shotMapFigData} flipSides={flipSides} plotLoading={plotLoading} smaller />
+                      <ShotMapPlot displayFig={passNetFigData} flipSides={flipSides} plotLoading={plotLoading} fit />
                     </Suspense>
                   </div>
                 )}
-              </div>
-
-              {/* --- PASSING NETWORK COLUMN --- */}
-              <div className={styles.passingNetworkColumn}>
-                <h2 className={styles.passingNetworkTitle}>Passing Network</h2>
                 <div className={styles.passingNetworkButtons}>
                   <button onClick={async () => {
                     if (!canShoot) return;
@@ -477,17 +477,8 @@ export default function MatchViz() {
                     className={styles.resetButton}
                   >Reset Passing Network</button>
                 </div>
-                {passNetFigData && (
-                  <div className={styles.passingNetworkPlot}>
-                    <Suspense fallback={<PlotSkeleton />}>
-                      <ShotMapPlot displayFig={passNetFigData} flipSides={flipSides} plotLoading={plotLoading} customSize={{ width: 950, height: 650 }} />
-                    </Suspense>
-                  </div>
-                )}
               </div>
             </div>
-            </div>
-            </CollapsibleSection>
             
             
             {/* Key Moments Section */}

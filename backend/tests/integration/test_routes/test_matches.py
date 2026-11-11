@@ -201,3 +201,38 @@ class TestTeamLogoRoute:
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
+
+
+class TestMatchPickerFields:
+    """The matches list carries stage and date so the frontend can group and sort the picker."""
+
+    @staticmethod
+    def _body(df):
+        buf = io.StringIO()
+        df.to_csv(buf, index=False)
+        return {'Body': MagicMock(read=lambda: buf.getvalue().encode('utf-8'))}
+
+    @patch('routes.matches.s3_client')
+    def test_includes_stage_date_and_teams(self, mock_s3_client, client, sample_matches_df):
+        df = sample_matches_df.copy()
+        df['competition_stage'] = ['Final', 'Semi-finals', 'Group Stage']
+        mock_s3_client.get_object.return_value = self._body(df)
+
+        data = client.get("/api/matches").json()
+        events = [d for d in data if d["file"].startswith("events_")]
+
+        first = events[0]
+        assert first["stage"] == "Final"
+        assert first["date"] == "2021-07-11"
+        assert first["home_team"] == "Italy" and first["away_team"] == "England"
+        assert first["match_id"] == "3788741"
+        assert [e["stage"] for e in events] == ["Final", "Semi-finals", "Group Stage"]
+
+    @patch('routes.matches.s3_client')
+    def test_missing_stage_is_null_not_an_error(self, mock_s3_client, client, sample_matches_df):
+        mock_s3_client.get_object.return_value = self._body(sample_matches_df)  # no competition_stage column
+
+        data = client.get("/api/matches").json()
+
+        assert all(d["stage"] is None for d in data)
+        assert all("file" in d and "label" in d for d in data)  # old fields untouched

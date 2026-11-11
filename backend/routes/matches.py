@@ -80,15 +80,29 @@ async def list_matches():
             match_id = str(row["match_id"])
             label = f"{row['match_date']} - {row['home_team']} vs {row['away_team']}"
 
+            # Extra fields let the frontend group and sort the match picker.
+            # They are additive: older frontends only read "file" and "label".
+            stage = row.get("competition_stage")
+            stage = str(stage) if pd.notna(stage) and str(stage).strip() else None
+            extra = {
+                "match_id": match_id,
+                "date": str(row["match_date"])[:10],
+                "stage": stage,
+                "home_team": str(row["home_team"]),
+                "away_team": str(row["away_team"]),
+            }
+
             # The frontend expects event and frame files for each match
             results.append({
                 "file": f"events_{match_id}.csv",
-                "label": f"{label} – Events"
+                "label": f"{label} – Events",
+                **extra,
             })
 
             results.append({
                 "file": f"frames_360_{match_id}.csv",
-                "label": f"{label} – Frames 360"
+                "label": f"{label} – Frames 360",
+                **extra,
             })
 
         return results

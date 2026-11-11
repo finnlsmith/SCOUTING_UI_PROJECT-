@@ -24,6 +24,8 @@ export default function useMatchData() {
             name: m.file.replace(".csv", ""),
             label: m.label,
             file: m.file,
+            date: m.date,
+            stage: m.stage,
           }))
         );
       } catch (err) {
