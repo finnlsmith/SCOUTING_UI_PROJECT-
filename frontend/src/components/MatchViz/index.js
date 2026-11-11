@@ -6,6 +6,7 @@ import ErrorBanner from "../ErrorBanner";
 // import FileUpload from "../FileUpload";
 import MatchSelector from "../MatchSelector";
 import Scoreboard from "../Scoreboard";
+import CollapsibleSection from "../CollapsibleSection";
 // import ShotMapButtons from "../ShotMapButtons";
 // import PassingNetworkButtons from "../PassingNetworkButtons";
 import { PlotSkeleton } from "../LoadingSkeleton";
@@ -41,7 +42,7 @@ export default function MatchViz() {
   const [sceneImageBase64, setSceneImageBase64] = useState(null);
   const [sceneLoading, setSceneLoading] = useState(false);
   const [sceneError, setSceneError] = useState(null);
-  const [showImportantScenes, setShowImportantScenes] = useState(false);
+  const [showImportantScenes, setShowImportantScenes] = useState(true);
   const [gamePhases, setGamePhases] = useState([]);
   const [gamePhaseLoading, setGamePhaseLoading] = useState(false);
   const [gamePhaseError, setGamePhaseError] = useState(null);
@@ -49,6 +50,7 @@ export default function MatchViz() {
   const [gamePhaseMetrics, setGamePhaseMetrics] = useState([]);
   const [phaseScenes, setPhaseScenes] = useState({}); // {phaseIdx: {selectedMomentIdx, imageBase64, loading, error}}
   const [phaseShowScenes, setPhaseShowScenes] = useState({}); // {phaseIdx: boolean}
+  const [selectedPhaseIdx, setSelectedPhaseIdx] = useState(0);
 
   useEffect(() => {
     setGlobalError(matchesError || uploadError || vizError || "");
@@ -107,6 +109,7 @@ export default function MatchViz() {
       return;
     }
     setGamePhaseLoading(true);
+    setSelectedPhaseIdx(0);
     setGamePhaseError(null);
   fetch(`${BACKEND_URL}/match/${selectedMatch}/game_phases`)
       .then(res => res.json())
@@ -118,6 +121,11 @@ export default function MatchViz() {
       })
       .catch(e => setGamePhaseError(e.message))
       .finally(() => setGamePhaseLoading(false));
+  }, [selectedMatch]);
+
+  // Each new match starts with Show Scenes on, so its first key moment is selected
+  useEffect(() => {
+    setShowImportantScenes(true);
   }, [selectedMatch]);
 
   useEffect(() => {
@@ -366,7 +374,7 @@ export default function MatchViz() {
             {/* ========================================
                 ENTIRE MATCH SECTION 
                 ======================================== */}
-            <h2 className={styles.entireMatchTitle}>Entire Match</h2>
+            <CollapsibleSection title="Entire Match" subtitle="Match facts, shot map and passing network for the whole game">
 
             {/* ========================================
                 MAIN CONTENT ROW: MATCH FACTS + VISUALIZATIONS
@@ -479,12 +487,20 @@ export default function MatchViz() {
               </div>
             </div>
             </div>
+            </CollapsibleSection>
             
-            <div className={styles.sectionDivider}></div>
             
             {/* Key Moments Section */}
-            <div className={styles.keyMoments}>
-              <h2 className={styles.keyMomentsTitle}>Key Moments <span className={styles.showScenesLabel}><input type="checkbox" checked={showImportantScenes} onChange={handleShowImportantScenesToggle} className={styles.showScenesCheckbox} />Show Scenes</span></h2>
+            <CollapsibleSection
+              title="Key Moments"
+              subtitle="Pick a moment in the table to see that possession."
+              headerExtra={(
+                <label className={styles.showScenesLabel}>
+                  <input type="checkbox" checked={showImportantScenes} onChange={handleShowImportantScenesToggle} className={styles.showScenesCheckbox} />
+                  Show Scenes
+                </label>
+              )}
+            >
               <div className={styles.momentsContainer}>
                 {/* Moments Table */}
                 <div className={styles.momentsTable}>
@@ -552,13 +568,44 @@ export default function MatchViz() {
                   </div>
                 )}
               </div>
-            </div>
+            </CollapsibleSection>
             
-            <div className={styles.sectionDivider}></div>
             
             {/* Game Phases Section */}
-            <div className={styles.gamePhases}>
-              <h2 className={styles.gamePhasesTitle}>Game Phases</h2>
+            <CollapsibleSection title="Game Phases" subtitle="One phase at a time. Pick a phase below.">
+              {!gamePhaseLoading && !gamePhaseError && gamePhases.length > 0 && (
+                <div className={styles.phasePicker}>
+                  <button
+                    type="button"
+                    className={styles.phaseNavButton}
+                    onClick={() => setSelectedPhaseIdx(i => Math.max(0, i - 1))}
+                    disabled={selectedPhaseIdx <= 0}
+                    aria-label="Previous phase"
+                  >{"←"}</button>
+                  <div className={styles.phaseTabs} role="tablist" aria-label="Game phases">
+                    {gamePhases.map((p, i) => (
+                      <button
+                        key={p.phase_idx}
+                        type="button"
+                        role="tab"
+                        aria-selected={i === selectedPhaseIdx}
+                        className={i === selectedPhaseIdx ? styles.phaseTabActive : styles.phaseTab}
+                        onClick={() => setSelectedPhaseIdx(i)}
+                      >
+                        <span className={styles.phaseTabName}>Phase {p.phase_idx}</span>
+                        <span className={styles.phaseTabTime}>{`${p.start_minute}:${String(p.start_second).padStart(2, "0")}`}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.phaseNavButton}
+                    onClick={() => setSelectedPhaseIdx(i => Math.min(gamePhases.length - 1, i + 1))}
+                    disabled={selectedPhaseIdx >= gamePhases.length - 1}
+                    aria-label="Next phase"
+                  >{"→"}</button>
+                </div>
+              )}
               {gamePhaseLoading && <div className={styles.gamePhasesLoading}>Loading phases...</div>}
               {gamePhaseError && <div className={styles.gamePhasesError}>{gamePhaseError}</div>}
               {!gamePhaseLoading && !gamePhaseError && gamePhases.length === 0 && (
@@ -568,7 +615,7 @@ export default function MatchViz() {
               )}
               {!gamePhaseLoading && !gamePhaseError && gamePhases.length > 0 && (
                 <div className={styles.gamePhasesList}>
-                  {gamePhases.map((ph, idx) => {
+                  {gamePhases.filter((_, i) => i === selectedPhaseIdx).map(ph => {
                     const m = (gamePhaseMetrics || []).find(mm => mm.phase_idx === ph.phase_idx);
                     
                     // Filter key moments for this phase (check period AND time, exclude phase-starting goal)
@@ -604,7 +651,7 @@ export default function MatchViz() {
                     });
                     
                     return (
-                    <div key={idx} className={styles.gamePhaseCard}>
+                    <div key={ph.phase_idx} className={styles.gamePhaseCard}>
                       <div className={styles.gamePhaseHeader}>
                       <div className={styles.gamePhaseTitle}>Game Phase {ph.phase_idx}</div>
                       <div className={styles.gamePhaseTime}>
@@ -1228,7 +1275,7 @@ export default function MatchViz() {
                   })}
                 </div>
               )}
-            </div>
+            </CollapsibleSection>
           </>
         )}
       </div>

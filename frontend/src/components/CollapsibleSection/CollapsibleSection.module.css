@@ -1,0 +1,77 @@
+.section {
+  width: 100%;
+  margin: 0 0 28px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-dark);
+  border-radius: 14px;
+  box-shadow: 0 4px 18px var(--color-shadow-medium);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 24px;
+  border-bottom: 1px solid transparent;
+}
+
+.toggle {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 0;
+  background: none;
+  border: none;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--color-text-link);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+.chevron {
+  display: inline-block;
+  font-size: 22px;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+.titleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: var(--font-weight-bold, 700);
+  letter-spacing: 0.2px;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+}
+
+.extra {
+  flex: 0 0 auto;
+  font-size: 16px;
+  color: var(--color-text-primary);
+}
+
+.body {
+  padding: 8px 24px 28px;
+  border-top: 1px solid var(--color-border-dark);
+}
