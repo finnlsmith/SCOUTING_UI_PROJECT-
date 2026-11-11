@@ -201,8 +201,10 @@
 /* Visualization Header - above Shot Maps/Passing Network */
 .visualizationHeader {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 14px;
   background: none;
   box-shadow: none;
   padding: 0;
@@ -211,30 +213,32 @@
 .vizHeaderContent {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  width: auto;
-  gap: 28px;
+  justify-content: center;
+  width: 100%;
+  gap: 14px;
 }
 
 .vizHeaderTeamSection {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 16px;
-  flex: 1;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
-.vizHeaderTeamSection:last-child {
-  flex-direction: row-reverse;
-}
 
 .teamLogo {
-  width: 96px;
-  height: 96px;
+  width: 72px;
+  height: 72px;
+  flex: 0 0 auto;
   object-fit: contain;
-  border: 3px solid #ddd;
-  border-radius: 12px;
+  border: 2px solid #ddd;
+  border-radius: 10px;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-  padding: 4px;
+  padding: 3px;
   background: white;
 }
 
@@ -244,9 +248,11 @@
 }
 
 .teamName {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
+  min-width: 0;
+  line-height: 1.2;
 }
 
 [data-theme="dark"] .teamName {
@@ -258,10 +264,11 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  flex: 0 0 auto;
 }
 
 .vizHeaderScore {
-  font-size: 56px;
+  font-size: 44px;
   font-weight: var(--font-weight-extrabold);
   color: var(--color-text-primary);
   white-space: nowrap;
@@ -274,16 +281,16 @@
 .vizHeaderMeta {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 16px;
+  justify-content: center;
+  gap: 14px;
+  font-size: 22px;
 }
 
 .vizHeaderStage {
-  font-size: 16px;
+  font-size: 22px;
   font-weight: var(--font-weight-semibold);
-
   color: var(--color-text-primary);
-  opacity: 0.72;
+  opacity: 0.8;
 }
 
 [data-theme="dark"] .vizHeaderStage {
@@ -291,11 +298,10 @@
 }
 
 .vizHeaderDate {
-  font-size: 16px;
+  font-size: 22px;
   font-weight: var(--font-weight-medium);
-
   color: var(--color-text-primary);
-  opacity: 0.72;
+  opacity: 0.8;
 }
 
 [data-theme="dark"] .vizHeaderDate {
@@ -303,10 +309,9 @@
 }
 
 .vizHeaderSeparator {
-  font-size: 16px;
-
+  font-size: 22px;
   color: var(--color-text-primary);
-  opacity: 0.72;
+  opacity: 0.8;
 }
 
 [data-theme="dark"] .vizHeaderSeparator {
@@ -344,21 +349,22 @@
 }
 
 .matchFactsTitle {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: var(--font-weight-bold);
-  margin: 0 0 var(--spacing-md);
-  text-align: left;
+  margin: 0 0 6px;
+  text-align: center;
   color: var(--color-text-primary);
 }
 
 .matchFactsCard {
+  box-sizing: border-box;
   box-shadow: var(--shadow-lg);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-lg);
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border-dark);
   color: var(--color-text-primary);
-  padding: 8px 20px;
-  max-width: 760px;
+  padding: 24px 24px;
+  width: 100%;
 }
 
 /* Visualizations Container (Right Side) */
@@ -1428,7 +1434,12 @@
 }
 
 .matchFactsBlock {
-  margin-bottom: 28px;
+  box-sizing: border-box;
+  flex: 1 1 420px;
+  max-width: 640px;
+  min-width: 0;
+  display: flex;
+  margin: 0;
 }
 
 .chartsRow {
@@ -1448,13 +1459,15 @@
 
 /* One card holding the score and the key events under it */
 .scoreCard {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  width: 100%;
-  max-width: 660px;
-  padding: 24px 28px;
-  margin-bottom: 28px;
+  flex: 1 1 420px;
+  max-width: 640px;
+  min-width: 0;
+  padding: 24px 24px;
+  margin: 0;
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border-dark);
   border-radius: var(--radius-lg);
@@ -1465,4 +1478,13 @@
 .vizHeaderDate,
 .vizHeaderSeparator {
   white-space: nowrap;
+}
+
+/* Score card on the left, match facts on the right */
+.topRow {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-bottom: 28px;
 }

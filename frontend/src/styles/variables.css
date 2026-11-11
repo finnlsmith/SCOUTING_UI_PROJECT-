@@ -2,6 +2,7 @@
 /* Dark theme (default) */
 :root,
 [data-theme="dark"] {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   /* Colors */
   --color-bg-primary: #0F0E26;
   --color-bg-secondary: #1c1b3a;

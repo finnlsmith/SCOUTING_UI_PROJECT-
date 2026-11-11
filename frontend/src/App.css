@@ -4,7 +4,7 @@ body, html, #root {
   height: 100%;
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
-  font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-sans);
   transition: background-color var(--transition-base), color var(--transition-base);
 }
 

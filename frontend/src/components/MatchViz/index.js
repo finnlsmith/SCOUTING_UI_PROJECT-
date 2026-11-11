@@ -264,6 +264,8 @@ export default function MatchViz() {
           <>
             <div className={styles.sectionDivider}></div>
             
+            {/* Score card (left) and match facts (right) side by side */}
+            <div className={styles.topRow}>
             <div className={styles.scoreCard}>
             {/* Score/Round/Date Header */}
             <div className={styles.visualizationHeader}>
@@ -281,21 +283,21 @@ export default function MatchViz() {
                   <span className={styles.vizHeaderScore}>
                     {Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "0 - 0"}
               </span>
-                  <div className={styles.vizHeaderMeta}>
-                    {stats.competition_stage && <span className={styles.vizHeaderStage}>{stats.competition_stage}</span>}
-                    {selectedLabel && stats.competition_stage && <span className={styles.vizHeaderSeparator}>|</span>}
-                    {selectedLabel && <span className={styles.vizHeaderDate}>{selectedLabel.match(/\d{4}-\d{2}-\d{2}/)?.[0] || ""}</span>}
-                  </div>
                 </div>
                 <div className={styles.vizHeaderTeamSection}>
-                  <span className={styles.teamName}>{stats.away_team}</span>
                   <img 
                     src={`${BACKEND_URL}/team-logo/${encodeURIComponent(stats.away_team)}`} 
                     alt={stats.away_team}
                     className={styles.teamLogo}
                     onError={(e) => { e.target.style.display = 'none'; }}
                   />
+                  <span className={styles.teamName}>{stats.away_team}</span>
                 </div>
+              </div>
+              <div className={styles.vizHeaderMeta}>
+                {stats.competition_stage && <span className={styles.vizHeaderStage}>{stats.competition_stage}</span>}
+                {selectedLabel && stats.competition_stage && <span className={styles.vizHeaderSeparator}>|</span>}
+                {selectedLabel && <span className={styles.vizHeaderDate}>{selectedLabel.match(/\d{4}-\d{2}-\d{2}/)?.[0] || ""}</span>}
               </div>
             </div>
 
@@ -378,8 +380,8 @@ export default function MatchViz() {
             
             {/* Match facts: white numbers on a dark table */}
             <div className={styles.matchFactsBlock}>
-              <h2 className={styles.matchFactsTitle}>Match facts</h2>
               <div className={styles.matchFactsCard}>
+                <h2 className={styles.matchFactsTitle}>Match facts</h2>
                   <Scoreboard
                     stage={stats.competition_stage}
                     home={stats.home_team}
@@ -400,6 +402,8 @@ export default function MatchViz() {
                     boxEntries={(Number.isFinite(stats.home_box_entries) && Number.isFinite(stats.away_box_entries)) ? `${stats.home_box_entries} - ${stats.away_box_entries}` : "-"}
                   />
               </div>
+            </div>
+
             </div>
 
             {/* Flip sides applies to both charts */}

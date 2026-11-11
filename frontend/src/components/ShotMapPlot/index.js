@@ -2,6 +2,8 @@ import React from "react";
 import Plot from "react-plotly.js";
 import { PlotSkeleton } from "../LoadingSkeleton";
 
+const CHART_FONT = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif";
+
 export default function ShotMapPlot({ displayFig, flipSides, plotLoading, smaller, customSize, fit }) {
   if (plotLoading) return <PlotSkeleton />;
   if (!displayFig || !displayFig.data || !displayFig.layout) {
@@ -9,6 +11,7 @@ export default function ShotMapPlot({ displayFig, flipSides, plotLoading, smalle
   }
   const flippedLayout = {
     ...displayFig.layout,
+    font: { ...(displayFig.layout?.font || {}), family: CHART_FONT },
     xaxis: {
       ...(displayFig.layout?.xaxis || {}),
       range: flipSides ? [120,0] : [0,120],

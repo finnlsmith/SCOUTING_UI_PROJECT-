@@ -33,6 +33,7 @@
 
 .homeValue,
 .awayValue {
+  font-variant-numeric: tabular-nums;
   font-size: 1.5rem;
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);

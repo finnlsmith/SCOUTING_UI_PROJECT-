@@ -3,7 +3,7 @@
   background-color: var(--color-bg-primary);
   min-height: 100vh;
   padding: 80px 120px;
-  font-family: sans-serif;
+  font-family: var(--font-sans);
   text-align: left;
 }
 
