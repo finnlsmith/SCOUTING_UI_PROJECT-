@@ -27,6 +27,13 @@ nbformat==5.10.4
 # FastAPI Backend Dependencies
 # -----------------------------
 fastapi==0.115.6
+# Pin pydantic and its helpers. Left unpinned, pip tries newer pydantic releases that need a
+# newer typing_extensions than the pin below, then backtracks through older ones, which
+# makes builds slow (or time out). These are the versions pip settles on for the pins here.
+pydantic==2.13.5
+pydantic_core==2.46.5
+typing-inspection==0.4.5
+annotated-types==0.8.0
 uvicorn==0.34.0
 python-multipart==0.0.20
 python-dotenv==1.0.1
