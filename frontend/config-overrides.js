@@ -1,7 +1,23 @@
 const { GenerateSW } = require('workbox-webpack-plugin');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
+const path = require('path');
+const webpack = require('webpack');
+
 module.exports = function override(config, env) {
+  // SNAPSHOT=1: build the Players section as one offline file (see scripts/build_players_html.py)
+  if (process.env.SNAPSHOT === '1') {
+    config.entry = path.resolve(__dirname, 'src/snapshot/index.js');
+    config.optimization.splitChunks = false;
+    config.optimization.runtimeChunk = false;
+    config.plugins = config.plugins.filter(p => p.constructor.name !== 'GenerateSW' && p.constructor.name !== 'ManifestPlugin' && p.constructor.name !== 'WebpackManifestPlugin');
+    config.plugins.push(new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 }));
+    config.output.filename = 'app.js';
+    const mini = config.plugins.find(p => p.constructor.name === 'MiniCssExtractPlugin');
+    if (mini) mini.options.filename = 'app.css';
+    return config;
+  }
+
   // Add bundle analyzer in production when ANALYZE=true
   if (process.env.ANALYZE === 'true') {
     config.plugins.push(

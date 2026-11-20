@@ -13,6 +13,14 @@ export default function useApi(path) {
       setState({ data: null, loading: false, error: "" });
       return undefined;
     }
+    // Offline file: every response was saved into the page, so read it from there.
+    if (typeof window !== "undefined" && window.__SNAPSHOT__) {
+      const hit = window.__SNAPSHOT__[path];
+      setState(hit === undefined
+        ? { data: null, loading: false, error: "not saved in this offline file" }
+        : { data: hit, loading: false, error: "" });
+      return undefined;
+    }
     let cancelled = false;
     setState(s => ({ ...s, loading: true, error: "" }));
     fetch(`${BACKEND_URL}${path}`)
