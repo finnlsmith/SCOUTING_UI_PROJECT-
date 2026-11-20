@@ -1,0 +1,76 @@
+/* Player tables under the charts. Sizes follow the page scale (--ui-scale). */
+
+.wrap {
+  margin-top: calc(14px * var(--ui-scale));
+  text-align: left;
+}
+
+.title {
+  margin: 0 0 calc(8px * var(--ui-scale));
+  font-size: calc(22px * var(--ui-scale));
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(18px * var(--ui-scale));
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.th {
+  padding: calc(9px * var(--ui-scale)) calc(10px * var(--ui-scale));
+  text-align: center;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  border-bottom: 2px solid var(--color-border-dark);
+  cursor: help;
+}
+
+.td {
+  padding: calc(7px * var(--ui-scale)) calc(10px * var(--ui-scale));
+  text-align: center;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+}
+
+.playerCol {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.row:last-child .td {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: rgba(128, 128, 128, 0.12);
+}
+
+.zero {
+  opacity: 0.4;
+}
+
+.skeleton {
+  width: 100%;
+  height: calc(320px * var(--ui-scale));
+  border-radius: var(--radius-md);
+}
+
+.empty,
+.note {
+  font-size: calc(15px * var(--ui-scale));
+  color: var(--color-text-secondary);
+}
+
+.note {
+  margin: calc(6px * var(--ui-scale)) 0 0;
+}

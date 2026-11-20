@@ -82,6 +82,7 @@ class TestPassingNetworkRoute:
             min_passes=2,
             flip=True,
             subs=False,
+            period=None, start=None, end=None,
         )
 
     @patch('routes.visualizations.passing_network_like_matplotlib')
@@ -98,6 +99,7 @@ class TestPassingNetworkRoute:
             min_passes=1,
             flip=False,
             subs=True,
+            period=None, start=None, end=None,
         )
 
     @patch('routes.visualizations.passing_network_like_matplotlib')
@@ -122,6 +124,7 @@ class TestPassingNetworkRoute:
             min_passes=1,
             flip=False,
             subs=False,
+            period=None, start=None, end=None,
         )
 
 

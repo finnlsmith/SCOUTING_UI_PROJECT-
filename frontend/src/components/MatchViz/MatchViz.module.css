@@ -1224,8 +1224,8 @@
 .shotMapLegend {
   display: flex;
   justify-content: center;
-  gap: calc(18px * var(--ui-scale));
-  font-size: calc(13px * var(--ui-scale));
+  gap: calc(26px * var(--ui-scale));
+  font-size: calc(22px * var(--ui-scale));
   color: #333;
   flex-wrap: wrap;
   margin-bottom: calc(8px * var(--ui-scale));
@@ -1244,8 +1244,8 @@
 .shotOutcomeLegend {
   display: flex;
   justify-content: center;
-  gap: calc(16px * var(--ui-scale));
-  font-size: calc(11px * var(--ui-scale));
+  gap: calc(24px * var(--ui-scale));
+  font-size: calc(20px * var(--ui-scale));
   color: #666;
   flex-wrap: wrap;
 }
@@ -1261,24 +1261,24 @@
 }
 
 .legendDot {
-  width: calc(12px * var(--ui-scale));
-  height: calc(12px * var(--ui-scale));
+  width: calc(20px * var(--ui-scale));
+  height: calc(20px * var(--ui-scale));
   border-radius: 50%;
   display: inline-block;
   border: 1px solid black;
 }
 
 .legendSquare {
-  width: calc(12px * var(--ui-scale));
-  height: calc(12px * var(--ui-scale));
+  width: calc(20px * var(--ui-scale));
+  height: calc(20px * var(--ui-scale));
   display: inline-block;
   background-color: red;
   border: 1px solid black;
 }
 
 .legendX {
-  width: calc(12px * var(--ui-scale));
-  height: calc(12px * var(--ui-scale));
+  width: calc(20px * var(--ui-scale));
+  height: calc(20px * var(--ui-scale));
   display: inline-block;
   position: relative;
 }
@@ -1304,16 +1304,16 @@
 }
 
 .legendLine {
-  width: calc(20px * var(--ui-scale));
-  height: 3px;
+  width: calc(32px * var(--ui-scale));
+  height: calc(5px * var(--ui-scale));
   display: inline-block;
   border: none;
 }
 
 /* Shot Outcome Legend Icons */
 .legendWhiteX {
-  width: calc(12px * var(--ui-scale));
-  height: calc(12px * var(--ui-scale));
+  width: calc(20px * var(--ui-scale));
+  height: calc(20px * var(--ui-scale));
   display: inline-block;
   position: relative;
   background: linear-gradient(45deg, transparent 40%, white 40%, white 60%, transparent 60%),
@@ -1323,8 +1323,8 @@
 }
 
 .legendRedCircle {
-  width: calc(12px * var(--ui-scale));
-  height: calc(12px * var(--ui-scale));
+  width: calc(20px * var(--ui-scale));
+  height: calc(20px * var(--ui-scale));
   display: inline-block;
   border-radius: 50%;
   border: 2px solid red;
@@ -1332,8 +1332,8 @@
 }
 
 .legendRedX {
-  width: calc(12px * var(--ui-scale));
-  height: calc(12px * var(--ui-scale));
+  width: calc(20px * var(--ui-scale));
+  height: calc(20px * var(--ui-scale));
   display: inline-block;
   position: relative;
   background: linear-gradient(45deg, transparent 40%, red 40%, red 60%, transparent 60%),
@@ -1341,12 +1341,12 @@
 }
 
 .legendQuestion {
-  width: calc(12px * var(--ui-scale));
-  height: calc(12px * var(--ui-scale));
+  width: calc(20px * var(--ui-scale));
+  height: calc(20px * var(--ui-scale));
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px * var(--ui-scale));
+  font-size: calc(18px * var(--ui-scale));
   font-weight: bold;
   color: purple;
 }
@@ -1377,7 +1377,7 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  min-width: calc(92px * var(--ui-scale));
+  min-width: calc(150px * var(--ui-scale));
   padding: calc(8px * var(--ui-scale)) calc(14px * var(--ui-scale));
   border-radius: calc(10px * var(--ui-scale));
   border: 1px solid var(--color-border-dark);
@@ -1610,4 +1610,47 @@
   width: 100%;
   height: calc(640px * var(--ui-scale));
   border-radius: var(--radius-lg);
+}
+
+/* Hover label on the key events map */
+.eventTip {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  background: rgba(20, 20, 30, 0.96);
+  color: #fff;
+  padding: calc(9px * var(--ui-scale)) calc(13px * var(--ui-scale));
+  border-radius: var(--radius-md);
+  font-size: calc(17px * var(--ui-scale));
+  line-height: 1.35;
+  max-width: calc(520px * var(--ui-scale));
+}
+
+.eventTipHead {
+  font-weight: var(--font-weight-bold);
+  font-size: calc(19px * var(--ui-scale));
+}
+
+/* Banner shown while the passing network is temporarily replaced by the minute before a shot */
+.leadBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(12px * var(--ui-scale));
+  margin-bottom: calc(8px * var(--ui-scale));
+  padding: calc(8px * var(--ui-scale)) calc(14px * var(--ui-scale));
+  border-radius: var(--radius-md);
+  background: rgba(21, 101, 192, 0.18);
+  border: 1px solid rgba(21, 101, 192, 0.5);
+  font-size: calc(18px * var(--ui-scale));
+  color: var(--color-text-primary);
+  text-align: left;
+}
+
+.leadTeam {
+  font-size: calc(20px * var(--ui-scale));
+  font-weight: var(--font-weight-bold);
+  margin: calc(6px * var(--ui-scale)) 0 calc(4px * var(--ui-scale));
+  color: var(--color-text-primary);
+  text-align: left;
 }

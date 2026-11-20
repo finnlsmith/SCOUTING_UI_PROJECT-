@@ -7,7 +7,11 @@ import ErrorBanner from "../ErrorBanner";
 import MatchSelector from "../MatchSelector";
 import Scoreboard from "../Scoreboard";
 import CollapsibleSection from "../CollapsibleSection";
-import GamePhaseCard from "../GamePhaseCard";
+import GamePhaseCard, { reasonLabel } from "../GamePhaseCard";
+import PlayerTable, { ATTACK_COLUMNS, CREATION_COLUMNS } from "../PlayerTable";
+import SequenceMap from "../SequenceMap";
+import TouchesMap from "../TouchesMap";
+import { fetchEventContext, fetchNetwork } from "../hooks/matchApi";
 // import ShotMapButtons from "../ShotMapButtons";
 // import PassingNetworkButtons from "../PassingNetworkButtons";
 import { PlotSkeleton } from "../LoadingSkeleton";
@@ -27,6 +31,7 @@ export default function MatchViz() {
     loadTeamShotmap,
     loadBothShotmaps,
     loadPassingNetwork,
+    loadPlayerTables,
     error: vizError, setError: setVizError,
     importantMoments,
     importantMomentsLoading,
@@ -43,6 +48,14 @@ export default function MatchViz() {
   const [shotMapTeam, setShotMapTeam] = useState("both"); // "both" | "home" | "away"
   const [passNetTeam, setPassNetTeam] = useState("home"); // "home" | "away"
   const [showSubs, setShowSubs] = useState(false);
+  const [playerTables, setPlayerTables] = useState({}); // team name -> { attack, creation, coverage }
+  const [tablesLoading, setTablesLoading] = useState(false);
+  // Click a shot: show what led to it, and the passing networks of the minute before (both teams)
+  const [selectedShotId, setSelectedShotId] = useState(null);
+  const [shotContext, setShotContext] = useState(null);
+  const [leadNets, setLeadNets] = useState(null); // { [team]: figure | null }
+  // Click a player in the passing network: show where they touched the ball
+  const [touchesPlayer, setTouchesPlayer] = useState(null); // { team, player }
   const [selectedMomentIdx, setSelectedMomentIdx] = useState(null);
   const [sceneImageBase64, setSceneImageBase64] = useState(null);
   const [sceneLoading, setSceneLoading] = useState(false);
@@ -163,6 +176,48 @@ export default function MatchViz() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMatch, homeName, awayName, canShoot, shotMapTeam]);
+
+  // Player tables for both teams (one request each); the dropdowns only choose which to show
+  useEffect(() => {
+    if (!canShoot) return undefined;
+    let cancelled = false;
+    setPlayerTables({});
+    setTablesLoading(true);
+    Promise.all([homeName, awayName].map(t =>
+      Promise.resolve(loadPlayerTables(selectedMatch, t)).then(d => [t, d]).catch(() => [t, null])
+    )).then(pairs => {
+      if (cancelled) return;
+      setPlayerTables(Object.fromEntries(pairs.filter(([, d]) => d)));
+      setTablesLoading(false);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMatch, homeName, awayName, canShoot]);
+
+  // A new match (or team) starts with nothing selected
+  useEffect(() => {
+    setSelectedShotId(null);
+    setTouchesPlayer(null);
+  }, [selectedMatch]);
+
+  useEffect(() => { setTouchesPlayer(null); }, [passNetTeam, showSubs]);
+
+  // Clicked shot: its lead-up, then the passing networks for the 60 seconds before it
+  useEffect(() => {
+    if (!selectedShotId) { setShotContext(null); setLeadNets(null); return undefined; }
+    let cancelled = false;
+    setShotContext(null);
+    setLeadNets(null);
+    fetchEventContext(selectedMatch, selectedShotId).then(ctx => {
+      if (cancelled) return null;
+      setShotContext(ctx);
+      return Promise.all([homeName, awayName].map((t, i) =>
+        fetchNetwork(selectedMatch, t, { flip: i === 1, window: ctx.network_window }).then(f => [t, f]).catch(() => [t, null])
+      )).then(pairs => { if (!cancelled) setLeadNets(Object.fromEntries(pairs)); });
+    }).catch(() => { if (!cancelled) setSelectedShotId(null); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedShotId, selectedMatch]);
 
   // Passing network: the away team is drawn flipped so both teams attack the same way
   useEffect(() => {
@@ -420,6 +475,7 @@ export default function MatchViz() {
                     fouls={(Number.isFinite(stats.home_fouls) && Number.isFinite(stats.away_fouls)) ? `${stats.home_fouls} - ${stats.away_fouls}` : "-"}
                     cardsLeft={(Number.isFinite(stats.home_cards_total) && Number.isFinite(stats.home_cards_yellow) && Number.isFinite(stats.home_cards_red)) ? `${stats.home_cards_total} (${stats.home_cards_yellow}/${stats.home_cards_red})` : "-"}
                     cardsRight={(Number.isFinite(stats.away_cards_total) && Number.isFinite(stats.away_cards_yellow) && Number.isFinite(stats.away_cards_red)) ? `${stats.away_cards_total} (${stats.away_cards_yellow}/${stats.away_cards_red})` : "-"}
+                    defErrors={(Number.isFinite(stats.home_def_errors) && Number.isFinite(stats.away_def_errors)) ? `${stats.home_def_errors} - ${stats.away_def_errors}` : "-"}
                     boxEntries={(Number.isFinite(stats.home_box_entries) && Number.isFinite(stats.away_box_entries)) ? `${stats.home_box_entries} - ${stats.away_box_entries}` : "-"}
                   />
               </div>
@@ -460,12 +516,35 @@ export default function MatchViz() {
                 <div className={styles.plotFrame}>
                   {shotMapFigData ? (
                     <Suspense fallback={<PlotSkeleton fill />}>
-                      <ShotMapPlot displayFig={shotMapFigData} flipSides={flipSides} plotLoading={plotLoading} fit />
+                      <ShotMapPlot
+                        displayFig={shotMapFigData} flipSides={flipSides} plotLoading={plotLoading} fit hideTitle
+                        onPointClick={pt => { if (typeof pt.customdata === "string") setSelectedShotId(pt.customdata); }}
+                      />
                     </Suspense>
                   ) : (
                     <PlotSkeleton fill />
                   )}
                 </div>
+                {!selectedShotId && <p className={styles.chartNote}>Click a shot to see what led to it.</p>}
+                {selectedShotId && (
+                  <div style={{ marginTop: "12px" }}>
+                    {shotContext
+                      ? <SequenceMap context={shotContext} onClose={() => setSelectedShotId(null)} />
+                      : <div className={`skeleton ${styles.plotFrame}`} aria-label="Loading lead-up" />}
+                  </div>
+                )}
+                {(shotMapTeam === "both" ? [homeName, awayName] : [shotMapTeam === "home" ? homeName : awayName]).map(team => (
+                  <PlayerTable
+                    key={team}
+                    title={`${team}: attacking involvement`}
+                    columns={ATTACK_COLUMNS}
+                    rows={playerTables[team]?.attack}
+                    loading={tablesLoading}
+                    note={playerTables[team]?.coverage?.receptions_with_360_pct != null
+                      ? `Goal-side receptions use 360 tracking data, which covers ${playerTables[team].coverage.receptions_with_360_pct}% of this team's receptions. Hover a column title for the exact rule.`
+                      : "Hover a column title for the exact rule."}
+                  />
+                ))}
               </div>
               <div className={styles.chartColumn}>
                 <div className={styles.chartHeader}>
@@ -481,15 +560,51 @@ export default function MatchViz() {
                     <option value="away">{awayName}</option>
                   </select>
                 </div>
-                <div className={styles.plotFrame}>
-                  {passNetFigData ? (
-                    <Suspense fallback={<PlotSkeleton fill />}>
-                      <ShotMapPlot displayFig={passNetFigData} flipSides={flipSides} plotLoading={plotLoading} fit />
-                    </Suspense>
-                  ) : (
-                    <PlotSkeleton fill />
-                  )}
-                </div>
+                {selectedShotId ? (
+                  <>
+                    <div className={styles.leadBanner}>
+                      <span>
+                        The 60 seconds before {shotContext ? `${shotContext.event.player}'s ${shotContext.event.type.toLowerCase()} (${shotContext.event.minute}:${String(shotContext.event.second).padStart(2, "0")})` : "the shot"}, both teams
+                      </span>
+                      <button type="button" className={styles.chartSelect} onClick={() => setSelectedShotId(null)}>Back to the full match</button>
+                    </div>
+                    {[homeName, awayName].map(team => (
+                      <div key={team}>
+                        <div className={styles.leadTeam}>{team}</div>
+                        <div className={styles.plotFrame}>
+                          {!leadNets ? <PlotSkeleton fill /> : leadNets[team] ? (
+                            <Suspense fallback={<PlotSkeleton fill />}>
+                              <ShotMapPlot displayFig={leadNets[team]} flipSides={false} plotLoading={false} fit />
+                            </Suspense>
+                          ) : <div style={{ padding: "24px" }}>No completed passes in this window.</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                ) : touchesPlayer ? (
+                  <TouchesMap
+                    filename={selectedMatch} team={touchesPlayer.team} player={touchesPlayer.player}
+                    onClose={() => setTouchesPlayer(null)}
+                  />
+                ) : (
+                  <div className={styles.plotFrame}>
+                    {passNetFigData ? (
+                      <Suspense fallback={<PlotSkeleton fill />}>
+                        <ShotMapPlot
+                          displayFig={passNetFigData} flipSides={flipSides} plotLoading={plotLoading} fit
+                          onPointClick={pt => {
+                            const player = pt.customdata && pt.customdata[1] ? pt.customdata[1] : pt.text;
+                            if (player && pt.data && pt.data.name === "players") {
+                              setTouchesPlayer({ team: passNetTeam === "home" ? homeName : awayName, player });
+                            }
+                          }}
+                        />
+                      </Suspense>
+                    ) : (
+                      <PlotSkeleton fill />
+                    )}
+                  </div>
+                )}
                 <label className={styles.chartCheckLabel} title="Show each substitute in place of the player they replaced">
                   <input
                     type="checkbox"
@@ -500,8 +615,17 @@ export default function MatchViz() {
                   Show substitutes in place of the players they replaced
                 </label>
                 <p className={styles.chartNote}>
-                  Bubble size = number of touches.{showSubs ? " Hollow circles are substitutes (▲ = minute they came on)." : ""}
+                  Click a player to see where they touched the ball. Bubble size = number of touches.{showSubs ? " Hollow circles are substitutes (▲ = minute they came on)." : ""}
                 </p>
+                <PlayerTable
+                  title={`${passNetTeam === "home" ? homeName : awayName}: chance creation`}
+                  columns={CREATION_COLUMNS}
+                  rows={playerTables[passNetTeam === "home" ? homeName : awayName]?.creation}
+                  loading={tablesLoading}
+                  note={playerTables[passNetTeam === "home" ? homeName : awayName]?.coverage?.forward_passes_with_360_pct != null
+                    ? `Line-breaking passes use 360 tracking data, which covers ${playerTables[passNetTeam === "home" ? homeName : awayName].coverage.forward_passes_with_360_pct}% of this team's forward passes. Hover a column title for the exact rule.`
+                    : "Hover a column title for the exact rule."}
+                />
               </div>
             </div>
 
@@ -611,8 +735,12 @@ export default function MatchViz() {
                         className={i === selectedPhaseIdx ? styles.phaseTabActive : styles.phaseTab}
                         onClick={() => setSelectedPhaseIdx(i)}
                       >
-                        <span className={styles.phaseTabName}>Phase {p.phase_idx}</span>
-                        <span className={styles.phaseTabTime}>{`${p.start_minute}:${String(p.start_second).padStart(2, "0")}`}</span>
+                        <span className={styles.phaseTabName}>
+                          {`${p.start_minute}:${String(p.start_second).padStart(2, "0")} - ${p.end_minute != null ? `${p.end_minute}:${String(p.end_second).padStart(2, "0")}` : "end"}`}
+                        </span>
+                        <span className={styles.phaseTabTime}>
+                          {(Array.isArray(p.break_reasons) && p.break_reasons.length ? p.break_reasons.map(reasonLabel).join(", ") : "")}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -672,6 +800,7 @@ export default function MatchViz() {
                     return (
                       <GamePhaseCard
                         key={ph.phase_idx}
+                        filename={selectedMatch}
                         ph={ph}
                         m={m}
                         teams={gamePhaseTeams}

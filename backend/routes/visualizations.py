@@ -9,6 +9,7 @@ from fastapi import APIRouter, Query
 from fastapi import HTTPException
 
 # Import visualization functions
+from visualizations.player_tables import player_tables
 from visualizations import (
     get_match_viz,
     passing_network_like_matplotlib,
@@ -57,6 +58,9 @@ async def passing_network_route(
     min_passes: int = Query(1, ge=1, description="Minimum passes between players to display"),
     flip: bool = Query(False, description="Flip the pitch orientation horizontally"),
     subs: bool = Query(False, description="Show substitutes in place of the players they replaced"),
+    period: int | None = Query(None, description="Only this period (use with start/end)"),
+    start: float | None = Query(None, description="Window start: match clock in seconds (exclusive)"),
+    end: float | None = Query(None, description="Window end: match clock in seconds (inclusive)"),
 ):
     """
     Generate an interactive passing network visualization for a team.
@@ -87,6 +91,7 @@ async def passing_network_route(
         min_passes=min_passes,
         flip=flip,
         subs=subs,
+        period=period, start=start, end=end,
     )
 
 
@@ -200,3 +205,72 @@ async def possession_scene_route(
         - HTTPException 500: Image generation error
     """
     return await possession_scene(filename=filename, possession=possession)
+
+
+@router.get(
+    "/api/match/{filename}/player_tables",
+    summary="Per-player attack and chance-creation tables for one team",
+)
+async def player_tables_route(
+    filename: str,
+    team: str = Query(..., description="Team name to build the tables for"),
+    period: int | None = Query(None, description="Only this period (use with start/end)"),
+    start: float | None = Query(None, description="Window start: match clock in seconds (exclusive)"),
+    end: float | None = Query(None, description="Window end: match clock in seconds (inclusive)"),
+):
+    """
+    Two tables of per-player counts for one team: attacking involvement (shots, xG, final third
+    entries, box touches, goal-side receptions) and chance creation (line-breaking passes, carries
+    and passes into the box, possession-ending actions, shot-creating actions).
+
+    The line-breaking and goal-side counts use the 360 freeze frames, so they only cover events
+    that have a frame; the response says how much is covered.
+    """
+    return await player_tables(filename=filename, team=team, period=period, start=start, end=end)
+
+
+@router.get(
+    "/api/match/{filename}/event_context",
+    summary="The actions immediately before one event (a shot or a mistake)",
+)
+async def event_context_route(filename: str, event_id: str = Query(..., description="The event's id")):
+    """
+    What happened right before an event, ready to draw: the last few actions (passes, carries,
+    dribbles, recoveries, the opposition's last touches) in the frame of the team that owns the event,
+    plus the 60-second window to use for a passing network of the lead-up. Works the same for the
+    whole match and for phases.
+    """
+    from cache import s3
+    from fastapi import HTTPException
+    from visualizations.event_context import event_context
+    events = s3.get_dataframe(filename, cache_type="events_df")
+    if events is None:
+        raise HTTPException(status_code=404, detail=f"S3 key not found: {filename}")
+    ctx = event_context(events, event_id)
+    if not ctx:
+        raise HTTPException(status_code=404, detail=f"No event with id {event_id}")
+    return ctx
+
+
+@router.get(
+    "/api/match/{filename}/player_touches",
+    summary="Where one player touched the ball",
+)
+async def player_touches_route(
+    filename: str,
+    team: str = Query(..., description="The player's team"),
+    player: str = Query(..., description="The player's full name"),
+    mode: str = Query("touches", pattern="^(touches|final_third_receptions)$"),
+    period: int | None = Query(None, description="Only this period (use with start/end)"),
+    start: float | None = Query(None, description="Window start: match clock in seconds (exclusive)"),
+    end: float | None = Query(None, description="Window end: match clock in seconds (inclusive)"),
+):
+    """All of a player's touches, or just their receptions in the final third, in a window (a phase or
+    the whole match)."""
+    from cache import s3
+    from fastapi import HTTPException
+    from visualizations.event_context import apply_window, player_touches
+    events = s3.get_dataframe(filename, cache_type="events_df")
+    if events is None:
+        raise HTTPException(status_code=404, detail=f"S3 key not found: {filename}")
+    return player_touches(apply_window(events, period, start, end), team, player, mode)

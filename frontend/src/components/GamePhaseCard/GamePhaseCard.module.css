@@ -157,3 +157,324 @@
 .endLine b {
   color: #2a5599;
 }
+
+/* The score at the end of the phase: grey if nothing changed, yellow if a goal was scored */
+.scoreSame {
+  color: #9aa0a6;
+}
+
+.scoreChanged {
+  color: #ffd600;
+}
+
+[data-theme="light"] .scoreChanged {
+  color: #c79100;
+}
+
+/* Legend icons for the new markers */
+.legendTriangle {
+  width: 0;
+  height: 0;
+  display: inline-block;
+  border-left: calc(10px * var(--ui-scale)) solid transparent;
+  border-right: calc(10px * var(--ui-scale)) solid transparent;
+  border-bottom: calc(18px * var(--ui-scale)) solid #d81b60;
+}
+
+.legendDiamond {
+  width: calc(14px * var(--ui-scale));
+  height: calc(14px * var(--ui-scale));
+  display: inline-block;
+  background: #9c27b0;
+  border: 1px solid black;
+  transform: rotate(45deg);
+  margin: 0 calc(3px * var(--ui-scale));
+}
+
+/* ===== Header: time range, the score in the middle, what ended the phase ===== */
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(8px * var(--ui-scale));
+  text-align: center;
+  padding-bottom: calc(20px * var(--ui-scale));
+  margin-bottom: calc(24px * var(--ui-scale));
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.timeRange {
+  font-size: calc(26px * var(--ui-scale));
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+}
+
+.score {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: calc(14px * var(--ui-scale));
+  font-size: calc(40px * var(--ui-scale));
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-text-dark);
+}
+
+.scoreNum { font-size: calc(52px * var(--ui-scale)); }
+
+[data-theme="dark"] .score { color: #fff; }
+
+.endBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(4px * var(--ui-scale));
+}
+
+/* ===== Stats card (dark, with shots and chances standing out) ===== */
+.statsRow {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: calc(28px * var(--ui-scale));
+  align-items: start;
+  margin-bottom: calc(10px * var(--ui-scale));
+}
+
+.statsCard {
+  background: #101022;
+  border: 1px solid #2c2c4a;
+  border-radius: calc(14px * var(--ui-scale));
+  padding: calc(18px * var(--ui-scale)) calc(26px * var(--ui-scale));
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  font-family: var(--font-sans);
+  color: #e8e8f4;
+}
+
+.statsHead,
+.statsRow2,
+.statsRowKey,
+.statsRow {
+  /* shared grid: home value | stat name | away value */
+}
+
+.statsHead {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 1fr;
+  align-items: center;
+  padding-bottom: calc(12px * var(--ui-scale));
+  margin-bottom: calc(6px * var(--ui-scale));
+  border-bottom: 1px solid #2c2c4a;
+}
+
+.statsTeam {
+  font-size: calc(32px * var(--ui-scale));
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #fff;
+  text-align: center;
+}
+
+.statsCard .statsRow,
+.statsCard .statsRowKey {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 1fr;
+  align-items: center;
+  padding: calc(8px * var(--ui-scale)) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.statsCard .statsRow:last-child { border-bottom: none; }
+
+.statsLabel {
+  text-align: center;
+  font-size: calc(17px * var(--ui-scale));
+  color: #9a9ab8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.statsVal {
+  text-align: center;
+  font-size: calc(24px * var(--ui-scale));
+  font-weight: 700;
+  color: #f1f1fa;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Shots and chances: a highlighted band, bigger numbers, yellow accent */
+.statsCard .statsRowKey {
+  background: linear-gradient(90deg, rgba(255, 214, 0, 0.14), rgba(255, 214, 0, 0.04), rgba(255, 214, 0, 0.14));
+  border-radius: calc(10px * var(--ui-scale));
+  border-bottom: none;
+  margin: calc(4px * var(--ui-scale)) 0;
+  padding: calc(14px * var(--ui-scale)) 0;
+}
+
+.statsRowKey .statsVal {
+  font-size: calc(36px * var(--ui-scale));
+  font-weight: 800;
+  color: #ffd600;
+}
+
+.statsRowKey .statsLabel {
+  font-size: calc(19px * var(--ui-scale));
+  font-weight: 700;
+  color: #fff3b0;
+}
+
+/* ===== Substitutions and sent off ===== */
+.sideStack {
+  display: flex;
+  flex-direction: column;
+  gap: calc(20px * var(--ui-scale));
+}
+
+.sidePanel {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: calc(12px * var(--ui-scale));
+  padding: calc(16px * var(--ui-scale)) calc(18px * var(--ui-scale));
+}
+
+.miniTeam {
+  font-size: calc(18px * var(--ui-scale));
+  font-weight: 700;
+  margin-bottom: calc(4px * var(--ui-scale));
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .miniTeam { color: #fff; }
+
+.miniTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(17px * var(--ui-scale));
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .miniTable { color: #e8e8f4; }
+
+.miniTable th {
+  text-align: left;
+  font-weight: 600;
+  padding: calc(4px * var(--ui-scale)) calc(8px * var(--ui-scale));
+  border-bottom: 1px solid rgba(128, 128, 128, 0.4);
+}
+
+.miniTable td {
+  padding: calc(4px * var(--ui-scale)) calc(8px * var(--ui-scale));
+  border-bottom: 1px solid rgba(128, 128, 128, 0.18);
+}
+
+/* ===== Key moments: full width, table and scene side by side ===== */
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(14px * var(--ui-scale));
+  font-size: calc(26px * var(--ui-scale));
+  font-weight: var(--font-weight-bold);
+  margin: 0 0 calc(12px * var(--ui-scale));
+  color: var(--color-text-dark);
+  text-align: left;
+}
+
+[data-theme="dark"] .sectionTitleRow { color: #fff; }
+
+.momentsLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: calc(24px * var(--ui-scale));
+  align-items: start;
+}
+
+.sceneBox {
+  background: #fff;
+  border-radius: calc(10px * var(--ui-scale));
+  padding: calc(10px * var(--ui-scale));
+  min-width: 0;
+}
+
+.sceneImage {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ===== Legends under the maps ===== */
+.legendBox {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(14px * var(--ui-scale)) calc(36px * var(--ui-scale));
+  padding: calc(14px * var(--ui-scale)) calc(18px * var(--ui-scale));
+  margin-top: calc(10px * var(--ui-scale));
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: calc(10px * var(--ui-scale));
+  font-size: calc(20px * var(--ui-scale));
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .legendBox { color: #eee; }
+
+.legendGroup {
+  display: flex;
+  flex-direction: column;
+  gap: calc(6px * var(--ui-scale));
+}
+
+.legendGroup span { display: inline-flex; align-items: center; gap: calc(10px * var(--ui-scale)); }
+
+.legendHead {
+  font-weight: 700;
+  font-size: calc(21px * var(--ui-scale));
+  margin-bottom: calc(2px * var(--ui-scale));
+}
+
+.legendHead small { font-weight: 400; font-size: calc(17px * var(--ui-scale)); opacity: 0.8; }
+
+.legendNote {
+  flex-basis: 100%;
+  font-size: calc(17px * var(--ui-scale));
+  opacity: 0.8;
+}
+
+.dot { width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale)); border-radius: 50%; border: 1px solid #000; display: inline-block; }
+.markSaved { width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale)); border-radius: 50%; border: 3px solid red; display: inline-block; }
+.markBlocked { width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale)); display: inline-block;
+  background: linear-gradient(45deg, transparent 42%, red 42%, red 58%, transparent 58%), linear-gradient(-45deg, transparent 42%, red 42%, red 58%, transparent 58%); }
+.markPost { width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale)); display: inline-block; border: 1px solid #000; border-radius: 3px;
+  background: linear-gradient(45deg, transparent 40%, #fff 40%, #fff 60%, transparent 60%), linear-gradient(-45deg, transparent 40%, #fff 40%, #fff 60%, transparent 60%), #666; }
+.markWayward { color: purple; font-size: calc(24px * var(--ui-scale)); width: calc(20px * var(--ui-scale)); text-align: center; }
+.markOwnGoal { color: purple; font-size: calc(22px * var(--ui-scale)); width: calc(20px * var(--ui-scale)); text-align: center; }
+.triangle { width: 0; height: 0; display: inline-block;
+  border-left: calc(11px * var(--ui-scale)) solid transparent; border-right: calc(11px * var(--ui-scale)) solid transparent; border-bottom: calc(20px * var(--ui-scale)) solid #d81b60; }
+.triangleGoal { width: 0; height: 0; display: inline-block; position: relative;
+  border-left: calc(11px * var(--ui-scale)) solid transparent; border-right: calc(11px * var(--ui-scale)) solid transparent; border-bottom: calc(20px * var(--ui-scale)) solid #d81b60;
+  filter: drop-shadow(0 0 0 #000) drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000) drop-shadow(0 -1px 0 #000); }
+.square { width: calc(18px * var(--ui-scale)); height: calc(18px * var(--ui-scale)); background: red; border: 1px solid #000; display: inline-block; }
+.lineDashed { width: calc(34px * var(--ui-scale)); height: 0; border-top: calc(4px * var(--ui-scale)) dashed #2196f3; display: inline-block; }
+.lineSolid { width: calc(34px * var(--ui-scale)); height: calc(5px * var(--ui-scale)); background: #ff9800; display: inline-block; }
+.diamond { width: calc(16px * var(--ui-scale)); height: calc(16px * var(--ui-scale)); background: #9c27b0; border: 1px solid #000; transform: rotate(45deg); display: inline-block; margin: 0 calc(3px * var(--ui-scale)); }
+
+.backBtn {
+  font-size: calc(16px * var(--ui-scale));
+  padding: calc(6px * var(--ui-scale)) calc(16px * var(--ui-scale));
+  border-radius: var(--radius-md);
+  border: 1px solid #aaa;
+  background: var(--color-bg-white);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.noNet {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  font-size: calc(18px * var(--ui-scale));
+}
+
+.leadSkeleton { width: 100%; aspect-ratio: 3 / 2; max-height: calc(700px * var(--ui-scale)); border-radius: var(--radius-lg); }

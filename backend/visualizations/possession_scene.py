@@ -30,6 +30,7 @@ import matplotlib.patches as mpatches
 from visualizations.helpers import (
     get_xy, flip_y, flip_x, format_player_name, get_player
 )
+from visualizations.event_context import pass_label, flag
 
 
 def draw_pitch(ax=None, color='black', lw=2):
@@ -321,7 +322,7 @@ async def possession_scene(filename: str, possession: int):
         # --- BEGIN REAL PLOT ---
         # Pitch top-left, the Who/When/xG table under the pitch, legend down the right side
         fig = plt.figure(figsize=(16,9))
-        gs = gridspec.GridSpec(2,2,width_ratios=[7,2],height_ratios=[10,1],wspace=0.01,hspace=0.06)
+        gs = gridspec.GridSpec(2,2,width_ratios=[7,2],height_ratios=[10,1.5],wspace=0.01,hspace=0.06)
         ax = fig.add_subplot(gs[0,0])
         for xthresh in ht_x_thresholds:
             ax.add_patch(patches.Rectangle((xthresh, 0),120 - xthresh,80,facecolor='#fdfdbb',edgecolor='none',zorder=0,alpha=0.78 if len(ht_x_thresholds)==1 else 0.55))
@@ -351,6 +352,15 @@ async def possession_scene(filename: str, possession: int):
                     special_intercept_ballreceipt_indices.add(i1)
         
         # --- PLOT LOOP (all event types) ---
+        # A goalkeeper "error" right after a shot, or right after the keeper's own punch/save, is a parry that
+        # went wrong: draw it as a parry (P), not as an error (E)
+        parry_idx = set()
+        _types = reordered_df_special['type'].astype(str).tolist() if 'type' in reordered_df_special.columns else []
+        _pos = reordered_df_special['position'].astype(str).tolist() if 'position' in reordered_df_special.columns else [''] * len(_types)
+        for _n, (_t, _p, _label) in enumerate(zip(_types, _pos, reordered_df_special.index)):
+            if _t == 'Error' and _p == 'Goalkeeper' and any(x in ('Shot', 'Goal Keeper') for x in _types[max(_n - 3, 0):_n]):
+                parry_idx.add(_label)
+
         for i, event in reordered_df_special.iterrows():
             typ = event.get('type', None)
             if pd.isna(typ):
@@ -574,9 +584,11 @@ async def possession_scene(filename: str, possession: int):
                 start_x, start_y = get_xy(event.get('location'))
                 start_x_flipped = flip_x(start_x)
                 if not np.isnan(start_x_flipped):
-                    ax.text(start_x_flipped, start_y, "E", fontsize=8, ha='center', va='center', color='#FF1493', fontweight='bold', zorder=12)
+                    _is_parry = i in parry_idx
+                    _mark, _mark_color = ("P", '#1565c0') if _is_parry else ("E", '#FF1493')
+                    ax.text(start_x_flipped, start_y, _mark, fontsize=8, ha='center', va='center', color=_mark_color, fontweight='bold', zorder=12)
                     if player_short:
-                        ax.text(start_x_flipped, start_y + 2.0, player_short, fontsize=7, color='#FF1493',
+                        ax.text(start_x_flipped, start_y + 2.0, player_short, fontsize=7, color=_mark_color,
                                 ha='center', va='bottom', zorder=14)
                 continue
 
@@ -694,6 +706,7 @@ async def possession_scene(filename: str, possession: int):
         clearance_shot_team_legend = mlines.Line2D([],[],marker='$C$',markersize=12,markerfacecolor='green',markeredgecolor='green',markeredgewidth=1,lw=0,label='Clearance (Shot Team)')
         clearance_opposition_legend = mlines.Line2D([],[],marker='$C$',markersize=12,markerfacecolor='red',markeredgecolor='red',markeredgewidth=1,lw=0,label='Clearance (Opposition)')
         legend_elements = [mlines.Line2D([],[],color='black',linestyle=':',lw=2,label='Pass (Shot Team)'),mlines.Line2D([],[],color='red',linestyle=':',lw=2.2,label='Pass (Opposition)'),mlines.Line2D([],[],color='black',linestyle='-',lw=2,label='Carry (Shot Team)'),mlines.Line2D([],[],color='gray',linestyle='-',lw=2,label='Carry (Opposition)'),mlines.Line2D([],[],color='green',lw=2,linestyle=(0,(6,3,2,3)),label='Dribble (Shot Team)'),mlines.Line2D([],[],color='red',lw=2,linestyle=(0,(6,3,2,3)),label='Dribble (Opposition)'),mlines.Line2D([],[],color='red',marker='o',markersize=7,lw=0,label='Dribbled Past'),mlines.Line2D([],[],color='red',marker='',lw=0,label='Block',linestyle='None'),mlines.Line2D([],[],color='green',marker='o',markersize=10,lw=0,label='Ball Recovery (Shot Team)'),mlines.Line2D([],[],color='red',marker='o',markersize=10,lw=0,label='Ball Recovery (Opposition)'),mlines.Line2D([],[],color='green',marker='x',markersize=10,lw=0,label='Pressure (Shot Team)'),mlines.Line2D([],[],color='gray',marker='x',markersize=6,lw=0,label='Pressure (Opposition)'),clearance_shot_team_legend,clearance_opposition_legend,mlines.Line2D([],[],color='green',linestyle='-',lw=2.5,label='Shot Path: GOAL'),mlines.Line2D([],[],color='red',linestyle='-',lw=2.5,label='Shot Path: Not Goal'),mpatches.Patch(facecolor='none',edgecolor='red',linewidth=2,label='Shot End: Off Target or Blocked',alpha=1),mlines.Line2D([],[],color='red',marker='$🚫$',markersize=16,lw=0,label='Shot End: Saved'),mlines.Line2D([],[],color='green',marker='s',markersize=10,lw=0,label='Interception (Shot Team)'),mlines.Line2D([],[],color='red',marker='s',markersize=10,lw=0,label='Interception (Opposition)'),failed_interception_legend,own_goal_legend,dispossessed_shot_team_legend,dispossessed_opposition_legend,foul_won_shot_team_legend,foul_won_opposition_legend,foul_committed_shot_team_legend,foul_committed_opposition_legend,duel_legend,error_legend,mlines.Line2D([],[],marker='o',color='w',markerfacecolor='w',markeredgecolor='black',markeredgewidth=2,lw=0,label='Shot Order'),mlines.Line2D([],[],marker=None,color='w',lw=0,label="Shooter's name shown above shot number"),mlines.Line2D([],[],marker=None,color='w',lw=0,label="('Penalty'/'Free Kick' shown above shot number)")]
+        legend_elements.append(mlines.Line2D([],[],marker='$P$',markersize=11,markerfacecolor='#1565c0',markeredgecolor='#1565c0',lw=0,label='Goalkeeper parry (even if fumbled)'))
         ax_legend = fig.add_subplot(gs[:,1])
         ax_legend.axis('off')
         ax_info = fig.add_subplot(gs[1,0])
@@ -794,21 +807,53 @@ async def possession_scene(filename: str, possession: int):
             st_score = score_for(st)
             ot_score = score_for(ot)
             score_string = f"{st[:3]} {st_score}-{ot_score} {ot[:3]}"
-        info_cols = ["Who", "When", 'XG', "Result", "Score"]
-        info_data = [[who, when, xg, outcome, score_string]]
-        info_table = ax_info.table(cellText=info_data, colLabels=info_cols, loc='center', cellLoc='center', colLoc='center', bbox=[0, 0.05, 1, 0.9])
-        info_table.auto_set_font_size(False)
-        info_table.set_fontsize(11)
-        cell_dict = info_table.get_celld()
-        ncols = len(info_cols)
-        for (row, col), cell in cell_dict.items():
-            cell.set_width(1.0/ncols)
-            cell.set_edgecolor('black')
-            if row == 0:
-                cell.set_text_props(weight='bold', color='black')
-                cell.set_facecolor('#efefef')
+        # --- Facts under the pitch (who / when / xG are already in the moments table next to it) ---
+        _true = flag  # flags are stored as 1.0, not True
+
+        poss_all = reordered_df
+        n_passes = int((poss_all['type'] == 'Pass').sum()) if 'type' in poss_all.columns else 0
+        try:
+            secs = (poss_all['minute'] * 60 + poss_all['second']).astype(float)
+            duration = int(secs.max() - secs.min())
+        except Exception:
+            duration = None
+        pattern = str(poss_all['play_pattern'].dropna().iloc[0]) if 'play_pattern' in poss_all.columns and poss_all['play_pattern'].notna().any() else "Unknown"
+        buildup = f"{pattern}  |  {n_passes} pass{'es' if n_passes != 1 else ''}" + (f"  |  {duration}s" if duration is not None else "")
+
+        key_pass_text = "None (no pass directly before the shot)"
+        finish_text = "-"
+        if shot_row_check:
+            kp_id = sr.get('shot_key_pass_id')
+            kp = events[events['id'] == kp_id] if 'id' in events.columns and isinstance(kp_id, str) else pd.DataFrame()
+            if not kp.empty:
+                k = kp.iloc[0]
+                key_pass_text = f"{pass_label(k)} by {format_player_name(k.get('player'))}"
+                if _true(k.get('pass_goal_assist')):
+                    key_pass_text += "  (assist)"
+                if _true(k.get('under_pressure')):
+                    key_pass_text += "  |  under pressure"
+            bits = [str(sr.get('shot_body_part') or ""), str(sr.get('shot_technique') or "")]
+            flags = [name for col, name in (("shot_first_time", "first time"), ("shot_one_on_one", "one-on-one"),
+                                            ("shot_open_goal", "open goal"), ("under_pressure", "under pressure"),
+                                            ("shot_aerial_won", "aerial")) if _true(sr.get(col))]
+            finish_text = "  ".join(b for b in bits if b and b != "nan") + (("  |  " + ", ".join(flags)) if flags else "")
+        import textwrap
+        # Three columns; long text wraps instead of running into the next column
+        for x0, head, body, width in ((0.0, "Build-up", buildup, 34), (0.34, "Key pass", key_pass_text, 44), (0.72, "Finish", finish_text, 36)):
+            ax_info.text(x0, 0.92, head, fontsize=11, fontweight='bold', color='#555555', va='top', ha='left', transform=ax_info.transAxes)
+            ax_info.text(x0, 0.62, textwrap.fill(body, width), fontsize=11.5, color='black', va='top', ha='left', transform=ax_info.transAxes, linespacing=1.25)
         plt.tight_layout()
         ax.set_title(f"{when} - {shot_team} - {who}", fontsize=18, fontweight='bold')
+        # Home team attacks to the right, the away team to the left (like the passing networks), so two
+        # teams' moments are never drawn at the same end. The first Starting XI listed is the home side.
+        try:
+            xi = events[events['type'] == 'Starting XI']
+            home_name = xi['team'].iloc[0] if not xi.empty else None
+            if home_name and isinstance(shot_team, str) and shot_team != home_name:
+                ax.invert_xaxis()
+                ax.invert_yaxis()
+        except Exception:
+            pass
         buf = io.BytesIO()
         
         plt.savefig(buf, format="png", dpi=150, bbox_inches="tight", pad_inches=0.2)

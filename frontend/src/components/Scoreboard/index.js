@@ -1,7 +1,7 @@
 import React from "react";
 import styles from "./Scoreboard.module.css";
 
-export default function Scoreboard({ stage, home, away, score, shots, shotsOnTarget, xg, bigChances, okChances, fouls, cardsLeft, cardsRight, boxEntries }) {
+export default function Scoreboard({ stage, home, away, score, shots, shotsOnTarget, xg, bigChances, okChances, fouls, cardsLeft, cardsRight, boxEntries, defErrors }) {
   if (!home || !away) return null;
   
   // Parse values for combined rows
@@ -26,6 +26,7 @@ export default function Scoreboard({ stage, home, away, score, shots, shotsOnTar
     { label: "xG (pen.)", home: split(xg, 0), away: split(xg, 1) },
     { label: "Chances (All/Big)", home: `${homeAllChances}/${homeBig}`, away: `${awayAllChances}/${awayBig}` },
     { label: "Box Entries", home: split(boxEntries, 0), away: split(boxEntries, 1) },
+    { label: "Def. errors (own half)", home: split(defErrors, 0), away: split(defErrors, 1) },
     { label: "Fouls Committed", home: split(fouls, 0), away: split(fouls, 1) },
     { label: "Cards (yellow/red)", home: cardsLeft ?? "-", away: cardsRight ?? "-" },
   ];

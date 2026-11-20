@@ -43,8 +43,9 @@ function scaleLayout(layout, s) {
     const title = typeof out.title === "string" ? { text: out.title } : out.title;
     out.title = { ...title, font: { ...(title.font || {}), size: ((title.font && title.font.size) || 17) * s } };
   }
-  if (out.legend && out.legend.font && out.legend.font.size) {
-    out.legend = { ...out.legend, font: { ...out.legend.font, size: out.legend.font.size * s } };
+  // Legend text is deliberately large (22px before the page scale), whatever size the figure asked for
+  if (out.showlegend !== false) {
+    out.legend = { ...(out.legend || {}), font: { ...((out.legend && out.legend.font) || {}), size: 22 * s } };
   }
   if (Array.isArray(out.annotations)) {
     out.annotations = out.annotations.map(a => (a.font && a.font.size ? { ...a, font: { ...a.font, size: a.font.size * s } } : a));
@@ -54,7 +55,7 @@ function scaleLayout(layout, s) {
 
 // A chart that fills its parent and re-measures whenever the parent changes size (for example when a
 // scrollbar appears, or the card around it finishes loading), not only when the window is resized.
-function FitPlot({ data, layout }) {
+function FitPlot({ data, layout, onPointClick }) {
   const box = useRef(null);
   useEffect(() => {
     const el = box.current;
@@ -77,13 +78,14 @@ function FitPlot({ data, layout }) {
         layout={{ ...layout, autosize: true }}
         config={{ displayModeBar: false, responsive: true }}
         useResizeHandler
-        style={{ width: "100%", aspectRatio: "3 / 2" }}
+        onClick={onPointClick ? ev => ev.points && ev.points[0] && onPointClick(ev.points[0]) : undefined}
+        style={{ width: "100%", aspectRatio: "3 / 2", cursor: onPointClick ? "pointer" : undefined }}
       />
     </div>
   );
 }
 
-export default function ShotMapPlot({ displayFig, flipSides, plotLoading, smaller, customSize, fit }) {
+export default function ShotMapPlot({ displayFig, flipSides, plotLoading, smaller, customSize, fit, hideTitle, onPointClick }) {
   if (plotLoading) return <PlotSkeleton />;
   if (!displayFig || !displayFig.data || !displayFig.layout) {
     return null;
@@ -103,7 +105,8 @@ export default function ShotMapPlot({ displayFig, flipSides, plotLoading, smalle
     // Fill the width of the parent (used when two charts sit side by side).
     // Drop the fixed pixel size from the figure and keep the pitch's 3:2 shape.
     const { width, height, ...rest } = scaleLayout(flippedLayout, UI_SCALE);
-    return <FitPlot data={displayFig.data.map(tr => scaleTrace(tr, UI_SCALE))} layout={rest} />;
+    if (hideTitle) rest.title = undefined; // the page already shows a heading above the chart
+    return <FitPlot data={displayFig.data.map(tr => scaleTrace(tr, UI_SCALE))} layout={rest} onPointClick={onPointClick} />;
   }
   return (
     <Plot

@@ -20,6 +20,8 @@ from collections import OrderedDict
 
 from utils.coords import _to_xy
 from visualizations.helpers import to_point, point_in_rect
+from visualizations.player_events import defensive_errors, box_gain_entries
+from visualizations.event_context import error_follow_up
 from config.settings import TEAM_COLORS
 import plotly.graph_objects as go
 from utils.pitch import make_pitch
@@ -743,6 +745,25 @@ async def game_phases(filename: str):
                                         'color': color
                                     })
                 
+                # Also count getting the ball in the box WITHOUT a pass or carry doing it (for example after a
+                # defender's mistake): the first touch in the box of a possession not already counted.
+                for _team_name, _poss_set, _locs in (
+                    (home_team, home_poss_box, home_box_locations),
+                    (away_team, away_poss_box, away_box_locations),
+                ):
+                    try:
+                        _gains = box_gain_entries(ev_phase, _team_name, _poss_set)
+                        for _, g in _gains.iterrows():
+                            _poss_set.add(int(g['possession']))
+                            _locs.append({
+                                'x1': float(g['px']), 'y1': float(g['py']),
+                                'x2': float(g['px']), 'y2': float(g['py']),
+                                'type': 'gain',
+                                'color': get_box_entry_color(g, _team_name, ev_phase),
+                            })
+                    except Exception:
+                        traceback.print_exc()
+
                 box_entries_dedup = {home_team: len(home_poss_box), away_team: len(away_poss_box)}
                 box_entry_locations = {home_team: home_box_locations, away_team: away_box_locations}
 
@@ -755,6 +776,18 @@ async def game_phases(filename: str):
                 yellow_counts = yellow_cards.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int) if not yellow_cards.empty and 'team' in yellow_cards.columns else pd.Series({home_team: 0, away_team: 0})
                 red_counts = red_cards.groupby('team').size().reindex([home_team, away_team], fill_value=0).astype(int) if not red_cards.empty and 'team' in red_cards.columns else pd.Series({home_team: 0, away_team: 0})
                 cards_per_team = {home_team: {'yellow': int(yellow_counts.get(home_team, 0)), 'red': int(red_counts.get(home_team, 0))}, away_team: {'yellow': int(yellow_counts.get(away_team, 0)), 'red': int(red_counts.get(away_team, 0))}}
+
+                # Players sent off in this phase (straight red or second yellow)
+                sent_off = {home_team: [], away_team: []}
+                if not fouls.empty and 'foul_committed_card' in fouls.columns:
+                    for _, c in fouls[fouls['foul_committed_card'].isin(['Red Card', 'Second Yellow'])].iterrows():
+                        if c.get('team') in sent_off:
+                            sent_off[c['team']].append({
+                                'player': str(c.get('player', '')),
+                                'minute': int(c['minute']) if pd.notna(c.get('minute')) else None,
+                                'second': int(c['second']) if pd.notna(c.get('second')) else None,
+                                'card': str(c.get('foul_committed_card')),
+                            })
 
                 # Shots buckets
                 shots = ev_phase[ev_phase['type'] == 'Shot'].copy() if 'type' in ev_phase.columns else pd.DataFrame()
@@ -878,7 +911,9 @@ async def game_phases(filename: str):
                             'outcome': outcome,
                             'color': color,
                             'player': str(shot_row.get('player', '')),
-                            'event_type': 'shot'
+                            'event_type': 'shot',
+                            'id': shot_row.get('id'),
+                            'when': f"{int(shot_row['minute'])}:{int(shot_row['second']):02d}" if pd.notna(shot_row.get('minute')) and pd.notna(shot_row.get('second')) else '',
                         })
                 
                 # Add Red Cards
@@ -942,6 +977,43 @@ async def game_phases(filename: str):
                             'event_type': 'own_goal'
                         })
 
+                # Defensive errors (errors, miscontrols, dispossessions in the team's own half)
+                defensive_errors_per_team = {home_team: 0, away_team: 0}
+                for _team_name in (home_team, away_team):
+                    try:
+                        _errs = defensive_errors(ev_phase, _team_name)
+                        defensive_errors_per_team[_team_name] = int(len(_errs))
+                        for _, er in _errs.iterrows():
+                            shot_map_data[_team_name].append({
+                                'x': float(er['px']),
+                                'y': float(er['py']),
+                                'color': '#d81b60',
+                                'player': str(er.get('player', '')),
+                                'event_type': 'defensive_error',
+                                'id': er.get('id'),
+                                'error_type': str(er.get('type', '')),
+                                'follow_up': error_follow_up(base_ev, er),
+                                'when': f"{int(er['minute'])}:{int(er['second']):02d}" if pd.notna(er.get('minute')) and pd.notna(er.get('second')) else '',
+                            })
+                    except Exception:
+                        traceback.print_exc()
+
+                # Average position of each team's outfield events in this phase (x = how far up the pitch)
+                avg_position_per_team = {}
+                for _team_name in (home_team, away_team):
+                    try:
+                        _t = ev_phase[(ev_phase['team'] == _team_name) & ev_phase['location'].notna()]
+                        if 'position' in _t.columns:
+                            _t = _t[_t['position'] != 'Goalkeeper']
+                        _pts = [to_point(v) for v in _t['location']]
+                        _pts = [p for p in _pts if p]
+                        avg_position_per_team[_team_name] = (
+                            {'x': round(float(np.mean([p[0] for p in _pts])), 1), 'y': round(float(np.mean([p[1] for p in _pts])), 1)}
+                            if _pts else None
+                        )
+                    except Exception:
+                        avg_position_per_team[_team_name] = None
+
                 # ===== PASSING NETWORK DATA PER TEAM =====
                 def _empty_passing_fig(title):
                     """Return a blank pitch figure."""
@@ -958,7 +1030,7 @@ async def game_phases(filename: str):
                     fig.update_yaxes(autorange='reversed')
                     return fig.to_dict()
                 
-                def generate_phase_passing_network(phase_events_df, team_name, flip=False, subs_set=None, max_touches_ref=None):
+                def generate_phase_passing_network(phase_events_df, team_name, flip=False, subs_set=None, max_touches_ref=None, min_touches_ref=None, team_avg=None):
                     """Generate passing network data for a team in this phase.
                     
                     Args:
@@ -1259,11 +1331,13 @@ async def game_phases(filename: str):
                         # Nodes: size ~ touches (increased for phase-specific networks)
                         if not nodes.empty:
                             touches_list = nodes['touches'].astype(int).tolist()
-                            # Bubble AREA follows touches, relative to the busiest player in this
-                            # phase on EITHER team (the busiest is 34px across, nobody smaller than 10px).
-                            _max_touches = max(max(touches_list), int(max_touches_ref or 0), 1)
+                            # Bubble DIAMETER runs from the quietest to the busiest player on EITHER team in this
+                            # phase (10px to 40px), so even a small difference in touches is easy to see.
+                            _hi = max(max(touches_list), int(max_touches_ref or 0), 1)
+                            _lo = min(min(touches_list), int(min_touches_ref)) if min_touches_ref is not None else min(touches_list)
+                            _span = max(_hi - _lo, 1)
                             size_list = [
-                                max(10.0, 34.0 * (t / _max_touches) ** 0.5) for t in touches_list
+                                10.0 + 30.0 * min(max((t - _lo) / _span, 0.0), 1.0) for t in touches_list
                             ]
                             x_list = nodes['x'].astype(float).tolist()
                             y_list = nodes['y'].astype(float).tolist()
@@ -1316,9 +1390,25 @@ async def game_phases(filename: str):
                                     showlegend=False,
                                 ))
                         
+                        # Team average position (where the team was, physically, in this phase)
+                        if team_avg:
+                            _ax = 120 - team_avg['x'] if flip else team_avg['x']
+                            fig.add_trace(go.Scatter(
+                                x=[_ax], y=[team_avg['y']],
+                                mode='markers+text',
+                                text=['Team avg'],
+                                textposition='bottom center',
+                                textfont=dict(size=12),
+                                marker=dict(symbol='diamond', size=22, color='gold', line=dict(width=3, color='black')),
+                                hoverinfo='text',
+                                hovertemplate=f"<b>Team average position</b><br>x {team_avg['x']} (up the pitch), y {team_avg['y']}<extra></extra>",
+                                name='team average',
+                                showlegend=False,
+                            ))
+
                         fig = make_pitch(fig)
                         fig.update_layout(
-                            title=f'{team_name}',
+                            title=dict(text=f'{team_name}', font=dict(size=26)),
                             showlegend=False,
                             xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
                             yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
@@ -1334,17 +1424,19 @@ async def game_phases(filename: str):
                 # Generate passing networks for both teams (with subs tracking)
                 phase_subs = subs_by_phase.get(ph['phase_idx'], {home_team: set(), away_team: set()})
                 passing_networks = {}
-                # Same bubble scale for both teams: size is relative to the busiest player on either side
+                # One bubble scale for both teams: from the quietest to the busiest player on either side
                 try:
                     _touch_counts = (
                         ev_phase.loc[ev_phase['team'].isin([home_team, away_team]) & ev_phase['player'].notna()]
                         .groupby(['team', 'player']).size()
                     )
                     both_teams_max_touches = int(_touch_counts.max()) if len(_touch_counts) else 1
+                    both_teams_min_touches = int(_touch_counts.min()) if len(_touch_counts) else 0
                 except Exception:
                     both_teams_max_touches = None
-                passing_networks[home_team] = generate_phase_passing_network(ev_phase, home_team, flip=False, subs_set=phase_subs.get(home_team, set()), max_touches_ref=both_teams_max_touches)
-                passing_networks[away_team] = generate_phase_passing_network(ev_phase, away_team, flip=True, subs_set=phase_subs.get(away_team, set()), max_touches_ref=both_teams_max_touches)
+                    both_teams_min_touches = None
+                passing_networks[home_team] = generate_phase_passing_network(ev_phase, home_team, flip=False, subs_set=phase_subs.get(home_team, set()), max_touches_ref=both_teams_max_touches, min_touches_ref=both_teams_min_touches, team_avg=avg_position_per_team.get(home_team))
+                passing_networks[away_team] = generate_phase_passing_network(ev_phase, away_team, flip=True, subs_set=phase_subs.get(away_team, set()), max_touches_ref=both_teams_max_touches, min_touches_ref=both_teams_min_touches, team_avg=avg_position_per_team.get(away_team))
 
                 phase_metrics.append({
                     'phase_idx': ph['phase_idx'],
@@ -1367,6 +1459,9 @@ async def game_phases(filename: str):
                     'score_at_end': score_end_counts,
                     'shot_map_data': shot_map_data,
                     'passing_networks': passing_networks,
+                    'defensive_errors': defensive_errors_per_team,
+                    'sent_off': sent_off,
+                    'avg_position': avg_position_per_team,
                     'substitutions': phase_substitutions,
                 })
 

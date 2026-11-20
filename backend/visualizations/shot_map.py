@@ -5,6 +5,7 @@ Generates interactive Plotly-based shot maps with xG values and match statistics
 """
 
 import pandas as pd
+from visualizations.player_events import box_gain_entries, defensive_errors
 import numpy as np
 import plotly.graph_objects as go
 import json
@@ -88,6 +89,7 @@ async def get_match_viz(filename: str, team: str | None = None):
             "home_shots_on_target": None, "away_shots_on_target": None,
             "home_xg_sum": None, "away_xg_sum": None,
             'home_fouls': None, 'away_fouls': None,
+            'home_def_errors': None, 'away_def_errors': None,
             'home_cards_yellow': None, 'away_cards_yellow': None,
             'home_cards_red': None, 'away_cards_red': None,
             'home_cards_total': None, 'away_cards_total': None,
@@ -189,6 +191,13 @@ async def get_match_viz(filename: str, team: str | None = None):
                     else:
                         meta['home_fouls'] = meta['away_fouls'] = 0
 
+                    # Defensive errors in the team's own half (errors, miscontrols, dispossessions)
+                    try:
+                        meta['home_def_errors'] = int(len(defensive_errors(ev_filtered, meta['home_team'])))
+                        meta['away_def_errors'] = int(len(defensive_errors(ev_filtered, meta['away_team'])))
+                    except Exception:
+                        meta['home_def_errors'] = meta['away_def_errors'] = None
+
                     # Cards (from fouls): total, yellow, red
                     if not fouls_df.empty and 'foul_committed_card' in fouls_df.columns and 'team' in fouls_df.columns:
                         yellow_df = fouls_df[fouls_df['foul_committed_card'] == 'Yellow Card']
@@ -259,6 +268,13 @@ async def get_match_viz(filename: str, team: str | None = None):
                                     except Exception:
                                         continue
 
+                            # Also count getting the ball in the box without a pass or carry doing it
+                            # (for example after a defender's mistake)
+                            for _tn, _ps in ((home_team_name, home_poss), (away_team_name, away_poss)):
+                                _g = box_gain_entries(ev_filtered, _tn, _ps)
+                                if not _g.empty:
+                                    _ps.update(int(p) for p in _g['possession'])
+
                             meta['home_box_entries'] = int(len(home_poss))
                             meta['away_box_entries'] = int(len(away_poss))
                         else:
@@ -316,6 +332,8 @@ async def get_match_viz(filename: str, team: str | None = None):
                 for _, row in sub.iterrows()
             ],
             hoverinfo="text",
+            # event ids, so a click on a shot can look up what led to it
+            customdata=sub["id"].tolist() if "id" in sub.columns else None,
             name="Shot"
         ))
 

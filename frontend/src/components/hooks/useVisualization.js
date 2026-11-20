@@ -121,7 +121,7 @@ export default function useVisualization() {
             bgcolor: 'rgba(255,255,255,0.8)',
             bordercolor: '#ccc',
             borderwidth: 1,
-            font: { size: 14, weight: 'bold' }
+            font: { size: 22, weight: "bold" }
           }
         },
       };
@@ -150,6 +150,13 @@ export default function useVisualization() {
     }
   }
 
+  // Per-player attack and chance-creation tables for one team
+  async function loadPlayerTables(filename, team) {
+    if (!filename || !team) return null;
+    const url = `${BACKEND_URL}/match/${encodeURIComponent(filename)}/player_tables?team=${encodeURIComponent(team)}`;
+    return _fetchJson(url);
+  }
+
   const fetchImportantMoments = useCallback(async (matchFile) => {
     if (!matchFile) return;
     setImportantMomentsLoading(true);
@@ -172,6 +179,7 @@ export default function useVisualization() {
     setFigData,
     loading,
     loadMatchViz,
+    loadPlayerTables,
     loadTeamShotmap,
     loadBothShotmaps,
     loadPassingNetwork,

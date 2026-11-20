@@ -17,6 +17,7 @@ from utils.coords import _to_xy
 from utils.pitch import make_pitch
 from config.settings import TEAM_COLORS
 from visualizations.helpers import parse_positions_cell, format_player_name
+from visualizations.event_context import apply_window
 
 
 def _substitution_pairs(events: pd.DataFrame, team: str):
@@ -70,7 +71,8 @@ def _substitution_pairs(events: pd.DataFrame, team: str):
     return pairs
 
 
-async def passing_network_like_matplotlib(filename: str, team: str, min_passes: int = 1, flip: bool = False, subs: bool = False):
+async def passing_network_like_matplotlib(filename: str, team: str, min_passes: int = 1, flip: bool = False, subs: bool = False,
+                                          period=None, start=None, end=None):
     """
     Generate an interactive passing network visualization for a team.
     
@@ -90,7 +92,7 @@ async def passing_network_like_matplotlib(filename: str, team: str, min_passes: 
     from cache import cache, s3
     
     # Build cache key including all parameters
-    cache_key = f"passnet:{filename}:{team}:{min_passes}:{flip}:{subs}:plotly"
+    cache_key = f"passnet:{filename}:{team}:{min_passes}:{flip}:{subs}:{period}:{start}:{end}:plotly"
     
     # Check cache first
     cached_result = cache.get(cache_key, cache_type="passing_network")
@@ -102,6 +104,10 @@ async def passing_network_like_matplotlib(filename: str, team: str, min_passes: 
         events = s3.get_dataframe(filename, cache_type="events_df")
         if events is None:
             raise HTTPException(status_code=404, detail=f"S3 key not found: {filename}")
+        # A time window (a phase, or the 60 seconds before a shot): use everyone who played in it
+        windowed = period is not None or start is not None or end is not None
+        if windowed:
+            events = apply_window(events, period, start, end)
         cols = set(events.columns)
 
         # Minimum required geometry columns
@@ -230,6 +236,10 @@ async def passing_network_like_matplotlib(filename: str, team: str, min_passes: 
             for nm in starting_names:
                 for pid in name_to_ids.get(nm, []):
                     starting_id_whitelist.add(pid)
+
+        if windowed:
+            starting_id_whitelist = set()  # no starting-XI filter inside a window
+            subs = False
 
         # -------- Substitutes: each one takes the place of the player they replaced --------
         sub_info = {}  # on_id -> {"off": name, "minute": int}
@@ -360,25 +370,28 @@ async def passing_network_like_matplotlib(filename: str, team: str, min_passes: 
                     fill_list.append(team_color)
                     outline_list.append("black")
 
-            # Scale against the busiest player on EITHER team, so switching teams keeps sizes comparable
+            # One scale for BOTH teams: the quietest regular player maps to the smallest bubble and the
+            # busiest to the biggest (10px to 40px across), so small differences stay visible and
+            # switching teams keeps sizes comparable.
             try:
-                match_max = int(df[df["src_id"].notna()].groupby(["team", "src_id"]).size().max())
+                counts = df[df["src_id"].notna()].groupby(["team", "src_id"]).size()
+                if starting_id_whitelist:
+                    keep = counts.index.get_level_values("src_id").isin(starting_id_whitelist)
+                    counts = counts[keep] if keep.any() else counts
+                lo, hi = int(counts.min()), int(counts.max())
             except Exception:
-                match_max = 1
-            max_touches = max(max(touches_list), match_max, 1)
-            # The busiest player's bubble is drawn this many pixels across; the others scale
-            # by area (so touches stay comparable).
-            max_diameter = 28.0
+                lo, hi = min(touches_list), max(touches_list)
+            lo, hi = min(lo, min(touches_list)), max(hi, max(touches_list))
+            span = max(hi - lo, 1)
+            diameters = [10.0 + 30.0 * (t - lo) / span for t in touches_list]
             fig.add_trace(go.Scatter(
                 x=x_list, y=y_list,
                 mode="markers+text",
                 text=text_list,
                 textposition="top center",
                 marker=dict(
-                    size=touches_list,
-                    sizemode="area",
-                    sizeref=2.0 * max_touches / (max_diameter ** 2),
-                    sizemin=3,
+                    size=diameters,
+                    sizemode="diameter",
                     line=dict(width=3, color=outline_list),
                     color=fill_list,
                 ),
@@ -391,7 +404,7 @@ async def passing_network_like_matplotlib(filename: str, team: str, min_passes: 
 
         fig = make_pitch(fig)
         fig.update_layout(
-            title=f"{team}{(' — with substitutes' if subs and sub_info else ' — starting XI') if starting_id_whitelist else ''}",
+            title=dict(text=f"{team}{(' — with substitutes' if subs and sub_info else ' — starting XI') if starting_id_whitelist else ''}", font=dict(size=26)),
             showlegend=False,
             xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
             yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
