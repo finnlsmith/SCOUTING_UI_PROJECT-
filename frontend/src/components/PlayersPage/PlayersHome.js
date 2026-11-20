@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import useApi from "../hooks/useApi";
 import PlayerCard from "./PlayerCard";
 import styles from "./PlayersPage.module.css";
@@ -13,7 +14,7 @@ export default function PlayersHome() {
     <div>
       <h1 className={styles.title}>Scouting player card: an example</h1>
       <p className={styles.intro}>
-        A real card: Enzo Fernández, 2022 World Cup, 7 matches. <b>Click a row</b> to see how it is made and why he gets that number.
+        A real card: Enzo Fernández, 2022 World Cup, 7 matches. <b>Click a row</b> to see how it is made and why he gets that number. New here? Start with <Link className={styles.link} to="/players/about">About the card</Link>.
       </p>
 
       {loading && <p className={styles.muted}>Loading the card…</p>}

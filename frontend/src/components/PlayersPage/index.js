@@ -9,6 +9,9 @@ export default function PlayersLayout() {
     <div className={styles.shell}>
       <nav className={styles.toc} aria-label="Player card chapters">
         <div className={styles.tocTitle}>Player card</div>
+        <NavLink to="/players/about" className={({ isActive }) => (isActive ? styles.tocLinkOn : styles.tocLink)}>
+          About the card
+        </NavLink>
         <NavLink to="/players" end className={({ isActive }) => (isActive ? styles.tocLinkOn : styles.tocLink)}>
           Example card
         </NavLink>

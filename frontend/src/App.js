@@ -24,6 +24,7 @@ const FreeSpacePage = lazy(() => import("./components/PlayersPage/FreeSpacePage"
 const TouchesPage = lazy(() => import("./components/PlayersPage/TouchesPage"));
 const StandardStatsPage = lazy(() => import("./components/PlayersPage/StandardStatsPage"));
 const GoalSidePage = lazy(() => import("./components/PlayersPage/GoalSidePage"));
+const AboutCardPage = lazy(() => import("./components/PlayersPage/AboutCardPage"));
 const ChapterPage = lazy(() => import("./components/PlayersPage/ChapterPage"));
 
 // Simple loading fallback
@@ -49,6 +50,7 @@ function App() {
           <Route path="/tournaments" element={<Layout><TournamentsPage /></Layout>}/>
           <Route path="/players" element={<Layout><PlayersLayout /></Layout>}>
             <Route index element={<PlayersHome />} />
+            <Route path="about" element={<AboutCardPage />} />
             <Route path="pace" element={<PacePage />} />
             <Route path="tempo-and-technique" element={<TechniquePage />} />
             <Route path="phone-booth" element={<PhoneBoothPage />} />
