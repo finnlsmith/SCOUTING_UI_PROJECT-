@@ -958,7 +958,7 @@ async def game_phases(filename: str):
                     fig.update_yaxes(autorange='reversed')
                     return fig.to_dict()
                 
-                def generate_phase_passing_network(phase_events_df, team_name, flip=False, subs_set=None):
+                def generate_phase_passing_network(phase_events_df, team_name, flip=False, subs_set=None, max_touches_ref=None):
                     """Generate passing network data for a team in this phase.
                     
                     Args:
@@ -966,6 +966,8 @@ async def game_phases(filename: str):
                         team_name: Team name
                         flip: Whether to flip coordinates
                         subs_set: Set of player names who are subs (to mark with bright ring)
+                        max_touches_ref: Touches of the busiest player on EITHER team in this phase, so both
+                            teams' bubbles are drawn on the same scale
                     """
                     if subs_set is None:
                         subs_set = set()
@@ -1256,8 +1258,13 @@ async def game_phases(filename: str):
                         
                         # Nodes: size ~ touches (increased for phase-specific networks)
                         if not nodes.empty:
-                            size_list = (20 + 0.08 * nodes['touches']).clip(lower=12, upper=45).astype(float).tolist()
                             touches_list = nodes['touches'].astype(int).tolist()
+                            # Bubble AREA follows touches, relative to the busiest player in this
+                            # phase on EITHER team (the busiest is 34px across, nobody smaller than 10px).
+                            _max_touches = max(max(touches_list), int(max_touches_ref or 0), 1)
+                            size_list = [
+                                max(10.0, 34.0 * (t / _max_touches) ** 0.5) for t in touches_list
+                            ]
                             x_list = nodes['x'].astype(float).tolist()
                             y_list = nodes['y'].astype(float).tolist()
                             text_list = nodes['name'].astype(str).tolist()
@@ -1311,7 +1318,8 @@ async def game_phases(filename: str):
                         
                         fig = make_pitch(fig)
                         fig.update_layout(
-                            title=f'Passing Network — {team_name} (size ~ touches)',
+                            title=f'{team_name}',
+                            showlegend=False,
                             xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
                             yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
                             plot_bgcolor='white', height=600, width=900
@@ -1326,8 +1334,17 @@ async def game_phases(filename: str):
                 # Generate passing networks for both teams (with subs tracking)
                 phase_subs = subs_by_phase.get(ph['phase_idx'], {home_team: set(), away_team: set()})
                 passing_networks = {}
-                passing_networks[home_team] = generate_phase_passing_network(ev_phase, home_team, flip=False, subs_set=phase_subs.get(home_team, set()))
-                passing_networks[away_team] = generate_phase_passing_network(ev_phase, away_team, flip=True, subs_set=phase_subs.get(away_team, set()))
+                # Same bubble scale for both teams: size is relative to the busiest player on either side
+                try:
+                    _touch_counts = (
+                        ev_phase.loc[ev_phase['team'].isin([home_team, away_team]) & ev_phase['player'].notna()]
+                        .groupby(['team', 'player']).size()
+                    )
+                    both_teams_max_touches = int(_touch_counts.max()) if len(_touch_counts) else 1
+                except Exception:
+                    both_teams_max_touches = None
+                passing_networks[home_team] = generate_phase_passing_network(ev_phase, home_team, flip=False, subs_set=phase_subs.get(home_team, set()), max_touches_ref=both_teams_max_touches)
+                passing_networks[away_team] = generate_phase_passing_network(ev_phase, away_team, flip=True, subs_set=phase_subs.get(away_team, set()), max_touches_ref=both_teams_max_touches)
 
                 phase_metrics.append({
                     'phase_idx': ph['phase_idx'],

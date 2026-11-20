@@ -80,7 +80,24 @@ class TestPassingNetworkRoute:
             filename="events_3788741.csv",
             team="Italy",
             min_passes=2,
-            flip=True
+            flip=True,
+            subs=False,
+        )
+
+    @patch('routes.visualizations.passing_network_like_matplotlib')
+    def test_get_passing_network_with_substitutes(self, mock_passing_network, client):
+        """subs=true is passed through to the passing network builder."""
+        mock_passing_network.return_value = go.Figure().to_dict()
+
+        response = client.get("/api/match/events_3788741.csv/passing_network?team=Italy&subs=true")
+
+        assert response.status_code == 200
+        mock_passing_network.assert_called_once_with(
+            filename="events_3788741.csv",
+            team="Italy",
+            min_passes=1,
+            flip=False,
+            subs=True,
         )
 
     @patch('routes.visualizations.passing_network_like_matplotlib')
@@ -103,7 +120,8 @@ class TestPassingNetworkRoute:
             filename="events_3788741.csv",
             team="Italy",
             min_passes=1,
-            flip=False
+            flip=False,
+            subs=False,
         )
 
 

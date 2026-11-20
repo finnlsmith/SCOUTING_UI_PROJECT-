@@ -7,10 +7,12 @@ import ErrorBanner from "../ErrorBanner";
 import MatchSelector from "../MatchSelector";
 import Scoreboard from "../Scoreboard";
 import CollapsibleSection from "../CollapsibleSection";
+import GamePhaseCard from "../GamePhaseCard";
 // import ShotMapButtons from "../ShotMapButtons";
 // import PassingNetworkButtons from "../PassingNetworkButtons";
 import { PlotSkeleton } from "../LoadingSkeleton";
 import { BACKEND_URL } from "../../config/api";
+import { UI_SCALE } from "../../config/ui";
 import styles from "./MatchViz.module.css";
 
 // Dynamically import heavy component for code splitting
@@ -38,6 +40,9 @@ export default function MatchViz() {
   const [globalError, setGlobalError] = useState("");
   const [shotMapFigData, setShotMapFigData] = useState(null);
   const [passNetFigData, setPassNetFigData] = useState(null);
+  const [shotMapTeam, setShotMapTeam] = useState("both"); // "both" | "home" | "away"
+  const [passNetTeam, setPassNetTeam] = useState("home"); // "home" | "away"
+  const [showSubs, setShowSubs] = useState(false);
   const [selectedMomentIdx, setSelectedMomentIdx] = useState(null);
   const [sceneImageBase64, setSceneImageBase64] = useState(null);
   const [sceneLoading, setSceneLoading] = useState(false);
@@ -136,25 +141,41 @@ export default function MatchViz() {
     }
   }, [importantMoments, selectedMatch, showImportantScenes]);
 
-  // Auto-load Both Teams Shot Map when match is selected
+  // A new match starts on the default views
   useEffect(() => {
-    if (canShoot && selectedMatch && homeName && awayName) {
-      loadBothShotmaps(selectedMatch, homeName, awayName).then(data => {
-        if (data) setShotMapFigData(data);
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMatch, homeName, awayName, canShoot]);
+    setShotMapTeam("both");
+    setPassNetTeam("home");
+    setShowSubs(false);
+  }, [selectedMatch]);
 
-  // Auto-load Home Team Passing Network when match is selected
+  // Shot map: reloads when the match or the team dropdown changes. The flag drops answers that
+  // arrive after the user has already moved on, so a slow reply never replaces a newer chart.
   useEffect(() => {
-    if (canShoot && selectedMatch && homeName) {
-      loadPassingNetwork(selectedMatch, homeName, 1, false).then(data => {
-        if (data) setPassNetFigData(data);
-      });
-    }
+    if (!canShoot) return undefined;
+    let cancelled = false;
+    setShotMapFigData(null);
+    const request = shotMapTeam === "both"
+      ? loadBothShotmaps(selectedMatch, homeName, awayName)
+      : loadTeamShotmap(selectedMatch, shotMapTeam === "home" ? homeName : awayName);
+    Promise.resolve(request).then(data => {
+      if (!cancelled && data) setShotMapFigData(data);
+    });
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMatch, homeName, canShoot]);
+  }, [selectedMatch, homeName, awayName, canShoot, shotMapTeam]);
+
+  // Passing network: the away team is drawn flipped so both teams attack the same way
+  useEffect(() => {
+    if (!canShoot) return undefined;
+    let cancelled = false;
+    setPassNetFigData(null);
+    const team = passNetTeam === "home" ? homeName : awayName;
+    Promise.resolve(loadPassingNetwork(selectedMatch, team, 1, passNetTeam === "away", showSubs)).then(data => {
+      if (!cancelled && data) setPassNetFigData(data);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMatch, homeName, awayName, canShoot, passNetTeam, showSubs]);
 
   const handleMomentClick = idx => {
     setSelectedMomentIdx(idx);
@@ -229,7 +250,7 @@ export default function MatchViz() {
           });
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} style={{ "--ui-scale": UI_SCALE }}>
       <ErrorBanner error={globalError} onClose={handleClearError} />
       <div className={styles.content}>
         {/* Top bar: tournament name and match picker, top left */}
@@ -419,72 +440,73 @@ export default function MatchViz() {
                   </label>
                 </div>
 
-            {/* Shot map and passing network, side by side */}
+            {/* Shot map and passing network, side by side. Boxes keep their size while loading. */}
             <div className={styles.chartsRow}>
               <div className={styles.chartColumn}>
-                <h2 className={styles.shotMapsTitle}>Shot Map</h2>
-                {shotMapFigData && (
-                  <div className={styles.shotMapPlot}>
-                    <Suspense fallback={<PlotSkeleton />}>
+                <div className={styles.chartHeader}>
+                  <h2 className={styles.chartTitle}>Shot Map</h2>
+                  <select
+                    className={styles.chartSelect}
+                    value={shotMapTeam}
+                    onChange={(e) => setShotMapTeam(e.target.value)}
+                    disabled={!canShoot}
+                    aria-label="Team for shot map"
+                  >
+                    <option value="both">Both teams</option>
+                    <option value="home">{homeName}</option>
+                    <option value="away">{awayName}</option>
+                  </select>
+                </div>
+                <div className={styles.plotFrame}>
+                  {shotMapFigData ? (
+                    <Suspense fallback={<PlotSkeleton fill />}>
                       <ShotMapPlot displayFig={shotMapFigData} flipSides={flipSides} plotLoading={plotLoading} fit />
                     </Suspense>
-                  </div>
-                )}
-                <div className={styles.buttonGroup}>
-                  <button onClick={async () => {
-                    if (!canShoot) return;
-                    const data = await loadTeamShotmap(selectedMatch, homeName);
-                    setShotMapFigData(data);
-                  }} className={styles.button}>Shot map – {homeName}</button>
-                  <button onClick={async () => {
-                    if (!canShoot) return;
-                    const data = await loadTeamShotmap(selectedMatch, awayName);
-                    setShotMapFigData(data);
-                  }} className={styles.button}>Shot map – {awayName}</button>
-                  <button onClick={async () => {
-                    if (!canShoot) return;
-                    const data = await loadBothShotmaps(selectedMatch, homeName, awayName);
-                    setShotMapFigData(data);
-                  }} className={styles.buttonBoth}>Both Teams Shot Map</button>
-                </div>
-                <div className={styles.resetButtonContainer}>
-                  <button 
-                    onClick={() => setShotMapFigData(null)}
-                    className={styles.resetButton}
-                  >Reset Shot Map</button>
+                  ) : (
+                    <PlotSkeleton fill />
+                  )}
                 </div>
               </div>
               <div className={styles.chartColumn}>
-                <h2 className={styles.passingNetworkTitle}>Passing Network</h2>
-                {passNetFigData && (
-                  <div className={styles.passingNetworkPlot}>
-                    <Suspense fallback={<PlotSkeleton />}>
+                <div className={styles.chartHeader}>
+                  <h2 className={styles.chartTitle}>Passing Network</h2>
+                  <select
+                    className={styles.chartSelect}
+                    value={passNetTeam}
+                    onChange={(e) => setPassNetTeam(e.target.value)}
+                    disabled={!canShoot}
+                    aria-label="Team for passing network"
+                  >
+                    <option value="home">{homeName}</option>
+                    <option value="away">{awayName}</option>
+                  </select>
+                </div>
+                <div className={styles.plotFrame}>
+                  {passNetFigData ? (
+                    <Suspense fallback={<PlotSkeleton fill />}>
                       <ShotMapPlot displayFig={passNetFigData} flipSides={flipSides} plotLoading={plotLoading} fit />
                     </Suspense>
-                  </div>
-                )}
-                <div className={styles.passingNetworkButtons}>
-                  <button onClick={async () => {
-                    if (!canShoot) return;
-                    const data = await loadPassingNetwork(selectedMatch, homeName, 1, false);
-                    setPassNetFigData(data);
-                  }} className={styles.passingNetworkButton}>{homeName} Network</button>
-                  <button onClick={async () => {
-                    if (!canShoot) return;
-                    const data = await loadPassingNetwork(selectedMatch, awayName, 1, true);
-                    setPassNetFigData(data);
-                  }} className={styles.passingNetworkButton}>{awayName} Network</button>
+                  ) : (
+                    <PlotSkeleton fill />
+                  )}
                 </div>
-                <div className={styles.resetButtonContainer}>
-                  <button 
-                    onClick={() => setPassNetFigData(null)}
-                    className={styles.resetButton}
-                  >Reset Passing Network</button>
-                </div>
+                <label className={styles.chartCheckLabel} title="Show each substitute in place of the player they replaced">
+                  <input
+                    type="checkbox"
+                    checked={showSubs}
+                    onChange={(e) => setShowSubs(e.target.checked)}
+                    disabled={!canShoot}
+                  />
+                  Show substitutes in place of the players they replaced
+                </label>
+                <p className={styles.chartNote}>
+                  Bubble size = number of touches.{showSubs ? " Hollow circles are substitutes (▲ = minute they came on)." : ""}
+                </p>
               </div>
             </div>
-            
-            
+
+            <div className={styles.chartsDivider} />
+
             {/* Key Moments Section */}
             <CollapsibleSection
               title="Key Moments"
@@ -499,7 +521,7 @@ export default function MatchViz() {
               <div className={styles.momentsContainer}>
                 {/* Moments Table */}
                 <div className={styles.momentsTable}>
-                  {importantMomentsLoading && <div className={styles.loadingText}>Loading moments...</div>}
+                  {importantMomentsLoading && <div className={`skeleton ${styles.momentsSkeleton}`} aria-label="Loading moments" />}
                   {importantMomentsError && <div className={styles.errorText}>{importantMomentsError}</div>}
                   {!importantMomentsLoading && !importantMomentsError && Array.isArray(importantMoments) && importantMoments.length === 0 && (
                     <div className={styles.emptyText}>No important moments found for match.</div>
@@ -550,9 +572,11 @@ export default function MatchViz() {
                       <button onClick={handleNext} disabled={selectedMomentIdx >= importantMoments.length - 1} className={styles.sceneNavButton}>{'→'}</button>
                     </div>
                     <div className={styles.sceneStatus}>
-                      {sceneLoading && 'Loading scene...'}
                       {sceneError && sceneError}
                     </div>
+                    {sceneLoading && !sceneImageBase64 && (
+                      <div className={`skeleton ${styles.sceneSkeleton}`} aria-label="Loading scene" />
+                    )}
                     {sceneImageBase64 && (
                       <img
                         src={`data:image/png;base64,${sceneImageBase64}`}
@@ -601,7 +625,7 @@ export default function MatchViz() {
                   >{"→"}</button>
                 </div>
               )}
-              {gamePhaseLoading && <div className={styles.gamePhasesLoading}>Loading phases...</div>}
+              {gamePhaseLoading && <div className={`skeleton ${styles.gamePhasesSkeleton}`} aria-label="Loading phases" />}
               {gamePhaseError && <div className={styles.gamePhasesError}>{gamePhaseError}</div>}
               {!gamePhaseLoading && !gamePhaseError && gamePhases.length === 0 && (
                 <div className={styles.gamePhasesEmpty}>
@@ -646,626 +670,17 @@ export default function MatchViz() {
                     });
                     
                     return (
-                    <div key={ph.phase_idx} className={styles.gamePhaseCard}>
-                      <div className={styles.gamePhaseHeader}>
-                      <div className={styles.gamePhaseTitle}>Game Phase {ph.phase_idx}</div>
-                      <div className={styles.gamePhaseTime}>
-                        <b>From: </b>{`${ph.start_minute}:${String(ph.start_second).padStart(2, '0')}`} <b>— To: </b>{ph.end_minute !== null ? `${ph.end_minute}:${String(ph.end_second).padStart(2,'0')}` : 'End'}
-                      </div>
-                      <div className={styles.gamePhaseScore}>
-                        <b>Score: </b>{gamePhaseTeams.home} {ph.score_start} {gamePhaseTeams.away}
-                        {ph.score_end ? ` → ${ph.score_end}` : ''}
-                      </div>
-                      {ph.goal_info && ph.goal_info.scorer && (
-                        <div className={styles.gamePhaseGoalInfo}>
-                          Goal Event: <b>{ph.goal_info.event_type}</b>{ph.goal_info.own_goal_team ? ` (Own goal by ${ph.goal_info.own_goal_team})` : ''}, scored by <b>{ph.goal_info.scorer}</b>
-                        </div>
-                      )}
-                      {Array.isArray(ph.break_reasons) && ph.break_reasons.length > 0 && (
-                        <div className={styles.gamePhaseBreakReasons}>
-                          Phase ended by: {ph.break_reasons.map(r => r === "half_end" ? "Half Ended" : r).join(', ')}
-                        </div>
-                      )}
-                      </div>
-                      
-                      {m && (
-                        <>
-                          {/* Stats table and Substitutions at top */}
-                          <div className={styles.phaseStatsTopContainer}>
-                            <div className={styles.phaseStatsAndSubsLayout}>
-                              {/* Stats table */}
-                              <div className={styles.metricsContainer}>
-                                <h3 className={styles.phaseStatsTitle}>Phase Stats</h3>
-                                <table className={styles.phaseMetricsTable}>
-                              <thead>
-                                <tr>
-                                  <th className={styles.phaseMetricsHeaderCell}></th>
-                                  <th className={styles.phaseMetricsHeaderCell}>{gamePhaseTeams.home}</th>
-                                  <th className={styles.phaseMetricsHeaderCell}>{gamePhaseTeams.away}</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Shots (On Target)</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.home]?.total ?? 0} ({m.shots_summary?.[gamePhaseTeams.home]?.on_target ?? 0})</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.shots_summary?.[gamePhaseTeams.away]?.total ?? 0} ({m.shots_summary?.[gamePhaseTeams.away]?.on_target ?? 0})</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Chances (All/Big)</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.home]?.ok ?? 0} / {m.chances?.[gamePhaseTeams.home]?.good ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.chances?.[gamePhaseTeams.away]?.ok ?? 0} / {m.chances?.[gamePhaseTeams.away]?.good ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Final Third Entries</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.final_third_entries?.[gamePhaseTeams.home] ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.final_third_entries?.[gamePhaseTeams.away] ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Box Entries</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.box_entries?.[gamePhaseTeams.home] ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.box_entries?.[gamePhaseTeams.away] ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Possession %</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.possession_pct_by_passes?.[gamePhaseTeams.home] ?? 0}%</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.possession_pct_by_passes?.[gamePhaseTeams.away] ?? 0}%</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Goals</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.goals?.[gamePhaseTeams.home] ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.goals?.[gamePhaseTeams.away] ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Fouls</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.fouls?.[gamePhaseTeams.home] ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.fouls?.[gamePhaseTeams.away] ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Cards (Yellow / Red)</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.cards?.[gamePhaseTeams.home]?.yellow ?? 0} / {m.cards?.[gamePhaseTeams.home]?.red ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.cards?.[gamePhaseTeams.away]?.yellow ?? 0} / {m.cards?.[gamePhaseTeams.away]?.red ?? 0}</td>
-                                </tr>
-                                <tr className={styles.phaseMetricsRow}>
-                                  <td className={styles.phaseMetricsLabelCell}>Penalties</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.penalties?.[gamePhaseTeams.home] ?? 0}</td>
-                                  <td className={styles.phaseMetricsValueCell}>{m.penalties?.[gamePhaseTeams.away] ?? 0}</td>
-                                </tr>
-                              </tbody>
-                            </table>
-                              </div>
-                              
-                              {/* Substitutions table - always show if substitutions data exists */}
-                              {m.substitutions && (
-                                <div className={styles.phaseSubstitutionsContainer}>
-                                  <h3 className={styles.phaseSubstitutionsTitle}>Substitutions</h3>
-                                  <div className={styles.phaseSubstitutionsGrid}>
-                                    {/* Home team substitutions */}
-                                    <div className={styles.phaseSubstitutionsTeamColumn}>
-                                      <div className={styles.phaseSubstitutionsTeamLabel}>{gamePhaseTeams.home}</div>
-                                      {Array.isArray(m.substitutions[gamePhaseTeams.home]) && m.substitutions[gamePhaseTeams.home].length > 0 ? (
-                                        <table className={styles.phaseSubstitutionsTable}>
-                                          <thead>
-                                            <tr>
-                                              <th className={styles.phaseSubstitutionsHeaderCell}>Time</th>
-                                              <th className={styles.phaseSubstitutionsHeaderCell}>Off</th>
-                                              <th className={styles.phaseSubstitutionsHeaderCell}>Position</th>
-                                              <th className={styles.phaseSubstitutionsHeaderCell}>On</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {m.substitutions[gamePhaseTeams.home].map((sub, subIdx) => (
-                                              <tr key={subIdx} className={styles.phaseSubstitutionsRow}>
-                                                <td className={styles.phaseSubstitutionsCell}>
-                                                  {sub.minute}:{String(sub.second).padStart(2, '0')}
-                                                </td>
-                                                <td className={styles.phaseSubstitutionsCell}>{sub.player_off || '—'}</td>
-                                                <td className={styles.phaseSubstitutionsCell}>{sub.position_off || '—'}</td>
-                                                <td className={styles.phaseSubstitutionsCell}>{sub.player_on || '—'}</td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      ) : (
-                                        <div className={styles.noSubstitutionsPlaceholder}>No substitutions</div>
-                                      )}
-                                    </div>
-                                    
-                                    {/* Away team substitutions */}
-                                    <div className={styles.phaseSubstitutionsTeamColumn}>
-                                      <div className={styles.phaseSubstitutionsTeamLabel}>{gamePhaseTeams.away}</div>
-                                      {Array.isArray(m.substitutions[gamePhaseTeams.away]) && m.substitutions[gamePhaseTeams.away].length > 0 ? (
-                                        <table className={styles.phaseSubstitutionsTable}>
-                                          <thead>
-                                            <tr>
-                                              <th className={styles.phaseSubstitutionsHeaderCell}>Time</th>
-                                              <th className={styles.phaseSubstitutionsHeaderCell}>Off</th>
-                                              <th className={styles.phaseSubstitutionsHeaderCell}>Position</th>
-                                              <th className={styles.phaseSubstitutionsHeaderCell}>On</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {m.substitutions[gamePhaseTeams.away].map((sub, subIdx) => (
-                                              <tr key={subIdx} className={styles.phaseSubstitutionsRow}>
-                                                <td className={styles.phaseSubstitutionsCell}>
-                                                  {sub.minute}:{String(sub.second).padStart(2, '0')}
-                                                </td>
-                                                <td className={styles.phaseSubstitutionsCell}>{sub.player_off || '—'}</td>
-                                                <td className={styles.phaseSubstitutionsCell}>{sub.position_off || '—'}</td>
-                                                <td className={styles.phaseSubstitutionsCell}>{sub.player_on || '—'}</td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      ) : (
-                                        <div className={styles.noSubstitutionsPlaceholder}>No substitutions</div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Divider line */}
-                          <div className={styles.phaseDivider}></div>
-                          
-                          {/* Three-column layout below divider: Left=Passing Networks, Middle=Key Events/Box Entry, Right=Key Moments */}
-                          <div className={styles.phaseThreeColumnLayout}>
-                            {/* LEFT: Passing Networks */}
-                            <div className={styles.phasePassingNetworksColumn}>
-                              {m.passing_networks && (
-                                <div className={styles.phasePassingNetworksContainer}>
-                                  <h3 className={styles.phaseVisualizationTitle}>Passing Networks</h3>
-                                  <div className={styles.phasePassingNetworksStack}>
-                                    <div className={styles.phasePassingNetworkCard}>
-                                      <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.home}</div>
-                                      <div className={styles.phasePassingNetworkPlot}>
-                                        <Suspense fallback={<PlotSkeleton />}>
-                                          <ShotMapPlot 
-                                            displayFig={m.passing_networks[gamePhaseTeams.home] || null} 
-                                            flipSides={false} 
-                                            plotLoading={false} 
-                                            customSize={{ width: 900, height: 600 }} 
-                                          />
-                                        </Suspense>
-                                      </div>
-                                    </div>
-                                    <div className={styles.phasePassingNetworkCard}>
-                                      <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.away}</div>
-                                      <div className={styles.phasePassingNetworkPlot}>
-                                        <Suspense fallback={<PlotSkeleton />}>
-                                          <ShotMapPlot 
-                                            displayFig={m.passing_networks[gamePhaseTeams.away] || null} 
-                                            flipSides={true} 
-                                            plotLoading={false} 
-                                            customSize={{ width: 900, height: 600 }} 
-                                          />
-                                        </Suspense>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                            
-                            {/* MIDDLE: Key Events and Box Entry Maps */}
-                            <div className={styles.phaseVisualizationsColumn}>
-                              {/* Key Events (shots, red cards, own goals) */}
-                              {m.shot_map_data && (
-                                <div className={styles.shotMapsContainer}>
-                                <h3 className={styles.phaseVisualizationTitle}>Key Events (shots, red cards, own goals)</h3>
-                                <div className={styles.shotMapsGrid}>
-                                  {/* Home team event map */}
-                                  <div className={styles.shotMapCard}>
-                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.home}</div>
-                                    <svg viewBox="0 0 120 80" className={styles.shotMapSvg}>
-                                      {/* Pitch outline */}
-                                      <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
-                                      {/* Half line */}
-                                      <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
-                                      {/* Penalty boxes (18-yard) */}
-                                      <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
-                                      <rect x="102" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
-                                      {/* 6-yard boxes */}
-                                      <rect x="0" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
-                                      <rect x="114" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
-                                      {/* Penalty spots */}
-                                      <circle cx="12" cy="40" r="0.8" fill="#888" />
-                                      <circle cx="108" cy="40" r="0.8" fill="#888" />
-                                      {/* Goal indicators */}
-                                      <rect x="0" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
-                                      <rect x="119.5" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
-                                      
-                                      {/* Plot events */}
-                                      {(m.shot_map_data[gamePhaseTeams.home] || []).map((event, eventIdx) => {
-                                        if (event.event_type === 'red_card') {
-                                          return (
-                                            <rect
-                                              key={eventIdx}
-                                              x={event.x - 2.5}
-                                              y={80 - event.y - 2.5}
-                                              width="5"
-                                              height="5"
-                                              fill={event.color}
-                                              stroke="black"
-                                              strokeWidth="0.5"
-                                              opacity="0.9"
-                                            >
-                                              <title>{`${event.player}\nRed Card`}</title>
-                                            </rect>
-                                          );
-                                        } else if (event.event_type === 'own_goal') {
-                                          return (
-                                            <g key={eventIdx}>
-                                              <line x1={event.x - 3} y1={80 - event.y - 3} x2={event.x + 3} y2={80 - event.y + 3} stroke={event.color} strokeWidth="1.5" />
-                                              <line x1={event.x - 3} y1={80 - event.y + 3} x2={event.x + 3} y2={80 - event.y - 3} stroke={event.color} strokeWidth="1.5" />
-                                              <title>{`${event.player}\nOwn Goal For`}</title>
-                                            </g>
-                                          );
-                                        } else {
-                                          const outcome = event.outcome.toLowerCase();
-                                          return (
-                                            <g key={eventIdx}>
-                                              <circle
-                                                cx={event.x}
-                                                cy={80 - event.y}
-                                                r="2.5"
-                                                fill={event.color}
-                                                stroke="black"
-                                                strokeWidth="0.3"
-                                                opacity="0.85"
-                                              >
-                                                <title>{`${event.player}\nxG: ${event.xg}\n${event.outcome}`}</title>
-                                              </circle>
-                                              
-                                              {(outcome === 'woodwork' || outcome === 'post' || outcome === 'saved to post') && (
-                                                <>
-                                                  <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="white" strokeWidth="2" />
-                                                  <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="white" strokeWidth="2" />
-                                                  <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="black" strokeWidth="0.5" />
-                                                  <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="black" strokeWidth="0.5" />
-                                                </>
-                                              )}
-                                              
-                                              {outcome === 'saved' && (
-                                                <circle cx={event.x} cy={80 - event.y} r="3.5" fill="none" stroke="red" strokeWidth="1.2" />
-                                              )}
-                                              
-                                              {outcome === 'blocked' && (
-                                                <>
-                                                  <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="red" strokeWidth="1" />
-                                                  <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="red" strokeWidth="1" />
-                                                </>
-                                              )}
-                                              
-                                              {outcome === 'wayward' && (
-                                                <text x={event.x} y={80 - event.y + 1.5} textAnchor="middle" fontSize="5" fill="purple" fontWeight="bold">?</text>
-                                              )}
-                                            </g>
-                                          );
-                                        }
-                                      })}
-                                    </svg>
-                                  </div>
-                                  
-                                  {/* Away team event map */}
-                                  <div className={styles.shotMapCard}>
-                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.away}</div>
-                                    <svg viewBox="0 0 120 80" className={styles.shotMapSvg}>
-                                      {/* Pitch outline */}
-                                      <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
-                                      {/* Half line */}
-                                      <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
-                                      {/* Penalty boxes (18-yard) */}
-                                      <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
-                                      <rect x="102" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
-                                      {/* 6-yard boxes */}
-                                      <rect x="0" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
-                                      <rect x="114" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
-                                      {/* Penalty spots */}
-                                      <circle cx="12" cy="40" r="0.8" fill="#888" />
-                                      <circle cx="108" cy="40" r="0.8" fill="#888" />
-                                      {/* Goal indicators */}
-                                      <rect x="0" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
-                                      <rect x="119.5" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
-                                      
-                                      {/* Plot events */}
-                                      {(m.shot_map_data[gamePhaseTeams.away] || []).map((event, eventIdx) => {
-                                        if (event.event_type === 'red_card') {
-                                          return (
-                                            <rect
-                                              key={eventIdx}
-                                              x={event.x - 2.5}
-                                              y={80 - event.y - 2.5}
-                                              width="5"
-                                              height="5"
-                                              fill={event.color}
-                                              stroke="black"
-                                              strokeWidth="0.5"
-                                              opacity="0.9"
-                                            >
-                                              <title>{`${event.player}\nRed Card`}</title>
-                                            </rect>
-                                          );
-                                        } else if (event.event_type === 'own_goal') {
-                                          return (
-                                            <g key={eventIdx}>
-                                              <line x1={event.x - 3} y1={80 - event.y - 3} x2={event.x + 3} y2={80 - event.y + 3} stroke={event.color} strokeWidth="1.5" />
-                                              <line x1={event.x - 3} y1={80 - event.y + 3} x2={event.x + 3} y2={80 - event.y - 3} stroke={event.color} strokeWidth="1.5" />
-                                              <title>{`${event.player}\nOwn Goal For`}</title>
-                                            </g>
-                                          );
-                                        } else {
-                                          const outcome = event.outcome.toLowerCase();
-                                          return (
-                                            <g key={eventIdx}>
-                                              <circle
-                                                cx={event.x}
-                                                cy={80 - event.y}
-                                                r="2.5"
-                                                fill={event.color}
-                                                stroke="black"
-                                                strokeWidth="0.3"
-                                                opacity="0.85"
-                                              >
-                                                <title>{`${event.player}\nxG: ${event.xg}\n${event.outcome}`}</title>
-                                              </circle>
-                                              
-                                              {(outcome === 'woodwork' || outcome === 'post' || outcome === 'saved to post') && (
-                                                <>
-                                                  <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="white" strokeWidth="2" />
-                                                  <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="white" strokeWidth="2" />
-                                                  <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="black" strokeWidth="0.5" />
-                                                  <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="black" strokeWidth="0.5" />
-                                                </>
-                                              )}
-                                              
-                                              {outcome === 'saved' && (
-                                                <circle cx={event.x} cy={80 - event.y} r="3.5" fill="none" stroke="red" strokeWidth="1.2" />
-                                              )}
-                                              
-                                              {outcome === 'blocked' && (
-                                                <>
-                                                  <line x1={event.x - 2} y1={80 - event.y - 2} x2={event.x + 2} y2={80 - event.y + 2} stroke="red" strokeWidth="1" />
-                                                  <line x1={event.x - 2} y1={80 - event.y + 2} x2={event.x + 2} y2={80 - event.y - 2} stroke="red" strokeWidth="1" />
-                                                </>
-                                              )}
-                                              
-                                              {outcome === 'wayward' && (
-                                                <text x={event.x} y={80 - event.y + 1.5} textAnchor="middle" fontSize="5" fill="purple" fontWeight="bold">?</text>
-                                              )}
-                                            </g>
-                                          );
-                                        }
-                                      })}
-                                    </svg>
-                                  </div>
-                                </div>
-                                <div className={styles.shotMapLegend}>
-                                  <span><span className={styles.legendDot} style={{backgroundColor: 'green'}}></span> Goal</span>
-                                  <span><span className={styles.legendDot} style={{backgroundColor: 'yellow'}}></span> High xG (≥0.27)</span>
-                                  <span><span className={styles.legendDot} style={{backgroundColor: 'orange'}}></span> Normal xG (0.08-0.27)</span>
-                                  <span><span className={styles.legendDot} style={{backgroundColor: 'black'}}></span> Low xG (&lt;0.08)</span>
-                                  <span><span className={styles.legendSquare}></span> Red Card</span>
-                                  <span><span className={styles.legendX}></span> Own Goal For</span>
-                                </div>
-                                <div className={styles.shotOutcomeLegend}>
-                                  <span><span className={styles.legendWhiteX}></span> Woodwork/Post/Saved to Post</span>
-                                  <span><span className={styles.legendRedCircle}></span> Saved</span>
-                                  <span><span className={styles.legendRedX}></span> Blocked</span>
-                                  <span><span className={styles.legendQuestion}></span> Wayward</span>
-                                </div>
-                              </div>
-                            )}
-                            
-                            {/* Box Entry Maps for each team */}
-                            {m.box_entry_locations && (
-                              <div className={styles.shotMapsContainer}>
-                                <h3 className={styles.phaseVisualizationTitle}>Box Entry Maps</h3>
-                                <div className={styles.shotMapsGrid}>
-                                  {/* Home team box entry map */}
-                                  <div className={styles.shotMapCard}>
-                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.home}</div>
-                                    <svg viewBox="0 0 120 80" className={styles.shotMapSvg}>
-                                      {/* Pitch outline */}
-                                      <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
-                                      {/* Half line */}
-                                      <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
-                                      {/* Penalty boxes - attacking box highlighted */}
-                                      <rect x="102" y="18" width="18" height="44" fill="rgba(255, 200, 200, 0.3)" stroke="#888" strokeWidth="0.8" />
-                                      <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
-                                      {/* 6-yard boxes */}
-                                      <rect x="0" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
-                                      <rect x="114" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
-                                      {/* Penalty spots */}
-                                      <circle cx="12" cy="40" r="0.8" fill="#888" />
-                                      <circle cx="108" cy="40" r="0.8" fill="#888" />
-                                      {/* Goal indicators */}
-                                      <rect x="0" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
-                                      <rect x="119.5" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
-                                      
-                                      {/* Plot box entries */}
-                                      {(m.box_entry_locations[gamePhaseTeams.home] || []).map((entry, entryIdx) => {
-                                        const defaultColor = entry.type === 'pass' ? '#2196F3' : '#FF9800';
-                                        const strokeColor = entry.color || defaultColor;
-                                        const fillColor = entry.color || defaultColor;
-                                        return (
-                                        <g key={entryIdx}>
-                                          <line
-                                            x1={entry.x1}
-                                            y1={80 - entry.y1}
-                                            x2={entry.x2}
-                                            y2={80 - entry.y2}
-                                            stroke={strokeColor}
-                                            strokeWidth="1.5"
-                                            strokeDasharray={entry.type === 'pass' ? '2,2' : '0'}
-                                            opacity="0.7"
-                                          />
-                                          <circle
-                                            cx={entry.x2}
-                                            cy={80 - entry.y2}
-                                            r="2"
-                                            fill={fillColor}
-                                            stroke="black"
-                                            strokeWidth="0.3"
-                                            opacity="0.75"
-                                          >
-                                            <title>{entry.type === 'pass' ? 'Pass into box' : 'Carry into box'}</title>
-                                          </circle>
-                                        </g>
-                                        );
-                                      })}
-                                    </svg>
-                                  </div>
-                                  
-                                  {/* Away team box entry map */}
-                                  <div className={styles.shotMapCard}>
-                                    <div className={styles.shotMapTeamLabel}>{gamePhaseTeams.away}</div>
-                                    <svg viewBox="0 0 120 80" className={styles.shotMapSvg}>
-                                      {/* Pitch outline */}
-                                      <rect x="0" y="0" width="120" height="80" fill="#f9f9f9" stroke="#888" strokeWidth="0.5" />
-                                      {/* Half line */}
-                                      <line x1="60" y1="0" x2="60" y2="80" stroke="#888" strokeWidth="0.5" />
-                                      {/* Penalty boxes - attacking box highlighted */}
-                                      <rect x="102" y="18" width="18" height="44" fill="rgba(255, 200, 200, 0.3)" stroke="#888" strokeWidth="0.8" />
-                                      <rect x="0" y="18" width="18" height="44" fill="none" stroke="#888" strokeWidth="0.5" />
-                                      {/* 6-yard boxes */}
-                                      <rect x="0" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
-                                      <rect x="114" y="30" width="6" height="20" fill="none" stroke="#888" strokeWidth="0.5" />
-                                      {/* Penalty spots */}
-                                      <circle cx="12" cy="40" r="0.8" fill="#888" />
-                                      <circle cx="108" cy="40" r="0.8" fill="#888" />
-                                      {/* Goal indicators */}
-                                      <rect x="0" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
-                                      <rect x="119.5" y="36" width="0.5" height="8" fill="#333" stroke="#333" strokeWidth="0.3" />
-                                      
-                                      {/* Plot box entries */}
-                                      {(m.box_entry_locations[gamePhaseTeams.away] || []).map((entry, entryIdx) => {
-                                        const defaultColor = entry.type === 'pass' ? '#2196F3' : '#FF9800';
-                                        const strokeColor = entry.color || defaultColor;
-                                        const fillColor = entry.color || defaultColor;
-                                        return (
-                                        <g key={entryIdx}>
-                                          <line
-                                            x1={entry.x1}
-                                            y1={80 - entry.y1}
-                                            x2={entry.x2}
-                                            y2={80 - entry.y2}
-                                            stroke={strokeColor}
-                                            strokeWidth="1.5"
-                                            strokeDasharray={entry.type === 'pass' ? '2,2' : '0'}
-                                            opacity="0.7"
-                                          />
-                                          <circle
-                                            cx={entry.x2}
-                                            cy={80 - entry.y2}
-                                            r="2"
-                                            fill={fillColor}
-                                            stroke="black"
-                                            strokeWidth="0.3"
-                                            opacity="0.75"
-                                          >
-                                            <title>{entry.type === 'pass' ? 'Pass into box' : 'Carry into box'}</title>
-                                          </circle>
-                                        </g>
-                                        );
-                                      })}
-                                    </svg>
-                                  </div>
-                                </div>
-                                <div className={styles.shotMapLegend}>
-                                  <span><span className={styles.legendLine} style={{backgroundColor: '#2196F3', borderStyle: 'dashed'}}></span> Pass into box</span>
-                                  <span><span className={styles.legendLine} style={{backgroundColor: '#FF9800'}}></span> Carry into box</span>
-                                </div>
-                                <div className={styles.shotOutcomeLegend}>
-                                  <span><span className={styles.legendDot} style={{backgroundColor: '#00C853'}}></span> → Goal</span>
-                                  <span><span className={styles.legendDot} style={{backgroundColor: '#69F0AE'}}></span> → Own Goal</span>
-                                  <span><span className={styles.legendDot} style={{backgroundColor: '#FFF59D'}}></span> → Shot</span>
-                                </div>
-                              </div>
-                            )}
-                            </div>
-                            
-                            {/* RIGHT: Key Moments */}
-                            <div className={styles.phaseMomentsColumn}>
-                          <h3 className={styles.phaseMomentsTitle}>
-                            Key Moments
-                            {phaseMoments.length > 0 && (
-                              <label className={styles.showScenesLabel}>
-                                <input 
-                                  type="checkbox" 
-                                  checked={phaseShowScenes[ph.phase_idx] || false}
-                                  onChange={(e) => {
-                                    setPhaseShowScenes(prev => ({...prev, [ph.phase_idx]: e.target.checked}));
-                                    if (e.target.checked && phaseMoments.length > 0) {
-                                      handlePhaseMomentClick(ph.phase_idx, 0, phaseMoments[0]);
-                                    }
-                                  }}
-                                  className={styles.showScenesCheckbox}
-                                />
-                                Show Scenes
-                              </label>
-                            )}
-                          </h3>
-                          {phaseMoments.length === 0 ? (
-                            <div className={styles.noMomentsPlaceholder}>No key moments in this phase</div>
-                          ) : (
-                            <>
-                              <table className={styles.phaseMomentsTable}>
-                                <thead>
-                                  <tr className={styles.tableHeader}>
-                                    <th className={styles.phaseMomentsHeaderCell}>When</th>
-                                    <th className={styles.phaseMomentsHeaderCell}>Team</th>
-                                    <th className={styles.phaseMomentsHeaderCell}>Who</th>
-                                    <th className={styles.phaseMomentsHeaderCell}>Type</th>
-                                    <th className={styles.phaseMomentsHeaderCell}>xG</th>
-                                    <th className={styles.phaseMomentsHeaderCell}>Outcome</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {phaseMoments.map((moment, mIdx) => {
-                                    const phaseScene = phaseScenes[ph.phase_idx];
-                                    const isSelected = phaseShowScenes[ph.phase_idx] && phaseScene?.selectedMomentIdx === mIdx;
-                                    return (
-                                      <tr 
-                                        key={mIdx} 
-                                        className={isSelected ? styles.phaseMomentsRowSelected : styles.phaseMomentsRow}
-                                        onClick={() => handlePhaseMomentClick(ph.phase_idx, mIdx, moment)}
-                                        style={{cursor: 'pointer'}}
-                                      >
-                                        <td className={styles.phaseMomentsCell}>{moment.when}</td>
-                                        <td className={styles.phaseMomentsCell}>{moment.team}</td>
-                                        <td className={styles.phaseMomentsCell}>{moment.who}</td>
-                                        <td className={styles.phaseMomentsCell}>{moment.event_type}</td>
-                                        <td className={styles.phaseMomentsCell}>{moment.xg !== undefined && moment.xg !== null ? moment.xg : ''}</td>
-                                        <td className={styles.phaseMomentsCell}>{moment.outcome}</td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                              
-                              {/* Scene Viewer for this phase */}
-                              {phaseShowScenes[ph.phase_idx] && phaseScenes[ph.phase_idx] && (
-                                <div className={styles.phaseSceneViewer}>
-                                  {phaseScenes[ph.phase_idx].loading && <div>Loading scene...</div>}
-                                  {phaseScenes[ph.phase_idx].error && <div className={styles.errorText}>{phaseScenes[ph.phase_idx].error}</div>}
-                                  {phaseScenes[ph.phase_idx].imageBase64 && (
-                                    <img
-                                      src={`data:image/png;base64,${phaseScenes[ph.phase_idx].imageBase64}`}
-                                      alt="Phase Possession Scene"
-                                      className={styles.phaseSceneImage}
-                                    />
-                                  )}
-                    </div>
-                              )}
-                            </>
-                          )}
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                      <GamePhaseCard
+                        key={ph.phase_idx}
+                        ph={ph}
+                        m={m}
+                        teams={gamePhaseTeams}
+                        phaseMoments={phaseMoments}
+                        scene={phaseScenes[ph.phase_idx]}
+                        showScenes={phaseShowScenes[ph.phase_idx] ?? true}
+                        onToggleScenes={on => setPhaseShowScenes(prev => ({ ...prev, [ph.phase_idx]: on }))}
+                        onMomentClick={(momentIdx, moment) => handlePhaseMomentClick(ph.phase_idx, momentIdx, moment)}
+                      />
                     );
                   })}
                 </div>

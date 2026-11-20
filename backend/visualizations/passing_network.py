@@ -19,7 +19,58 @@ from config.settings import TEAM_COLORS
 from visualizations.helpers import parse_positions_cell, format_player_name
 
 
-async def passing_network_like_matplotlib(filename: str, team: str, min_passes: int = 1, flip: bool = False):
+def _substitution_pairs(events: pd.DataFrame, team: str):
+    """
+    Work out who replaced whom for one team, in the order the changes happened.
+
+    Uses the Substitution events (player = taken off, substitution_replacement = came on). When
+    the replacement is missing from an event, it is inferred: the replacement is the team player
+    who first appears in the match after that moment and has not already been on the pitch.
+
+    Returns a list of dicts: off_id, on_id, off_name, on_name, minute.
+    """
+    if "type" not in events.columns or "team" not in events.columns or "player_id" not in events.columns:
+        return []
+    ev = events[events["team"] == team]
+    subs = ev[ev["type"] == "Substitution"]
+    if subs.empty:
+        return []
+
+    def _t(row):
+        return float(row.get("minute", 0) or 0) * 60 + float(row.get("second", 0) or 0)
+
+    team_ev = ev[ev["type"] != "Substitution"].dropna(subset=["player_id"]).copy()
+    team_ev["_t"] = team_ev["minute"].fillna(0).astype(float) * 60 + team_ev["second"].fillna(0).astype(float)
+    first_seen = team_ev.groupby("player_id")["_t"].min().sort_values()
+    names = team_ev.drop_duplicates("player_id").set_index("player_id")["player"].astype(str).to_dict()
+
+    used = set()
+    pairs = []
+    for row in sorted(subs.to_dict("records"), key=_t):
+        if pd.isna(row.get("player_id")):
+            continue
+        off_id = int(row["player_id"])
+        on_id = row.get("substitution_replacement_id")
+        if on_id is None or pd.isna(on_id):
+            when = _t(row)
+            later = first_seen[(first_seen >= when - 5) & (~first_seen.index.isin(used))]
+            if later.empty:
+                continue
+            on_id = later.index[0]
+        on_id = int(on_id)
+        used.add(on_id)
+        on_name = row.get("substitution_replacement")
+        pairs.append({
+            "off_id": off_id,
+            "on_id": on_id,
+            "off_name": str(row.get("player") or names.get(off_id, off_id)),
+            "on_name": str(on_name) if isinstance(on_name, str) else names.get(on_id, str(on_id)),
+            "minute": int(row.get("minute", 0) or 0),
+        })
+    return pairs
+
+
+async def passing_network_like_matplotlib(filename: str, team: str, min_passes: int = 1, flip: bool = False, subs: bool = False):
     """
     Generate an interactive passing network visualization for a team.
     
@@ -28,6 +79,7 @@ async def passing_network_like_matplotlib(filename: str, team: str, min_passes: 
         team: Team name to generate network for
         min_passes: Minimum passes between players to display
         flip: Flip pitch orientation horizontally
+        subs: Show substitutes in place of the players they replaced (default: starting XI only)
         
     Returns:
         JSONResponse with Plotly figure and metadata
@@ -38,7 +90,7 @@ async def passing_network_like_matplotlib(filename: str, team: str, min_passes: 
     from cache import cache, s3
     
     # Build cache key including all parameters
-    cache_key = f"passnet:{filename}:{team}:{min_passes}:{flip}:plotly"
+    cache_key = f"passnet:{filename}:{team}:{min_passes}:{flip}:{subs}:plotly"
     
     # Check cache first
     cached_result = cache.get(cache_key, cache_type="passing_network")
@@ -83,6 +135,10 @@ async def passing_network_like_matplotlib(filename: str, team: str, min_passes: 
 
         if lineups_df is not None and "positions" in lineups_df.columns:
             lu = lineups_df.copy()
+            # lineups_df holds every match, so keep only this match's lineup. Without this,
+            # anyone who started ANY match counted as a starter here (subs showed as starters).
+            if match_id is not None and "match_id" in lu.columns:
+                lu = lu[lu["match_id"].astype(str) == str(match_id)]
             lu["positions_parsed"] = lu["positions"].apply(parse_positions_cell)
             mask_start = lu["positions_parsed"].apply(
                 lambda lst: any(
@@ -175,6 +231,23 @@ async def passing_network_like_matplotlib(filename: str, team: str, min_passes: 
                 for pid in name_to_ids.get(nm, []):
                     starting_id_whitelist.add(pid)
 
+        # -------- Substitutes: each one takes the place of the player they replaced --------
+        sub_info = {}  # on_id -> {"off": name, "minute": int}
+        if subs and starting_id_whitelist:
+            try:
+                visible = set(starting_id_whitelist)
+                for pr in _substitution_pairs(df, team):
+                    visible.discard(pr["off_id"])
+                    visible.add(pr["on_id"])
+                    sub_info[pr["on_id"]] = {"off": pr["off_name"], "minute": pr["minute"], "on": pr["on_name"]}
+                    id_to_name.setdefault(pr["on_id"], pr["on_name"])
+                # A sub who was himself replaced later is no longer on the pitch
+                sub_info = {k: v for k, v in sub_info.items() if k in visible}
+                starting_id_whitelist = visible
+            except Exception:
+                traceback.print_exc()
+                sub_info = {}
+
         # -------- Filter to this team's completed passes (StatsBomb: pass_outcome NaN == completed) --------
         passes = df[(df["type"] == "Pass") & (df["team"] == team)].copy()
         if passes.empty:
@@ -265,15 +338,37 @@ async def passing_network_like_matplotlib(filename: str, team: str, min_passes: 
             touches_list = nodes["touches"].astype(int).tolist()
             x_list = nodes["x"].astype(float).tolist()
             y_list = nodes["y"].astype(float).tolist()
+            ids_list = nodes["player_id"].tolist()
             full_names = nodes["name"].astype(str).tolist()
             # Short "F. Last" labels (no middle names); full name stays in the hover
-            text_list = [format_player_name(n) or n for n in full_names]
-
-            max_touches = max(max(touches_list), 1)
-            # Plotly draws the largest marker about 1.5x this number (measured in the browser:
-            # 28 gave 43.6px), so 18 gives a busiest-player bubble of roughly 28px.
-            max_diameter = 18.0
+            text_list = []
+            hover_note = []
+            fill_list, outline_list = [], []
             team_color = TEAM_COLORS.get(team, "#1f77b4")
+            for pid, n in zip(ids_list, full_names):
+                short = format_player_name(n) or n
+                info = sub_info.get(pid)
+                if info:
+                    # Substitute: hollow circle in the team colour, with the minute they came on
+                    text_list.append(f"{short} ▲{info['minute']}'")
+                    hover_note.append(f"<br>Came on for {info['off']} ({info['minute']}')")
+                    fill_list.append("white")
+                    outline_list.append(team_color)
+                else:
+                    text_list.append(short)
+                    hover_note.append("")
+                    fill_list.append(team_color)
+                    outline_list.append("black")
+
+            # Scale against the busiest player on EITHER team, so switching teams keeps sizes comparable
+            try:
+                match_max = int(df[df["src_id"].notna()].groupby(["team", "src_id"]).size().max())
+            except Exception:
+                match_max = 1
+            max_touches = max(max(touches_list), match_max, 1)
+            # The busiest player's bubble is drawn this many pixels across; the others scale
+            # by area (so touches stay comparable).
+            max_diameter = 28.0
             fig.add_trace(go.Scatter(
                 x=x_list, y=y_list,
                 mode="markers+text",
@@ -283,20 +378,21 @@ async def passing_network_like_matplotlib(filename: str, team: str, min_passes: 
                     size=touches_list,
                     sizemode="area",
                     sizeref=2.0 * max_touches / (max_diameter ** 2),
-                    sizemin=2,
-                    line=dict(width=2, color="black"),
-                    color=team_color,
+                    sizemin=3,
+                    line=dict(width=3, color=outline_list),
+                    color=fill_list,
                 ),
                 hoverinfo="text",
                 textfont=dict(size=11),
                 name="players",
-                customdata=[[t, n] for t, n in zip(touches_list, full_names)],
-                hovertemplate="<b>%{customdata[1]}</b><br>touches: %{customdata[0]}<extra></extra>",
+                customdata=[[t, n, note] for t, n, note in zip(touches_list, full_names, hover_note)],
+                hovertemplate="<b>%{customdata[1]}</b><br>touches: %{customdata[0]}%{customdata[2]}<extra></extra>",
             ))
 
         fig = make_pitch(fig)
         fig.update_layout(
-            title=f"Passing Network — {team} (size ~ touches){' — Starting XI' if starting_id_whitelist else ''}",
+            title=f"{team}{(' — with substitutes' if subs and sub_info else ' — starting XI') if starting_id_whitelist else ''}",
+            showlegend=False,
             xaxis=dict(showgrid=False, visible=False, range=[0, 120]),
             yaxis=dict(showgrid=False, visible=False, range=[0, 80]),
             plot_bgcolor="white", height=600, width=900
@@ -310,6 +406,10 @@ async def passing_network_like_matplotlib(filename: str, team: str, min_passes: 
             "edge_count": int(edges.shape[0]),
             "min_passes": int(min_passes),
             "starting_xi_filter_applied": bool(starting_id_whitelist),
+            "substitutes_shown": bool(sub_info),
+            "substitutions": [
+                {"on": v["on"], "off": v["off"], "minute": v["minute"]} for v in sub_info.values()
+            ],
             "match_id": match_id if match_id is not None else None,
         })
         

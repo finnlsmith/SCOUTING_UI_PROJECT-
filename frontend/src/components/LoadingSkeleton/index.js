@@ -1,9 +1,9 @@
 import React from 'react';
 import './LoadingSkeleton.css';
 
-export function PlotSkeleton() {
+export function PlotSkeleton({ fill = false }) {
   return (
-    <div className="skeleton skeleton-plot">
+    <div className="skeleton skeleton-plot" style={fill ? { height: '100%' } : undefined}>
       <div className="skeleton-content">
         Loading visualization...
       </div>

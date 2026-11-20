@@ -1,5 +1,31 @@
 .container {
-  padding: var(--spacing-2xl) 0 70px;
+  /* The page is designed to be read at about 60% size. --ui-scale (set from config/ui.js)
+     multiplies every size below, and these tokens, so text, spacing and cards shrink together
+     like zooming the browser out, without breaking the charts' hover. */
+  --spacing-xs: calc(4px * var(--ui-scale));
+  --spacing-sm: calc(8px * var(--ui-scale));
+  --spacing-md: calc(16px * var(--ui-scale));
+  --spacing-lg: calc(24px * var(--ui-scale));
+  --spacing-xl: calc(32px * var(--ui-scale));
+  --spacing-2xl: calc(40px * var(--ui-scale));
+  --spacing-3xl: calc(48px * var(--ui-scale));
+  --spacing-4xl: calc(60px * var(--ui-scale));
+  --font-size-xs: calc(12px * var(--ui-scale));
+  --font-size-sm: calc(14px * var(--ui-scale));
+  --font-size-base: calc(16px * var(--ui-scale));
+  --font-size-lg: calc(18px * var(--ui-scale));
+  --font-size-xl: calc(20px * var(--ui-scale));
+  --font-size-2xl: calc(24px * var(--ui-scale));
+  --font-size-3xl: calc(30px * var(--ui-scale));
+  --font-size-4xl: calc(38px * var(--ui-scale));
+  --font-size-5xl: calc(44px * var(--ui-scale));
+  --radius-sm: calc(5px * var(--ui-scale));
+  --radius-md: calc(8px * var(--ui-scale));
+  --radius-lg: calc(10px * var(--ui-scale));
+  --radius-xl: calc(15px * var(--ui-scale));
+  --radius-2xl: calc(16px * var(--ui-scale));
+  --radius-3xl: calc(22px * var(--ui-scale));
+  padding: var(--spacing-2xl) 0 calc(70px * var(--ui-scale));
   color: var(--color-text-primary);
   min-height: 100vh;
 }
@@ -7,17 +33,17 @@
 .content {
   max-width: 100%;
   margin: 0 auto;
-  padding: 0 40px;
+  padding: 0;
 }
 
 /* Page Header - Tournament title and match selector */
 .pageHeader {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: calc(30px * var(--ui-scale));
 }
 
 .tournamentTitle {
-  font-size: 40px;
+  font-size: calc(40px * var(--ui-scale));
   font-weight: var(--font-weight-extrabold);
   margin: 0;
   letter-spacing: 0.5px;
@@ -33,7 +59,7 @@
   width: 100%;
   height: 2px;
   background: linear-gradient(to right, transparent, var(--color-border-dark), transparent);
-  margin: 40px 0;
+  margin: calc(40px * var(--ui-scale)) 0;
 }
 
 /* Match Timeline - Sequential List */
@@ -46,7 +72,7 @@
 .timelineList {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: calc(12px * var(--ui-scale));
 }
 
 .timelineRow {
@@ -59,18 +85,18 @@
   flex: 1;
   display: flex;
   justify-content: flex-end;
-  padding-right: 16px;
+  padding-right: calc(16px * var(--ui-scale));
 }
 
 .timelineMinuteCell {
-  flex: 0 0 50px;
+  flex: 0 0 calc(50px * var(--ui-scale));
   text-align: center;
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-scale));
   font-weight: var(--font-weight-bold);
   color: var(--color-text-secondary);
   background: var(--color-bg-card);
-  padding: 6px 0;
-  border-radius: 4px;
+  padding: calc(6px * var(--ui-scale)) 0;
+  border-radius: calc(4px * var(--ui-scale));
 }
 
 [data-theme="dark"] .timelineMinuteCell {
@@ -82,17 +108,17 @@
   flex: 1;
   display: flex;
   justify-content: flex-start;
-  padding-left: 16px;
+  padding-left: calc(16px * var(--ui-scale));
 }
 
 .timelineEventContent {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: calc(10px * var(--ui-scale));
 }
 
 .timelinePlayerName {
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-scale));
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
@@ -102,14 +128,14 @@
 }
 
 .timelineIcon {
-  width: 28px;
-  height: 28px;
+  width: calc(28px * var(--ui-scale));
+  height: calc(28px * var(--ui-scale));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-scale));
   border: 2px solid white;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  box-shadow: 0 2px calc(6px * var(--ui-scale)) rgba(0,0,0,0.2);
 }
 
 [data-theme="dark"] .timelineIcon {
@@ -118,11 +144,11 @@
 
 .timelineMarkerLabel {
   display: block;
-  padding: 4px 8px;
+  padding: calc(4px * var(--ui-scale)) calc(8px * var(--ui-scale));
   background: var(--color-bg-card);
   border: 2px solid var(--color-border-dark);
-  border-radius: 4px;
-  font-size: 13px;
+  border-radius: calc(4px * var(--ui-scale));
+  font-size: calc(13px * var(--ui-scale));
   font-weight: var(--font-weight-bold);
   color: var(--color-text-secondary);
   white-space: nowrap;
@@ -141,8 +167,8 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 8px;
-  padding-right: 20px;
+  gap: calc(8px * var(--ui-scale));
+  padding-right: calc(20px * var(--ui-scale));
   z-index: 3;
 }
 
@@ -153,21 +179,21 @@
   display: flex;
   flex-direction: row-reverse;
   align-items: center;
-  gap: 8px;
-  padding-left: 20px;
+  gap: calc(8px * var(--ui-scale));
+  padding-left: calc(20px * var(--ui-scale));
   z-index: 3;
 }
 
 .timelineEventDot {
-  width: 32px;
-  height: 32px;
+  width: calc(32px * var(--ui-scale));
+  height: calc(32px * var(--ui-scale));
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-scale));
   border: 2px solid white;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 2px calc(8px * var(--ui-scale)) rgba(0,0,0,0.3);
   cursor: default;
 }
 
@@ -176,11 +202,11 @@
 }
 
 .timelineEventLabel {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   font-weight: var(--font-weight-bold);
   color: var(--color-text-secondary);
   background: var(--color-bg-card);
-  padding: 2px 6px;
+  padding: 2px calc(6px * var(--ui-scale));
   border-radius: 3px;
 }
 
@@ -191,9 +217,9 @@
 
 /* Entire Match Section */
 .entireMatchTitle {
-  font-size: 48px;
+  font-size: calc(48px * var(--ui-scale));
   font-weight: var(--font-weight-extrabold);
-  margin-bottom: 24px;
+  margin-bottom: calc(24px * var(--ui-scale));
   text-align: left;
   color: var(--color-text-primary);
 }
@@ -204,7 +230,7 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 14px;
+  gap: calc(14px * var(--ui-scale));
   background: none;
   box-shadow: none;
   padding: 0;
@@ -215,7 +241,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  gap: 14px;
+  gap: calc(14px * var(--ui-scale));
 }
 
 .vizHeaderTeamSection {
@@ -224,20 +250,20 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 8px;
+  gap: calc(8px * var(--ui-scale));
   flex: 1 1 0;
   min-width: 0;
 }
 
 
 .teamLogo {
-  width: 72px;
-  height: 72px;
+  width: calc(72px * var(--ui-scale));
+  height: calc(72px * var(--ui-scale));
   flex: 0 0 auto;
   object-fit: contain;
   border: 2px solid #ddd;
-  border-radius: 10px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  border-radius: calc(10px * var(--ui-scale));
+  box-shadow: 0 3px calc(10px * var(--ui-scale)) rgba(0, 0, 0, 0.2);
   padding: 3px;
   background: white;
 }
@@ -248,7 +274,7 @@
 }
 
 .teamName {
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-scale));
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   min-width: 0;
@@ -263,12 +289,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: calc(8px * var(--ui-scale));
   flex: 0 0 auto;
 }
 
 .vizHeaderScore {
-  font-size: 44px;
+  font-size: calc(44px * var(--ui-scale));
   font-weight: var(--font-weight-extrabold);
   color: var(--color-text-primary);
   white-space: nowrap;
@@ -282,12 +308,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  font-size: 22px;
+  gap: calc(14px * var(--ui-scale));
+  font-size: calc(22px * var(--ui-scale));
 }
 
 .vizHeaderStage {
-  font-size: 22px;
+  font-size: calc(22px * var(--ui-scale));
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   opacity: 0.8;
@@ -298,7 +324,7 @@
 }
 
 .vizHeaderDate {
-  font-size: 22px;
+  font-size: calc(22px * var(--ui-scale));
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   opacity: 0.8;
@@ -309,7 +335,7 @@
 }
 
 .vizHeaderSeparator {
-  font-size: 22px;
+  font-size: calc(22px * var(--ui-scale));
   color: var(--color-text-primary);
   opacity: 0.8;
 }
@@ -319,14 +345,14 @@
 }
 
 .sectionTitle {
-  font-size: 27px;
+  font-size: calc(27px * var(--ui-scale));
   font-weight: var(--font-weight-semibold);
-  margin-bottom: 11px;
+  margin-bottom: calc(11px * var(--ui-scale));
 }
 
 .matchSelectorWrapper {
   width: 100%;
-  max-width: 440px;
+  max-width: calc(440px * var(--ui-scale));
   margin: 0;
 }
 
@@ -336,22 +362,22 @@
 .entireMatchRow {
   display: flex;
   align-items: flex-start;
-  gap: 32px;
-  margin-bottom: 54px;
+  gap: calc(32px * var(--ui-scale));
+  margin-bottom: calc(54px * var(--ui-scale));
   width: 100%;
 }
 
 /* Match Facts Sidebar (Left) */
 .matchFactsSidebar {
-  flex: 0 0 500px;
-  min-width: 500px;
-  max-width: 500px;
+  flex: 0 0 calc(500px * var(--ui-scale));
+  min-width: calc(500px * var(--ui-scale));
+  max-width: calc(500px * var(--ui-scale));
 }
 
 .matchFactsTitle {
-  font-size: 22px;
+  font-size: calc(22px * var(--ui-scale));
   font-weight: var(--font-weight-bold);
-  margin: 0 0 6px;
+  margin: 0 0 calc(6px * var(--ui-scale));
   text-align: center;
   color: var(--color-text-primary);
 }
@@ -363,7 +389,7 @@
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border-dark);
   color: var(--color-text-primary);
-  padding: 24px 24px;
+  padding: calc(24px * var(--ui-scale)) calc(24px * var(--ui-scale));
   width: 100%;
 }
 
@@ -371,20 +397,20 @@
 .visualizationsContainer {
   flex: 1;
   display: flex;
-  gap: 40px;
+  gap: calc(40px * var(--ui-scale));
   align-items: flex-start;
   justify-content: center;
 }
 
 .shotMapsColumn {
   flex: 0 1 auto;
-  min-width: 400px;
-  max-width: 1000px;
+  min-width: calc(400px * var(--ui-scale));
+  max-width: calc(1000px * var(--ui-scale));
   text-align: center;
 }
 
 .shotMapsTitle {
-  font-size: 30px;
+  font-size: calc(30px * var(--ui-scale));
   font-weight: var(--font-weight-bold);
   margin-bottom: var(--spacing-md);
   color: var(--color-text-primary);
@@ -395,16 +421,16 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 14px;
-  gap: 28px;
+  margin-bottom: calc(14px * var(--ui-scale));
+  gap: calc(28px * var(--ui-scale));
 }
 
 .flipSidesContainerCentered {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 24px;
-  padding: 12px 20px;
+  margin-bottom: calc(24px * var(--ui-scale));
+  padding: calc(12px * var(--ui-scale)) calc(20px * var(--ui-scale));
   background: var(--color-bg-card-alt);
   border-radius: var(--radius-lg);
   width: fit-content;
@@ -421,42 +447,42 @@
 .flipSidesCheckbox {
   transform: scale(1.4);
   vertical-align: middle;
-  margin-right: 7px;
+  margin-right: calc(7px * var(--ui-scale));
 }
 
 .buttonGroup {
   display: flex;
   justify-content: center;
   gap: var(--spacing-lg);
-  margin-bottom: 13px;
+  margin-bottom: calc(13px * var(--ui-scale));
 }
 
 .button {
-  font-size: 17px;
-  padding: 9px 18px;
+  font-size: calc(17px * var(--ui-scale));
+  padding: calc(9px * var(--ui-scale)) calc(18px * var(--ui-scale));
   border-radius: var(--radius-md);
   border: 1.5px solid #222;
   font-weight: var(--font-weight-medium);
   background: var(--color-bg-white);
   box-shadow: var(--shadow-button);
-  min-width: 148px;
+  min-width: calc(148px * var(--ui-scale));
   cursor: pointer;
   transition: all var(--transition-base);
 }
 
 .button:hover {
   transform: translateY(-1px);
-  box-shadow: 4px 5px 0 rgba(0, 0, 0, 0.03);
+  box-shadow: calc(4px * var(--ui-scale)) calc(5px * var(--ui-scale)) 0 rgba(0, 0, 0, 0.03);
 }
 
 .buttonBoth {
   composes: button;
-  min-width: 170px;
+  min-width: calc(170px * var(--ui-scale));
 }
 
 .resetButton {
   font-size: var(--font-size-base);
-  padding: 6px 20px;
+  padding: calc(6px * var(--ui-scale)) calc(20px * var(--ui-scale));
   border-radius: var(--radius-md);
   border: 1.3px solid #bbb;
   background: var(--color-bg-white);
@@ -473,8 +499,8 @@
 .resetButtonContainer {
   display: flex;
   justify-content: center;
-  margin-top: 12px;
-  margin-bottom: -12px;
+  margin-top: calc(12px * var(--ui-scale));
+  margin-bottom: calc(-12px * var(--ui-scale));
 }
 
 .shotMapPlot {
@@ -484,12 +510,12 @@
 
 .passingNetworkColumn {
   flex: 0 1 auto;
-  min-width: 400px;
-  max-width: 1000px;
+  min-width: calc(400px * var(--ui-scale));
+  max-width: calc(1000px * var(--ui-scale));
 }
 
 .passingNetworkTitle {
-  font-size: 30px;
+  font-size: calc(30px * var(--ui-scale));
   font-weight: var(--font-weight-bold);
   margin-bottom: var(--spacing-md);
   text-align: center;
@@ -499,13 +525,13 @@
 .passingNetworkButtons {
   display: flex;
   justify-content: center;
-  gap: 11px;
-  margin-bottom: 15px;
+  gap: calc(11px * var(--ui-scale));
+  margin-bottom: calc(15px * var(--ui-scale));
 }
 
 .passingNetworkButton {
   composes: button;
-  min-width: 155px;
+  min-width: calc(155px * var(--ui-scale));
 }
 
 .passingNetworkPlot {
@@ -514,20 +540,20 @@
 }
 
 .keyMoments {
-  margin-top: 11px;
+  margin-top: calc(11px * var(--ui-scale));
 }
 
 .keyMomentsTitle {
-  font-size: 29px;
+  font-size: calc(29px * var(--ui-scale));
   font-weight: var(--font-weight-medium);
-  margin-bottom: 5px;
+  margin-bottom: calc(5px * var(--ui-scale));
   text-align: left;
 }
 
 .showScenesLabel {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-normal);
-  margin-left: 18px;
+  margin-left: calc(18px * var(--ui-scale));
 }
 
 .showScenesCheckbox {
@@ -540,21 +566,23 @@
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: 19px;
-  flex-wrap: nowrap;
+  gap: calc(19px * var(--ui-scale));
+  flex-wrap: wrap;
 }
 
+/* The table keeps its own box and scrolls sideways if it is too narrow, so the scene
+   picture can never sit on top of it. */
 .momentsTable {
-  width: 396px;
-  min-width: 220px;
-  max-width: 396px;
+  flex: 0 1 calc(520px * var(--ui-scale));
+  min-width: 0;
+  overflow-x: auto;
 }
 
 .momentsTableElement {
   width: 99%;
-  font-size: 1.13rem;
+  font-size: calc(18.08px * var(--ui-scale));
   border-collapse: collapse;
-  margin-bottom: 5px;
+  margin-bottom: calc(5px * var(--ui-scale));
   margin-top: var(--spacing-sm);
   box-shadow: var(--shadow-md);
   border-radius: var(--radius-lg);
@@ -567,7 +595,7 @@
 
 .tableHeaderCell {
   border: 1px solid var(--color-border-light);
-  padding: 3px 7px;
+  padding: 3px calc(7px * var(--ui-scale));
   font-weight: var(--font-weight-semibold);
 }
 
@@ -585,17 +613,16 @@
 
 .tableCell {
   border: 1px solid #eee;
-  padding: 2.5px 7px;
+  padding: 2.5px calc(7px * var(--ui-scale));
 }
 
 .sceneViewer {
-  flex: 1;
-  min-width: 430px;
-  margin-left: var(--spacing-lg);
+  flex: 1 1 calc(560px * var(--ui-scale));
+  min-width: 0;
   border-radius: var(--radius-3xl);
   background: var(--color-bg-white);
-  box-shadow: 0 1.5px 16px rgba(187, 184, 184, 0.5);
-  padding: 14px 18px 24px 18px;
+  box-shadow: 0 1.5px calc(16px * var(--ui-scale)) rgba(187, 184, 184, 0.5);
+  padding: calc(14px * var(--ui-scale)) calc(18px * var(--ui-scale)) calc(24px * var(--ui-scale)) calc(18px * var(--ui-scale));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -605,19 +632,19 @@
   display: flex;
   align-items: center;
   margin-bottom: var(--spacing-lg);
-  gap: 13px;
+  gap: calc(13px * var(--ui-scale));
 }
 
 .sceneNavButton {
-  font-size: 26px;
+  font-size: calc(26px * var(--ui-scale));
   font-weight: var(--font-weight-semibold);
-  width: 48px;
-  height: 44px;
-  border-radius: 7px;
+  width: calc(48px * var(--ui-scale));
+  height: calc(44px * var(--ui-scale));
+  border-radius: calc(7px * var(--ui-scale));
   background: var(--color-bg-white);
   border: 1.5px solid #111;
   color: #111;
-  margin: 0 9px;
+  margin: 0 calc(9px * var(--ui-scale));
   box-shadow: 2px 2px 0 rgba(68, 68, 68, 0.2);
   cursor: pointer;
   transition: all var(--transition-base);
@@ -634,40 +661,39 @@
 }
 
 .sceneNavLabel {
-  font-size: 19px;
+  font-size: calc(19px * var(--ui-scale));
   font-weight: var(--font-weight-semibold);
 }
 
 .sceneStatus {
-  min-height: 42px;
-  margin: 10px 0 var(--spacing-lg);
+  margin: 0 0 var(--spacing-sm);
   color: #ad031c;
   font-weight: var(--font-weight-medium);
 }
 
 .sceneImage {
   /* width:100% lets the image shrink with its column. Without it the image's own
-     size (about 1,900px) stretched the whole page sideways. */
+     size (about 1,calc(900px * var(--ui-scale))) stretched the whole page sideways. */
   width: 100%;
   height: auto;
   max-width: 96%;
-  margin: 10px auto;
+  margin: calc(10px * var(--ui-scale)) auto;
   border: 2px solid #888;
   border-radius: var(--radius-lg);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.01);
+  box-shadow: 0 calc(6px * var(--ui-scale)) calc(24px * var(--ui-scale)) rgba(0, 0, 0, 0.01);
 }
 
 .gamePhases {
-  margin: 52px 0 0;
+  margin: calc(52px * var(--ui-scale)) 0 0;
   max-width: 100%;
   width: 100%;
 }
 
 .gamePhasesTitle {
-  font-size: 36px;
+  font-size: calc(36px * var(--ui-scale));
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
-  margin-bottom: 20px;
+  margin-bottom: calc(20px * var(--ui-scale));
   text-align: left;
 }
 
@@ -684,26 +710,27 @@
 
 .gamePhasesEmpty {
   color: #aaa;
-  font-size: 21px;
+  font-size: calc(21px * var(--ui-scale));
   font-weight: var(--font-weight-normal);
-  margin-top: 11px;
-  margin-bottom: 26px;
+  margin-top: calc(11px * var(--ui-scale));
+  margin-bottom: calc(26px * var(--ui-scale));
 }
 
 .gamePhasesList {
   margin-top: var(--spacing-lg);
   display: flex;
   flex-direction: column;
-  gap: 25px;
+  gap: calc(25px * var(--ui-scale));
 }
 
 .gamePhaseCard {
+  box-sizing: border-box; /* width 100% must include the padding, or the card sticks out on the right */
   background: var(--color-bg-card-alt);
   border: 2px solid var(--color-border-dark);
-  border-radius: 11px;
+  border-radius: calc(11px * var(--ui-scale));
   padding: var(--spacing-xl) var(--spacing-2xl);
   box-shadow: var(--shadow-xl);
-  min-height: 60px;
+  min-height: calc(60px * var(--ui-scale));
   max-width: 100%;
   margin: 0 auto;
   width: 100%;
@@ -719,13 +746,13 @@
 
 .phaseMomentsColumn {
   flex: 1;
-  min-width: 300px;
+  min-width: calc(300px * var(--ui-scale));
 }
 
 .phaseMomentsTitle {
-  font-size: 26px;
+  font-size: calc(26px * var(--ui-scale));
   font-weight: var(--font-weight-bold);
-  margin-bottom: 16px;
+  margin-bottom: calc(16px * var(--ui-scale));
   color: var(--color-text-dark);
 }
 
@@ -735,19 +762,19 @@
 
 .phaseMomentsTable {
   width: 100%;
-  font-size: 17px;
+  font-size: calc(17px * var(--ui-scale));
   border-collapse: collapse;
   background: white;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-scale));
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px calc(8px * var(--ui-scale)) rgba(0, 0, 0, 0.08);
 }
 
 .phaseMomentsHeaderCell {
-  padding: 12px 14px;
+  padding: calc(12px * var(--ui-scale)) calc(14px * var(--ui-scale));
   text-align: left;
   font-weight: var(--font-weight-semibold);
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-scale));
   background: #f5f5f7;
   color: var(--color-text-dark);
   border-bottom: 1px solid #e0e0e0;
@@ -770,29 +797,29 @@
 }
 
 .phaseMomentsCell {
-  padding: 14px 14px;
-  font-size: 16px;
+  padding: calc(14px * var(--ui-scale)) calc(14px * var(--ui-scale));
+  font-size: calc(16px * var(--ui-scale));
   color: var(--color-text-dark);
 }
 
 .noMomentsPlaceholder {
-  padding: 20px;
+  padding: calc(20px * var(--ui-scale));
   text-align: center;
   color: #999;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-scale));
   font-style: italic;
   background: white;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-scale));
   border: 1px solid #e0e0e0;
 }
 
 .phaseSceneViewer {
-  margin-top: 16px;
-  padding: 16px;
+  margin-top: calc(16px * var(--ui-scale));
+  padding: calc(16px * var(--ui-scale));
   background: white;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-scale));
   border: 1px solid #e0e0e0;
-  min-height: 100px;
+  min-height: calc(100px * var(--ui-scale));
 }
 
 .phaseSceneImage {
@@ -800,8 +827,8 @@
   height: auto;
   max-width: 100%;
   border: 1px solid #ccc;
-  border-radius: 6px;
-  margin-top: 8px;
+  border-radius: calc(6px * var(--ui-scale));
+  margin-top: calc(8px * var(--ui-scale));
 }
 
 /* Substitutions Table */
@@ -810,9 +837,9 @@
 }
 
 .phaseSubstitutionsTitle {
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-scale));
   font-weight: var(--font-weight-semibold);
-  margin-bottom: 12px;
+  margin-bottom: calc(12px * var(--ui-scale));
   color: var(--color-text-dark);
 }
 
@@ -823,7 +850,7 @@
 .phaseSubstitutionsGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: calc(16px * var(--ui-scale));
 }
 
 .phaseSubstitutionsTeamColumn {
@@ -832,9 +859,9 @@
 }
 
 .phaseSubstitutionsTeamLabel {
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-scale));
   font-weight: var(--font-weight-semibold);
-  margin-bottom: 8px;
+  margin-bottom: calc(8px * var(--ui-scale));
   color: var(--color-text-dark);
 }
 
@@ -848,8 +875,8 @@
   background: var(--color-bg-white);
   border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  font-size: 14px;
+  box-shadow: 0 2px calc(8px * var(--ui-scale)) rgba(0, 0, 0, 0.05);
+  font-size: calc(14px * var(--ui-scale));
 }
 
 .phaseSubstitutionsTable thead {
@@ -857,10 +884,10 @@
 }
 
 .phaseSubstitutionsHeaderCell {
-  padding: 10px 12px;
+  padding: calc(10px * var(--ui-scale)) calc(12px * var(--ui-scale));
   text-align: left;
   font-weight: var(--font-weight-semibold);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-scale));
   color: var(--color-text-dark);
   border-bottom: 2px solid #e0e0e0;
 }
@@ -878,33 +905,33 @@
 }
 
 .phaseSubstitutionsCell {
-  padding: 8px 12px;
-  font-size: 13px;
+  padding: calc(8px * var(--ui-scale)) calc(12px * var(--ui-scale));
+  font-size: calc(13px * var(--ui-scale));
   color: var(--color-text-dark);
 }
 
 .noSubstitutionsPlaceholder {
-  padding: 16px;
+  padding: calc(16px * var(--ui-scale));
   text-align: center;
   color: #999;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-scale));
   font-style: italic;
   background: white;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-scale));
   border: 1px solid #e0e0e0;
 }
 
 .gamePhaseHeader {
-  margin-bottom: 20px;
-  padding-bottom: 16px;
+  margin-bottom: calc(20px * var(--ui-scale));
+  padding-bottom: calc(16px * var(--ui-scale));
   border-bottom: 2px solid #e0e0e0;
 }
 
 .gamePhaseTitle {
   font-weight: var(--font-weight-extrabold);
-  font-size: 36px;
+  font-size: calc(36px * var(--ui-scale));
   color: var(--color-text-dark);
-  margin-bottom: 14px;
+  margin-bottom: calc(14px * var(--ui-scale));
 }
 
 [data-theme="dark"] .gamePhaseTitle {
@@ -912,8 +939,8 @@
 }
 
 .gamePhaseTime {
-  margin: 12px 0;
-  font-size: 24px;
+  margin: calc(12px * var(--ui-scale)) 0;
+  font-size: calc(24px * var(--ui-scale));
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
 }
@@ -923,10 +950,10 @@
 }
 
 .gamePhaseScore {
-  font-size: 28px;
+  font-size: calc(28px * var(--ui-scale));
   font-weight: var(--font-weight-extrabold);
   color: var(--color-text-dark);
-  margin: 10px 0;
+  margin: calc(10px * var(--ui-scale)) 0;
 }
 
 [data-theme="dark"] .gamePhaseScore {
@@ -934,8 +961,8 @@
 }
 
 .gamePhaseGoalInfo {
-  margin-top: 12px;
-  font-size: 22px;
+  margin-top: calc(12px * var(--ui-scale));
+  font-size: calc(22px * var(--ui-scale));
   font-weight: var(--font-weight-semibold);
   color: #357;
 }
@@ -945,8 +972,8 @@
 }
 
 .gamePhaseBreakReasons {
-  margin-top: 12px;
-  font-size: 20px;
+  margin-top: calc(12px * var(--ui-scale));
+  font-size: calc(20px * var(--ui-scale));
   font-weight: var(--font-weight-medium);
   color: var(--color-text-tertiary);
 }
@@ -958,15 +985,15 @@
 /* Stats at top (half width) */
 .phaseStatsTopContainer {
   width: 100%;
-  margin-top: 12px;
-  margin-bottom: 20px;
+  margin-top: calc(12px * var(--ui-scale));
+  margin-bottom: calc(20px * var(--ui-scale));
 }
 
 /* Layout for stats and substitutions side by side */
 .phaseStatsAndSubsLayout {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  gap: calc(24px * var(--ui-scale));
   align-items: flex-start;
 }
 
@@ -975,15 +1002,15 @@
   width: 100%;
   height: 2px;
   background: linear-gradient(to right, transparent, #e0e0e0, transparent);
-  margin: 20px 0;
+  margin: calc(20px * var(--ui-scale)) 0;
 }
 
 /* Three-column layout below divider: Left=Passing Networks, Middle=Key Events/Box Entry, Right=Key Moments */
 .phaseThreeColumnLayout {
   display: grid;
   grid-template-columns: 30% 40% 30%;
-  gap: 24px;
-  margin-top: 20px;
+  gap: calc(24px * var(--ui-scale));
+  margin-top: calc(20px * var(--ui-scale));
   align-items: flex-start;
 }
 
@@ -1005,16 +1032,16 @@
 .phasePassingNetworksStack {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: calc(10px * var(--ui-scale));
+  margin-bottom: calc(8px * var(--ui-scale));
   width: 100%;
 }
 
 .phasePassingNetworkCard {
   background: white;
   border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 4px;
+  border-radius: calc(8px * var(--ui-scale));
+  padding: calc(4px * var(--ui-scale));
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -1026,7 +1053,7 @@
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  min-height: 550px;
+  min-height: calc(550px * var(--ui-scale));
 }
 
 .phasePassingNetworkPlot > * {
@@ -1040,9 +1067,9 @@
 }
 
 .phaseStatsTitle {
-  font-size: 24px;
+  font-size: calc(24px * var(--ui-scale));
   font-weight: var(--font-weight-semibold);
-  margin-bottom: 16px;
+  margin-bottom: calc(16px * var(--ui-scale));
   color: var(--color-text-dark);
 }
 
@@ -1052,7 +1079,7 @@
 
 .metricsGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  grid-template-columns: repeat(2, minmax(calc(260px * var(--ui-scale)), 1fr));
   gap: var(--spacing-sm);
 }
 
@@ -1060,13 +1087,13 @@
   background: var(--color-bg-white);
   border: 1px solid #e8e8ec;
   border-radius: var(--radius-md);
-  padding: 10px 12px;
+  padding: calc(10px * var(--ui-scale)) calc(12px * var(--ui-scale));
 }
 
 .metricLabel {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-scale));
   color: var(--color-text-tertiary);
-  margin-bottom: 6px;
+  margin-bottom: calc(6px * var(--ui-scale));
 }
 
 .metricValue {
@@ -1077,11 +1104,12 @@
 /* Phase Metrics Table - Bigger font and wider */
 .phaseMetricsTable {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   background: var(--color-bg-white);
   border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px calc(8px * var(--ui-scale)) rgba(0, 0, 0, 0.05);
 }
 
 .phaseMetricsTable thead {
@@ -1089,16 +1117,18 @@
 }
 
 .phaseMetricsHeaderCell {
-  padding: 14px 20px;
-  text-align: left;
+  padding: calc(14px * var(--ui-scale)) calc(20px * var(--ui-scale));
+  width: 36%;
+  text-align: center;
   font-weight: var(--font-weight-bold);
-  font-size: 18px;
+  font-size: calc(18px * var(--ui-scale));
   color: var(--color-text-dark);
   border-bottom: 2px solid #e0e0e0;
 }
 
-.phaseMetricsHeaderCell:first-child {
-  width: 35%;
+/* Stat names sit in the middle column, between the two teams' values */
+.phaseMetricsHeaderCell:nth-child(2) {
+  width: 28%;
 }
 
 .phaseMetricsRow {
@@ -1114,18 +1144,20 @@
 }
 
 .phaseMetricsLabelCell {
-  padding: 12px 20px;
+  padding: calc(12px * var(--ui-scale)) calc(20px * var(--ui-scale));
   font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
-  font-size: 17px;
+  text-align: center;
+  font-size: calc(17px * var(--ui-scale));
 }
 
 .phaseMetricsValueCell {
-  padding: 12px 20px;
+  padding: calc(12px * var(--ui-scale)) calc(20px * var(--ui-scale));
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-dark);
-  text-align: left;
-  font-size: 17px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: calc(17px * var(--ui-scale));
 }
 
 .loadingText {
@@ -1142,16 +1174,16 @@
 
 /* Shot Maps in Phase Cards */
 .shotMapsContainer {
-  margin-top: 24px;
-  padding-top: 20px;
+  margin-top: calc(24px * var(--ui-scale));
+  padding-top: calc(20px * var(--ui-scale));
   /* Removed border-top - no divider above key events */
 }
 
 /* Phase Visualization Titles (Key Events, Box Entry Maps) */
 .phaseVisualizationTitle {
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-scale));
   font-weight: var(--font-weight-semibold);
-  margin-bottom: 14px;
+  margin-bottom: calc(14px * var(--ui-scale));
   color: var(--color-text-dark);
 }
 
@@ -1162,21 +1194,21 @@
 .shotMapsGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin-bottom: 12px;
+  gap: calc(16px * var(--ui-scale));
+  margin-bottom: calc(12px * var(--ui-scale));
 }
 
 .shotMapCard {
   background: white;
   border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 12px;
+  border-radius: calc(8px * var(--ui-scale));
+  padding: calc(12px * var(--ui-scale));
 }
 
 .shotMapTeamLabel {
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-scale));
   font-weight: var(--font-weight-semibold);
-  margin-bottom: 8px;
+  margin-bottom: calc(8px * var(--ui-scale));
   text-align: center;
   color: black;
 }
@@ -1186,17 +1218,17 @@
   height: auto;
   display: block;
   border: 1px solid #ccc;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-scale));
 }
 
 .shotMapLegend {
   display: flex;
   justify-content: center;
-  gap: 18px;
-  font-size: 13px;
+  gap: calc(18px * var(--ui-scale));
+  font-size: calc(13px * var(--ui-scale));
   color: #333;
   flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-bottom: calc(8px * var(--ui-scale));
 }
 
 [data-theme="dark"] .shotMapLegend {
@@ -1206,14 +1238,14 @@
 .shotMapLegend span {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: calc(6px * var(--ui-scale));
 }
 
 .shotOutcomeLegend {
   display: flex;
   justify-content: center;
-  gap: 16px;
-  font-size: 11px;
+  gap: calc(16px * var(--ui-scale));
+  font-size: calc(11px * var(--ui-scale));
   color: #666;
   flex-wrap: wrap;
 }
@@ -1225,28 +1257,28 @@
 .shotOutcomeLegend span {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: calc(5px * var(--ui-scale));
 }
 
 .legendDot {
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--ui-scale));
+  height: calc(12px * var(--ui-scale));
   border-radius: 50%;
   display: inline-block;
   border: 1px solid black;
 }
 
 .legendSquare {
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--ui-scale));
+  height: calc(12px * var(--ui-scale));
   display: inline-block;
   background-color: red;
   border: 1px solid black;
 }
 
 .legendX {
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--ui-scale));
+  height: calc(12px * var(--ui-scale));
   display: inline-block;
   position: relative;
 }
@@ -1272,7 +1304,7 @@
 }
 
 .legendLine {
-  width: 20px;
+  width: calc(20px * var(--ui-scale));
   height: 3px;
   display: inline-block;
   border: none;
@@ -1280,8 +1312,8 @@
 
 /* Shot Outcome Legend Icons */
 .legendWhiteX {
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--ui-scale));
+  height: calc(12px * var(--ui-scale));
   display: inline-block;
   position: relative;
   background: linear-gradient(45deg, transparent 40%, white 40%, white 60%, transparent 60%),
@@ -1291,8 +1323,8 @@
 }
 
 .legendRedCircle {
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--ui-scale));
+  height: calc(12px * var(--ui-scale));
   display: inline-block;
   border-radius: 50%;
   border: 2px solid red;
@@ -1300,8 +1332,8 @@
 }
 
 .legendRedX {
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--ui-scale));
+  height: calc(12px * var(--ui-scale));
   display: inline-block;
   position: relative;
   background: linear-gradient(45deg, transparent 40%, red 40%, red 60%, transparent 60%),
@@ -1309,12 +1341,12 @@
 }
 
 .legendQuestion {
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--ui-scale));
+  height: calc(12px * var(--ui-scale));
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-scale));
   font-weight: bold;
   color: purple;
 }
@@ -1326,16 +1358,16 @@
 .phasePicker {
   display: flex;
   align-items: stretch;
-  gap: 10px;
-  margin: 18px 0 22px;
+  gap: calc(10px * var(--ui-scale));
+  margin: calc(18px * var(--ui-scale)) 0 calc(22px * var(--ui-scale));
 }
 
 .phaseTabs {
   flex: 1 1 auto;
   display: flex;
-  gap: 8px;
+  gap: calc(8px * var(--ui-scale));
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding-bottom: calc(4px * var(--ui-scale));
 }
 
 .phaseTab,
@@ -1345,9 +1377,9 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  min-width: 92px;
-  padding: 8px 14px;
-  border-radius: 10px;
+  min-width: calc(92px * var(--ui-scale));
+  padding: calc(8px * var(--ui-scale)) calc(14px * var(--ui-scale));
+  border-radius: calc(10px * var(--ui-scale));
   border: 1px solid var(--color-border-dark);
   background: var(--color-bg-card-alt);
   color: var(--color-text-dark);
@@ -1363,27 +1395,27 @@
   background: var(--color-button-nav);
   border-color: var(--color-button-nav);
   color: #fff;
-  box-shadow: 0 2px 8px var(--color-shadow-dark);
+  box-shadow: 0 2px calc(8px * var(--ui-scale)) var(--color-shadow-dark);
 }
 
 .phaseTabName {
   font-weight: var(--font-weight-bold, 700);
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-scale));
 }
 
 .phaseTabTime {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-scale));
   opacity: 0.85;
 }
 
 .phaseNavButton {
   flex: 0 0 auto;
-  width: 46px;
-  border-radius: 10px;
+  width: calc(46px * var(--ui-scale));
+  border-radius: calc(10px * var(--ui-scale));
   border: 1px solid var(--color-border-dark);
   background: var(--color-button-nav);
   color: #fff;
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-scale));
   cursor: pointer;
 }
 
@@ -1407,36 +1439,35 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 14px;
-  margin-bottom: 8px;
+  gap: calc(14px * var(--ui-scale));
+  margin-bottom: calc(8px * var(--ui-scale));
   text-align: left;
 }
 
 
 .keyEventsPanel {
   display: block;
-  margin-top: 4px;
-  padding: 20px 0 0;
+  margin-top: calc(4px * var(--ui-scale));
+  padding: calc(20px * var(--ui-scale)) 0 0;
   border-top: 1px solid var(--color-border-dark);
 }
 
 .keyEventsTitle {
-  font-size: 22px;
+  font-size: calc(22px * var(--ui-scale));
   font-weight: var(--font-weight-bold);
-  margin: 0 0 14px;
+  margin: 0 0 calc(14px * var(--ui-scale));
   text-align: center;
   color: var(--color-text-primary);
 }
 
 .keyEventsEmpty {
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-scale));
   color: var(--color-text-secondary);
 }
 
 .matchFactsBlock {
   box-sizing: border-box;
-  flex: 1 1 420px;
-  max-width: 640px;
+  flex: 1 1 calc(420px * var(--ui-scale));
   min-width: 0;
   display: flex;
   margin: 0;
@@ -1446,14 +1477,86 @@
   display: flex;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: 32px;
-  margin-bottom: 40px;
+  gap: calc(32px * var(--ui-scale));
+  margin-bottom: calc(24px * var(--ui-scale));
 }
 
 .chartColumn {
-  flex: 1 1 520px;
+  flex: 1 1 calc(520px * var(--ui-scale));
   min-width: 0;
-  text-align: center;
+  text-align: left;
+}
+
+/* Title on the left, controls on the right */
+.chartHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(12px * var(--ui-scale));
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-md);
+}
+
+.chartTitle {
+  margin: 0;
+  font-size: calc(30px * var(--ui-scale));
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  text-align: left;
+}
+
+.chartControls {
+  display: flex;
+  align-items: center;
+  gap: calc(16px * var(--ui-scale));
+  flex-wrap: wrap;
+}
+
+.chartSelect {
+  min-width: calc(170px * var(--ui-scale));
+  padding: calc(9px * var(--ui-scale)) calc(14px * var(--ui-scale));
+  font-size: calc(16px * var(--ui-scale));
+  border-radius: var(--radius-sm);
+  border: 1.1px solid #aaa;
+  background: var(--color-bg-white);
+  cursor: pointer;
+}
+
+.chartSelect:focus {
+  outline: none;
+  border-color: var(--color-button-primary);
+}
+
+.chartSelect:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.chartCheckLabel {
+  display: flex;
+  align-items: center;
+  gap: calc(6px * var(--ui-scale));
+  font-size: calc(16px * var(--ui-scale));
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+/* Reserves the chart's exact shape, so the page does not jump when the chart arrives */
+.plotFrame {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  margin-bottom: var(--spacing-md);
+}
+
+.chartNote {
+  margin: calc(4px * var(--ui-scale)) 0 0;
+  font-size: calc(14px * var(--ui-scale));
+  color: var(--color-text-secondary);
+}
+
+.chartsDivider {
+  composes: sectionDivider;
+  margin: calc(8px * var(--ui-scale)) 0 calc(32px * var(--ui-scale));
 }
 
 
@@ -1462,11 +1565,10 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  flex: 1 1 420px;
-  max-width: 640px;
+  gap: calc(20px * var(--ui-scale));
+  flex: 1 1 calc(420px * var(--ui-scale));
   min-width: 0;
-  padding: 24px 24px;
+  padding: calc(24px * var(--ui-scale)) calc(24px * var(--ui-scale));
   margin: 0;
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border-dark);
@@ -1485,6 +1587,27 @@
   display: flex;
   align-items: stretch;
   flex-wrap: wrap;
-  gap: 24px;
-  margin-bottom: 28px;
+  gap: calc(24px * var(--ui-scale));
+  margin-bottom: calc(28px * var(--ui-scale));
+}
+
+/* Loading placeholders: same footprint as the content that replaces them */
+.momentsSkeleton {
+  width: 100%;
+  height: calc(360px * var(--ui-scale));
+  margin-top: var(--spacing-sm);
+  border-radius: var(--radius-lg);
+}
+
+.sceneSkeleton {
+  width: 96%;
+  aspect-ratio: 16 / 9;
+  margin: calc(10px * var(--ui-scale)) auto;
+  border-radius: var(--radius-lg);
+}
+
+.gamePhasesSkeleton {
+  width: 100%;
+  height: calc(640px * var(--ui-scale));
+  border-radius: var(--radius-lg);
 }
