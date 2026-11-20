@@ -31,7 +31,7 @@ try:
         aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY')
     )
     
-    bucket = os.getenv('S3_BUCKET_NAME', 'capstone-soccer-data')
+    bucket = os.getenv('S3_BUCKET_NAME', 'soccer-data-605092603067')
     
     # Test bucket access
     print(f"Checking bucket: {bucket}")

@@ -52,7 +52,7 @@ app.add_middleware(
 )
 
 AWS_REGION = os.getenv("AWS_REGION", "us-east-2")
-S3_BUCKET = os.getenv("S3_BUCKET_NAME", "capstone-soccer-data")
+S3_BUCKET = os.getenv("S3_BUCKET_NAME", "soccer-data-605092603067")
 
 s3_client = boto3.client(
     's3',

@@ -27,7 +27,7 @@ except ImportError:
 # API metadata
 # -----------------------------
 API_VERSION = "v1"
-API_TITLE = "Columbia MSDS Soccer Analytics API"
+API_TITLE = "Sincere FC Scouting UI API"
 API_DESCRIPTION = """
 ## Soccer Analytics API for Euro 2020 Match Data
 
@@ -100,7 +100,11 @@ else:
 # AWS / S3 configuration
 # -----------------------------
 AWS_REGION = os.getenv("AWS_REGION", "us-east-2")
-S3_BUCKET = os.getenv("S3_BUCKET_NAME", "capstone-soccer-data")
+S3_BUCKET = os.getenv("S3_BUCKET_NAME", "soccer-data-605092603067")
+
+# Dated folder of derived PFF tables for the Players section (see its README.txt).
+# New versions go in a new dated folder; change this (or set the env var) to switch.
+PFF_DERIVED_PREFIX = os.getenv("PFF_DERIVED_PREFIX", "datasets/pff_wc2022/derived_2026-11-20").strip("/")
 
 s3_client = boto3.client(
     "s3",

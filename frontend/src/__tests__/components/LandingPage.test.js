@@ -30,15 +30,9 @@ describe('LandingPage', () => {
     localStorage.clear();
   });
 
-  it('renders RoarStats logo', () => {
+  it('renders the app title', () => {
     renderLandingPage();
-    const logo = screen.getByAltText('RoarStats Logo');
-    expect(logo).toBeInTheDocument();
-  });
-
-  it('renders title with beta text', () => {
-    renderLandingPage();
-    expect(screen.getByText(/RoarStats - Nov 2025 Beta/i)).toBeInTheDocument();
+    expect(screen.getByText('Sincere FC Scouting UI')).toBeInTheDocument();
   });
 
   it('renders Tournaments button', () => {
@@ -47,11 +41,12 @@ describe('LandingPage', () => {
     expect(tournamentsButton).toBeInTheDocument();
   });
 
-  it('renders Players (coming soon) button as disabled', () => {
+  it('renders Players button and navigates to the players page', async () => {
     renderLandingPage();
-    const playersButton = screen.getByRole('button', { name: /players.*coming soon/i });
-    expect(playersButton).toBeInTheDocument();
-    expect(playersButton).toBeDisabled();
+    const playersButton = screen.getByRole('button', { name: /^players$/i });
+    expect(playersButton).toBeEnabled();
+    await userEvent.click(playersButton);
+    expect(mockNavigate).toHaveBeenCalledWith('/players');
   });
 
   it('navigates to tournaments when Tournaments button is clicked', async () => {

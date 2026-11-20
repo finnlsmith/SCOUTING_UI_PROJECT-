@@ -1,7 +1,5 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import trilemmaLogo from "../../assets/trilemma.jpeg";
-import sincereLogo from "../../assets/sincereFC.jpeg";
 import styles from "./Sidebar.module.css";
 
 export default function Sidebar() {
@@ -32,10 +30,10 @@ export default function Sidebar() {
           </Link>
 
           <Link
-            to="#"
-            className={styles.linkDisabled}
+            to="/players"
+            className={location.pathname.startsWith("/players") ? styles.linkActive : styles.link}
           >
-            Players (Coming Soon)
+            Players
           </Link>
 
           <Link 
@@ -45,41 +43,6 @@ export default function Sidebar() {
             Tournaments
           </Link>
         </nav>
-      </div>
-
-      {/* --- Bottom Logos Section --- */}
-      <div className={styles.bottomSection}>
-        <div className={styles.poweredBy}>
-          Powered by
-        </div>
-
-        <div className={styles.logoContainer}>
-          {/* Trilemma Foundation */}
-          <a
-            href="https://www.trilemma.foundation/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <img
-              src={trilemmaLogo}
-              alt="Trilemma Foundation"
-              className={styles.logo}
-            />
-          </a>
-
-          {/* Sincere FC */}
-          <a
-            href="https://www.youtube.com/@SincereFC"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <img
-              src={sincereLogo}
-              alt="Sincere FC"
-              className={styles.logoSmall}
-            />
-          </a>
-        </div>
       </div>
     </div>
   );

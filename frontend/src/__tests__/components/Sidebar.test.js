@@ -41,45 +41,24 @@ describe('Sidebar', () => {
     expect(tournamentsLink).toHaveAttribute('href', '/tournaments');
   });
 
-  it('renders Players (Coming Soon) link as disabled', () => {
+  it('renders Players link to the players page', () => {
     render(<Sidebar />);
-    const playersLink = screen.getByRole('link', { name: /players.*coming soon/i });
+    const playersLink = screen.getByRole('link', { name: /^players$/i });
     expect(playersLink).toBeInTheDocument();
-    expect(playersLink).toHaveAttribute('href', '#');
+    expect(playersLink).toHaveAttribute('href', '/players');
   });
 
-  it('renders "Powered by" text', () => {
+  it('does not render partner logos', () => {
     render(<Sidebar />);
-    expect(screen.getByText('Powered by')).toBeInTheDocument();
-  });
-
-  it('renders Trilemma Foundation logo with correct attributes', () => {
-    render(<Sidebar />);
-    const trilemmaImage = screen.getByAltText('Trilemma Foundation');
-    expect(trilemmaImage).toBeInTheDocument();
-    
-    const trilemmaLink = trilemmaImage.closest('a');
-    expect(trilemmaLink).toHaveAttribute('href', 'https://www.trilemma.foundation/');
-    expect(trilemmaLink).toHaveAttribute('target', '_blank');
-    expect(trilemmaLink).toHaveAttribute('rel', 'noopener noreferrer');
-  });
-
-  it('renders Sincere FC logo with correct attributes', () => {
-    render(<Sidebar />);
-    const sincereImage = screen.getByAltText('Sincere FC');
-    expect(sincereImage).toBeInTheDocument();
-    
-    const sincereLink = sincereImage.closest('a');
-    expect(sincereLink).toHaveAttribute('href', 'https://www.youtube.com/@SincereFC');
-    expect(sincereLink).toHaveAttribute('target', '_blank');
-    expect(sincereLink).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(screen.queryByText('Powered by')).not.toBeInTheDocument();
+    expect(screen.queryAllByRole('img').length).toBe(0);
   });
 
   it('renders all navigation links', () => {
     render(<Sidebar />);
     const links = screen.getAllByRole('link');
-    // Should have: Home, Players, Tournaments, Trilemma, Sincere = 5 links
-    expect(links.length).toBeGreaterThanOrEqual(3); // At least 3 nav links
+    // Home, Tutorial, Players, Tournaments
+    expect(links.length).toBe(4);
   });
 
   it('highlights active link when on home page', () => {

@@ -1,5 +1,4 @@
-# Columbia-MSDS-F25-Soccer
-Team repo for sharing capstone progress
+# Sincere FC Scouting UI
 
 A comprehensive soccer analytics platform with interactive notebooks, a FastAPI backend, and a React frontend for visualizing Euro 2020 match data.
 
