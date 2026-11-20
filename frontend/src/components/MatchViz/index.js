@@ -529,7 +529,7 @@ export default function MatchViz() {
                 {selectedShotId && (
                   <div style={{ marginTop: "12px" }}>
                     {shotContext
-                      ? <SequenceMap context={shotContext} onClose={() => setSelectedShotId(null)} />
+                      ? <SequenceMap context={shotContext} onClose={() => setSelectedShotId(null)} fill />
                       : <div className={`skeleton ${styles.plotFrame}`} aria-label="Loading lead-up" />}
                   </div>
                 )}

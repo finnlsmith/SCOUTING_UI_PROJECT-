@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Plot from "react-plotly.js";
 import { PlotSkeleton } from "../LoadingSkeleton";
 import { UI_SCALE } from "../../config/ui";
 
+const NARROW_CHART_PX = 520; // below this width the legend text is scaled down
 const CHART_FONT = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif";
 
 // Scales everything the figure draws in pixels (text, markers, line widths) by `s`, so a chart
@@ -57,25 +58,35 @@ function scaleLayout(layout, s) {
 // scrollbar appears, or the card around it finishes loading), not only when the window is resized.
 function FitPlot({ data, layout, onPointClick }) {
   const box = useRef(null);
+  const [width, setWidth] = useState(0);
   useEffect(() => {
     const el = box.current;
     if (!el || typeof ResizeObserver === "undefined") return undefined;
     let last = el.getBoundingClientRect().width;
+    setWidth(last);
     const observer = new ResizeObserver(() => {
-      const width = el.getBoundingClientRect().width;
-      if (Math.abs(width - last) > 1) {
-        last = width;
+      const w = el.getBoundingClientRect().width;
+      if (Math.abs(w - last) > 1) {
+        last = w;
+        setWidth(w);
         window.dispatchEvent(new Event("resize")); // react-plotly's resize handler listens for this
       }
     });
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  // On a narrow chart the big legend would swallow the pitch, so shrink it
+  const narrow = width > 0 && width < NARROW_CHART_PX;
+  const fitted = narrow && layout.legend && layout.legend.font
+    ? { ...layout, legend: { ...layout.legend, font: { ...layout.legend.font, size: layout.legend.font.size * 0.62 } },
+        margin: { ...layout.margin, t: (layout.margin?.t ?? 0) * 0.7 } }
+    : layout;
   return (
     <div ref={box} style={{ width: "100%" }}>
       <Plot
         data={data}
-        layout={{ ...layout, autosize: true }}
+        layout={{ ...fitted, autosize: true }}
         config={{ displayModeBar: false, responsive: true }}
         useResizeHandler
         onClick={onPointClick ? ev => ev.points && ev.points[0] && onPointClick(ev.points[0]) : undefined}

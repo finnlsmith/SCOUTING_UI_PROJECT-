@@ -28,16 +28,16 @@ function Arrow({ a, n, onHover }) {
         />
       )}
       <circle cx={x1} cy={y1} r="1.6" fill={color} opacity="0.9" />
-      <text x={x1} y={y1 - 2.4} textAnchor="middle" fontSize="3.4" fontWeight="bold" fill={color}>{n}</text>
+      <text x={x1} y={y1 - 2.4} textAnchor="middle" fontSize="4" fontWeight="bold" fill={color}>{n}</text>
       {moves && (a.kind === "Pass" ? a.label !== "Pass" && a.label !== "Ground Pass" : false) && (
-        <text x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 1.2} textAnchor="middle" fontSize="2.8" fill={color}
-              stroke="white" strokeWidth="0.6" paintOrder="stroke">{a.label}</text>
+        <text x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 1.2} textAnchor="middle" fontSize="3.6" fontWeight="bold" fill={color}
+              stroke="white" strokeWidth="0.8" paintOrder="stroke">{a.label}</text>
       )}
     </g>
   );
 }
 
-export default function SequenceMap({ context, title, onClose }) {
+export default function SequenceMap({ context, title, onClose, fill = false }) {
   const [tip, setTip] = useState(null);
   if (!context || !context.event) return null;
   const { event, sequence } = context;
@@ -49,7 +49,7 @@ export default function SequenceMap({ context, title, onClose }) {
   };
 
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} style={fill ? { maxWidth: "100%" } : undefined}>
       <div className={styles.header}>
         <div className={styles.title}>{title || `Lead-up to ${event.player}'s ${event.type.toLowerCase()}, ${clock(event.minute, event.second)}`}</div>
         {onClose && <button type="button" className={styles.close} onClick={onClose}>Back</button>}
