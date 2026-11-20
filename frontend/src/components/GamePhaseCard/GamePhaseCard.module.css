@@ -382,9 +382,10 @@
 
 [data-theme="dark"] .sectionTitleRow { color: #fff; }
 
+/* The moments table sits above the scene, and the scene takes the full width */
 .momentsLayout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: calc(24px * var(--ui-scale));
   align-items: start;
 }
