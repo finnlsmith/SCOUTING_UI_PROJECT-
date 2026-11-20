@@ -138,6 +138,8 @@
 
 .tocTitle { font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); margin-bottom: var(--spacing-sm); }
 .tocHead { font-size: var(--font-size-xs); letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.65; margin: var(--spacing-lg) 0 var(--spacing-xs); }
+.tocMuted { opacity: 0.45; }
+.tocMuted:hover, .tocMuted:focus-within { opacity: 0.8; }
 .tocList { list-style: none; margin: 0; padding: 0; }
 
 .tocLink, .tocLinkOn {

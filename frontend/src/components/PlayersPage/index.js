@@ -1,6 +1,6 @@
 import React from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { CHAPTERS, chapterPath } from "./chapters";
+import { CHAPTERS, GROUPS, chapterPath } from "./chapters";
 import styles from "./PlayersPage.module.css";
 
 /** The Players section frame: a contents list down the side, and the current page beside it. */
@@ -16,17 +16,26 @@ export default function PlayersLayout() {
           Example card
         </NavLink>
 
-        <div className={styles.tocHead}>Chapters</div>
-        <ol className={styles.tocList}>
-          {CHAPTERS.map(c => (
-            <li key={c.id}>
-              <NavLink to={chapterPath(c.id)} className={({ isActive }) => (isActive ? styles.tocLinkOn : styles.tocLink)}>
-                <span>{c.title}</span>
-                {c.status !== "ready" && <span className={styles.soon}>{c.status}</span>}
-              </NavLink>
-            </li>
-          ))}
-        </ol>
+        {GROUPS.map(g => {
+          const items = CHAPTERS.filter(c => c.group === g.id);
+          const same = items.length === 1 && items[0].title === g.title;
+          return (
+            <div key={g.id} className={g.muted ? styles.tocMuted : undefined}>
+              {!same && <div className={styles.tocHead}>{g.title}</div>}
+              <ol className={styles.tocList}>
+                {items.map(c => (
+                  <li key={c.id}>
+                    <NavLink to={chapterPath(c.id)} className={({ isActive }) => (isActive ? styles.tocLinkOn : styles.tocLink)}>
+                      <span>{c.title}</span>
+                      {g.muted && <span className={styles.soon}>forwards only</span>}
+                      {!g.muted && c.status !== "ready" && <span className={styles.soon}>{c.status}</span>}
+                    </NavLink>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          );
+        })}
       </nav>
 
       <main className={styles.main}>

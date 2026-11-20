@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import useApi from "../hooks/useApi";
 import PlayerCard from "./PlayerCard";
-import { CHAPTERS, chapterPath } from "./chapters";
+import { CHAPTERS, GROUPS, chapterPath } from "./chapters";
 import styles from "./PlayersPage.module.css";
 
 const EXAMPLE_CARD = "enzo_fernandez";
@@ -58,27 +58,27 @@ export default function AboutCardPage() {
           <dt>What does he do at speed?</dt>
           <dd>
             Running (the share of actions at 15+ km/h, "pace"), first-time play and passing at speed ("tempo"), and receiving under pressure:
-            {" "}{chapterLink("pace")}, {chapterLink("tempo-and-technique")}, {chapterLink("phone-booth")}.
+            {" "}{chapterLink("pace")}, {chapterLink("tempo-and-technique")}, {chapterLink("phone-booth")}, {chapterLink("ball-holding")}.
           </dd>
         </div>
         <div>
           <dt>What does he do with time?</dt>
           <dd>
             How much time the game gives him, and whether he makes it count when he has it:
-            {" "}{chapterLink("time-on-ball")}, {chapterLink("free-space")}, {chapterLink("ball-holding")}.
+            {" "}{chapterLink("time-on-ball")}, {chapterLink("free-space")}.
           </dd>
         </div>
         <div>
           <dt>How much is just athleticism?</dt>
           <dd>
             The flip side: how many of his good actions depend on being faster than the defender. That is not a reason to pass on a player, but it
-            ties his success to his legs. {chapterLink("flip-side")}.
+            ties his success to his legs. This is in the Defending group, with winning the ball back: {chapterLink("flip-side")}.
           </dd>
         </div>
         <div>
           <dt>Is he where the job needs him?</dt>
           <dd>
-            Touches and shots in the places his position needs: {chapterLink("touches")}, {chapterLink("goal-side")}, {chapterLink("action-volume")}.
+            How involved he is and how much he attempts: {chapterLink("touches")}, {chapterLink("action-volume")}.
           </dd>
         </div>
       </dl>
@@ -108,14 +108,19 @@ export default function AboutCardPage() {
       </p>
 
       <h2 className={styles.h2}>The chapters</h2>
-      <dl className={styles.parts}>
-        {CHAPTERS.map(c => (
-          <div key={c.id}>
-            <dt><Link className={styles.link} to={chapterPath(c.id)}>{c.title}</Link></dt>
-            <dd>{c.blurb}</dd>
-          </div>
-        ))}
-      </dl>
+      {GROUPS.map(g => (
+        <div key={g.id} style={g.muted ? { opacity: 0.55 } : undefined}>
+          <h3 className={styles.h3}>{g.title}</h3>
+          <dl className={styles.parts}>
+            {CHAPTERS.filter(c => c.group === g.id).map(c => (
+              <div key={c.id}>
+                <dt><Link className={styles.link} to={chapterPath(c.id)}>{c.title}</Link></dt>
+                <dd>{c.blurb}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ))}
     </div>
   );
 }

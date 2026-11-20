@@ -20,7 +20,7 @@ export default function PacePage() {
 
   return (
     <div>
-      <h1 className={styles.title}>Pace</h1>
+      <h1 className={styles.title}>Playing at speed</h1>
       <p className={styles.intro}>
         How often a player is already moving fast when he does something with the ball. Data: PFF FC, 2022 World Cup.
       </p>

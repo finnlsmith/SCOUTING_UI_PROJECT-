@@ -110,7 +110,7 @@ export default function GreatActionsPage({ chapter }) {
           </table>
         </div>
         <ul className={styles.rules}>
-          <li><b>Speed:</b> how fast he was moving when he did it: under 15 km/h or 15+ km/h (measured as in the <Link to="/players/pace" className={styles.link}>Pace</Link> chapter).</li>
+          <li><b>Speed:</b> how fast he was moving when he did it: under 15 km/h or 15+ km/h (measured as in the <Link to="/players/pace" className={styles.link}>Playing at speed</Link> chapter).</li>
           <li><b>Space:</b> the nearest defender at the action. Two bands, because 72% of goals and 87% of high-xG shots come with a defender within 3 m, so a "free" band would read as zeros.</li>
           <li><b>Time:</b> time on the ball before the nearest opponent could reach him: under 1.5 s, 1.5 to 3 s, 3+ s (see <Link to="/players/time-on-ball" className={styles.link}>Time on the ball</Link>).</li>
           <li><b>No reading:</b> the player has to be on camera with usable tracking at that moment. It is missing for many events, and they are shown as unknown, not dropped.</li>
@@ -134,7 +134,7 @@ export default function GreatActionsPage({ chapter }) {
         </figure>
         <p className={styles.explain}>
           {allInside ? "Every range contains the all-players figure, so his key passes look like everyone's." : "Some ranges miss the all-players figure."}
-          {" "}On speed he has {kp.find(s => s.split === "speed").k} at 15+ km/h of only {kp.find(s => s.split === "speed").known} known, which matches what the Pace chapter found about his actions in general (about 10% at pace), but two readings cannot show it.
+          {" "}On speed he has {kp.find(s => s.split === "speed").k} at 15+ km/h of only {kp.find(s => s.split === "speed").known} known, which matches what the Playing at speed chapter found about his actions in general (about 10% at pace), but two readings cannot show it.
         </p>
         <ul className={styles.rules}>
           {goal && <li><b>The goal</b> ({goal.match}, {goal.clock}): {describe(goal)}.</li>}

@@ -34,7 +34,7 @@ export function TechniqueOnCard({ card, tech }) {
         <div><dt>{LABELS.pass_fast}</dt><dd>The same, only for passes he made while moving at 15 km/h or faster. {r.pass_fast.k} of {r.pass_fast.n}.</dd></div>
       </dl>
       <p className={styles.muted}>
-        Reading each row (value, percentile box, bar, 90% range, events, settled) is the same as in the Pace chapter. {f}'s numbers are on the card above.
+        Reading each row (value, percentile box, bar, 90% range, events, settled) is the same as in the Playing at speed chapter. {f}'s numbers are on the card above.
       </p>
     </div>
   );
@@ -76,7 +76,7 @@ export function TechniqueMeasured({ card, tech }) {
         <li><b>Played first time:</b> Touches = 1.</li>
         <li><b>First touch kept:</b> not a failed reception. A failure is any of: {kinds}, and similar.</li>
         <li><b>First-time pass completion:</b> receptions with one touch that end in a pass; the share of those passes completed.</li>
-        <li><b>Pass completion:</b> every pass he made, completed or not. The 15+ km/h row counts only passes made at that speed (speed measured as in the Pace chapter).</li>
+        <li><b>Pass completion:</b> every pass he made, completed or not. The 15+ km/h row counts only passes made at that speed (speed measured as in the Playing at speed chapter).</li>
       </ul>
       <p className={styles.muted}>
         Only usable events count: open play, a real flight time, both players on camera, a known arrival speed. That is why {f} has {tech.rows[0].n} receptions on the card, not every pass he received.

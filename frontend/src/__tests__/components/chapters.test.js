@@ -1,7 +1,7 @@
 /**
  * Tests for the Players chapter registry (which card rows lead to which chapter).
  */
-import { CHAPTERS, chapterById, chapterForRow, chapterForSection, chapterPath } from '../../components/PlayersPage/chapters';
+import { CHAPTERS, GROUPS, chapterById, chapterForRow, chapterForSection, chapterPath } from '../../components/PlayersPage/chapters';
 import { CHAPTER_CONTENT } from '../../components/PlayersPage/chapterContent';
 import { CHAPTER_CODE } from '../../components/PlayersPage/chapterCode';
 
@@ -13,8 +13,16 @@ describe('Players chapters', () => {
   });
 
   it('marks which chapters are written so far', () => {
-    expect(CHAPTERS.filter(c => c.status === 'ready').map(c => c.id)).toEqual(['standard-stats', 'touches', 'pace', 'time-on-ball', 'tempo-and-technique', 'action-volume', 'phone-booth', 'free-space', 'ball-holding', 'goal-side', 'flip-side', 'great-actions']);
+    expect(CHAPTERS.filter(c => c.status === 'ready').map(c => c.id)).toEqual(['standard-stats', 'pace', 'tempo-and-technique', 'phone-booth', 'ball-holding', 'time-on-ball', 'free-space', 'touches', 'action-volume', 'flip-side', 'great-actions', 'goal-side']);
     expect(CHAPTERS.filter(c => c.status === 'soon')).toEqual([]);
+  });
+
+  it('puts every chapter in a known group', () => {
+    const ids = GROUPS.map(g => g.id);
+    CHAPTERS.forEach(c => expect(ids).toContain(c.group));
+    expect(CHAPTERS.filter(c => c.group === 'speed').map(c => c.id)).toEqual(['pace', 'tempo-and-technique', 'phone-booth', 'ball-holding']);
+    expect(CHAPTERS.find(c => c.id === 'pace').title).toBe('Playing at speed');
+    expect(CHAPTERS.filter(c => c.group === 'off').map(c => c.id)).toEqual(['goal-side']);
   });
 
   it('sends single rows to their own chapter', () => {
