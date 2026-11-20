@@ -1,0 +1,159 @@
+/* Layout of one game phase. Sizes follow the page scale (--ui-scale, set on the page root). */
+
+.top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: calc(32px * var(--ui-scale));
+  align-items: start;
+  padding-bottom: calc(20px * var(--ui-scale));
+  margin-bottom: calc(24px * var(--ui-scale));
+  border-bottom: 2px solid #e0e0e0;
+}
+
+/* Phase details sit top left, left aligned */
+.summary {
+  text-align: left;
+}
+
+.title {
+  font-weight: var(--font-weight-extrabold);
+  font-size: calc(36px * var(--ui-scale));
+  color: var(--color-text-dark);
+  margin-bottom: calc(10px * var(--ui-scale));
+}
+
+.time {
+  font-size: calc(22px * var(--ui-scale));
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  margin: calc(6px * var(--ui-scale)) 0;
+}
+
+.score {
+  font-size: calc(28px * var(--ui-scale));
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-text-dark);
+  margin: calc(8px * var(--ui-scale)) 0 calc(14px * var(--ui-scale));
+}
+
+/* What ended the phase: big, so it is the first thing read */
+.endBlock {
+  display: flex;
+  flex-direction: column;
+  gap: calc(6px * var(--ui-scale));
+}
+
+.endLine {
+  font-size: calc(30px * var(--ui-scale));
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.25;
+  color: var(--color-text-dark);
+}
+
+.endLine b {
+  font-weight: var(--font-weight-extrabold);
+}
+
+.subs {
+  min-width: 0;
+}
+
+.noSubs {
+  color: var(--color-text-tertiary);
+  font-size: calc(16px * var(--ui-scale));
+  font-style: italic;
+}
+
+.subsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(260px * var(--ui-scale)), 1fr));
+  gap: calc(16px * var(--ui-scale));
+}
+
+.panelTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(12px * var(--ui-scale));
+  font-size: calc(24px * var(--ui-scale));
+  font-weight: var(--font-weight-bold);
+  margin: 0 0 calc(12px * var(--ui-scale));
+  color: var(--color-text-dark);
+  text-align: left;
+}
+
+/* Phase stats on the left, key moments on the right */
+.statsMoments {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: calc(28px * var(--ui-scale));
+  align-items: start;
+  margin-bottom: calc(28px * var(--ui-scale));
+}
+
+.momentsScroll {
+  overflow-x: auto;
+}
+
+.section {
+  margin-top: calc(28px * var(--ui-scale));
+}
+
+.sectionTitle {
+  font-size: calc(24px * var(--ui-scale));
+  font-weight: var(--font-weight-bold);
+  margin: 0 0 calc(12px * var(--ui-scale));
+  color: var(--color-text-dark);
+  text-align: left;
+}
+
+/* Home team left, away team right */
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: calc(20px * var(--ui-scale));
+  margin-bottom: calc(10px * var(--ui-scale));
+}
+
+.plotFrame {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+}
+
+.note {
+  margin: calc(6px * var(--ui-scale)) 0 0;
+  font-size: calc(14px * var(--ui-scale));
+  color: var(--color-text-secondary);
+}
+
+.sceneSkeleton {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: calc(8px * var(--ui-scale));
+}
+
+/* Dark theme: the card is near-black, so text goes light */
+[data-theme="dark"] .title,
+[data-theme="dark"] .score,
+[data-theme="dark"] .panelTitle,
+[data-theme="dark"] .sectionTitle,
+[data-theme="dark"] .endLine {
+  color: #fff;
+}
+
+[data-theme="dark"] .time {
+  color: #bbb;
+}
+
+[data-theme="dark"] .endLine b {
+  color: #6fb1ff;
+}
+
+[data-theme="dark"] .noSubs,
+[data-theme="dark"] .note {
+  color: #aaa;
+}
+
+.endLine b {
+  color: #2a5599;
+}

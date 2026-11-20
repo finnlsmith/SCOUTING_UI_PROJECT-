@@ -56,6 +56,7 @@ async def passing_network_route(
     team: str = Query(..., description="Team name to generate passing network for"),
     min_passes: int = Query(1, ge=1, description="Minimum passes between players to display"),
     flip: bool = Query(False, description="Flip the pitch orientation horizontally"),
+    subs: bool = Query(False, description="Show substitutes in place of the players they replaced"),
 ):
     """
     Generate an interactive passing network visualization for a team.
@@ -71,6 +72,7 @@ async def passing_network_route(
         - **team** (str, required): Team name for which to generate network
         - **min_passes** (int, optional): Minimum passes between two players to show edge (default: 1)
         - **flip** (bool, optional): Flip pitch horizontally (default: false)
+        - **subs** (bool, optional): Show substitutes in place of the players they replaced (default: false)
         
     **Returns:**
         dict: Plotly figure with player nodes and passing edges
@@ -83,7 +85,8 @@ async def passing_network_route(
         filename=filename,
         team=team,
         min_passes=min_passes,
-        flip=flip
+        flip=flip,
+        subs=subs,
     )
 
 

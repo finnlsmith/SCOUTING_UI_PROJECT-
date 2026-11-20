@@ -319,9 +319,10 @@ async def possession_scene(filename: str, possession: int):
         shot_deflected_flags = get_shots_deflected_flags(reordered_df_special, shot_team)
         
         # --- BEGIN REAL PLOT ---
-        fig = plt.figure(figsize=(16,8))
-        gs = gridspec.GridSpec(1,2,width_ratios=[7,2],wspace=0.01)
-        ax = fig.add_subplot(gs[0])
+        # Pitch top-left, the Who/When/xG table under the pitch, legend down the right side
+        fig = plt.figure(figsize=(16,9))
+        gs = gridspec.GridSpec(2,2,width_ratios=[7,2],height_ratios=[10,1],wspace=0.01,hspace=0.06)
+        ax = fig.add_subplot(gs[0,0])
         for xthresh in ht_x_thresholds:
             ax.add_patch(patches.Rectangle((xthresh, 0),120 - xthresh,80,facecolor='#fdfdbb',edgecolor='none',zorder=0,alpha=0.78 if len(ht_x_thresholds)==1 else 0.55))
         
@@ -693,8 +694,10 @@ async def possession_scene(filename: str, possession: int):
         clearance_shot_team_legend = mlines.Line2D([],[],marker='$C$',markersize=12,markerfacecolor='green',markeredgecolor='green',markeredgewidth=1,lw=0,label='Clearance (Shot Team)')
         clearance_opposition_legend = mlines.Line2D([],[],marker='$C$',markersize=12,markerfacecolor='red',markeredgecolor='red',markeredgewidth=1,lw=0,label='Clearance (Opposition)')
         legend_elements = [mlines.Line2D([],[],color='black',linestyle=':',lw=2,label='Pass (Shot Team)'),mlines.Line2D([],[],color='red',linestyle=':',lw=2.2,label='Pass (Opposition)'),mlines.Line2D([],[],color='black',linestyle='-',lw=2,label='Carry (Shot Team)'),mlines.Line2D([],[],color='gray',linestyle='-',lw=2,label='Carry (Opposition)'),mlines.Line2D([],[],color='green',lw=2,linestyle=(0,(6,3,2,3)),label='Dribble (Shot Team)'),mlines.Line2D([],[],color='red',lw=2,linestyle=(0,(6,3,2,3)),label='Dribble (Opposition)'),mlines.Line2D([],[],color='red',marker='o',markersize=7,lw=0,label='Dribbled Past'),mlines.Line2D([],[],color='red',marker='',lw=0,label='Block',linestyle='None'),mlines.Line2D([],[],color='green',marker='o',markersize=10,lw=0,label='Ball Recovery (Shot Team)'),mlines.Line2D([],[],color='red',marker='o',markersize=10,lw=0,label='Ball Recovery (Opposition)'),mlines.Line2D([],[],color='green',marker='x',markersize=10,lw=0,label='Pressure (Shot Team)'),mlines.Line2D([],[],color='gray',marker='x',markersize=6,lw=0,label='Pressure (Opposition)'),clearance_shot_team_legend,clearance_opposition_legend,mlines.Line2D([],[],color='green',linestyle='-',lw=2.5,label='Shot Path: GOAL'),mlines.Line2D([],[],color='red',linestyle='-',lw=2.5,label='Shot Path: Not Goal'),mpatches.Patch(facecolor='none',edgecolor='red',linewidth=2,label='Shot End: Off Target or Blocked',alpha=1),mlines.Line2D([],[],color='red',marker='$🚫$',markersize=16,lw=0,label='Shot End: Saved'),mlines.Line2D([],[],color='green',marker='s',markersize=10,lw=0,label='Interception (Shot Team)'),mlines.Line2D([],[],color='red',marker='s',markersize=10,lw=0,label='Interception (Opposition)'),failed_interception_legend,own_goal_legend,dispossessed_shot_team_legend,dispossessed_opposition_legend,foul_won_shot_team_legend,foul_won_opposition_legend,foul_committed_shot_team_legend,foul_committed_opposition_legend,duel_legend,error_legend,mlines.Line2D([],[],marker='o',color='w',markerfacecolor='w',markeredgecolor='black',markeredgewidth=2,lw=0,label='Shot Order'),mlines.Line2D([],[],marker=None,color='w',lw=0,label="Shooter's name shown above shot number"),mlines.Line2D([],[],marker=None,color='w',lw=0,label="('Penalty'/'Free Kick' shown above shot number)")]
-        ax_legend = fig.add_subplot(gs[1])
+        ax_legend = fig.add_subplot(gs[:,1])
         ax_legend.axis('off')
+        ax_info = fig.add_subplot(gs[1,0])
+        ax_info.axis('off')
         legend = ax_legend.legend(handles=legend_elements,loc='center left',fontsize=9,frameon=True,ncol=1,title='Event Types',borderaxespad=0.5,columnspacing=0.6,handletextpad=0.5,labelspacing=0.3,borderpad=0.4,handlelength=2.1)
         
         # --- INFO CARD (robust to Penalty Won) ---
@@ -793,15 +796,13 @@ async def possession_scene(filename: str, possession: int):
             score_string = f"{st[:3]} {st_score}-{ot_score} {ot[:3]}"
         info_cols = ["Who", "When", 'XG', "Result", "Score"]
         info_data = [[who, when, xg, outcome, score_string]]
-        widen_factor = 1.42
-        right_shift = 0.10
-        info_table = ax_legend.table(cellText=info_data, colLabels=info_cols, loc='upper center', cellLoc='center', colLoc='center', bbox=[-0.21+right_shift, 0.88, widen_factor, 0.12])
+        info_table = ax_info.table(cellText=info_data, colLabels=info_cols, loc='center', cellLoc='center', colLoc='center', bbox=[0, 0.05, 1, 0.9])
         info_table.auto_set_font_size(False)
-        info_table.set_fontsize(10)
+        info_table.set_fontsize(11)
         cell_dict = info_table.get_celld()
         ncols = len(info_cols)
         for (row, col), cell in cell_dict.items():
-            cell.set_width(widen_factor/ncols)
+            cell.set_width(1.0/ncols)
             cell.set_edgecolor('black')
             if row == 0:
                 cell.set_text_props(weight='bold', color='black')
@@ -810,7 +811,7 @@ async def possession_scene(filename: str, possession: int):
         ax.set_title(f"{when} - {shot_team} - {who}", fontsize=18, fontweight='bold')
         buf = io.BytesIO()
         
-        plt.savefig(buf, format="png", dpi=150)
+        plt.savefig(buf, format="png", dpi=150, bbox_inches="tight", pad_inches=0.2)
         plt.close(fig)
         buf.seek(0)
         img_base64 = base64.b64encode(buf.read()).decode("utf-8")

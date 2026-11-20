@@ -1,15 +1,22 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import useMatchData from "../hooks/useMatchData";
 import useUpload from "../hooks/useUpload";
 import useVisualization from "../hooks/useVisualization";
 import ErrorBanner from "../ErrorBanner";
+// import FileUpload from "../FileUpload";
 import MatchSelector from "../MatchSelector";
-import ScoreCard from "./ScoreCard";
-import MatchFacts from "./MatchFacts";
-import ChartPanel from "./ChartPanel";
-import KeyMomentsSection from "./KeyMomentsSection";
-import GamePhasesSection from "./GamePhasesSection";
+import Scoreboard from "../Scoreboard";
+import CollapsibleSection from "../CollapsibleSection";
+import GamePhaseCard from "../GamePhaseCard";
+// import ShotMapButtons from "../ShotMapButtons";
+// import PassingNetworkButtons from "../PassingNetworkButtons";
+import { PlotSkeleton } from "../LoadingSkeleton";
+import { BACKEND_URL } from "../../config/api";
+import { UI_SCALE } from "../../config/ui";
 import styles from "./MatchViz.module.css";
+
+// Dynamically import heavy component for code splitting
+const ShotMapPlot = lazy(() => import("../ShotMapPlot"));
 
 export default function MatchViz() {
   const { matches, loading: matchesLoading, error: matchesError, setError: setMatchesError } = useMatchData();
@@ -33,6 +40,22 @@ export default function MatchViz() {
   const [globalError, setGlobalError] = useState("");
   const [shotMapFigData, setShotMapFigData] = useState(null);
   const [passNetFigData, setPassNetFigData] = useState(null);
+  const [shotMapTeam, setShotMapTeam] = useState("both"); // "both" | "home" | "away"
+  const [passNetTeam, setPassNetTeam] = useState("home"); // "home" | "away"
+  const [showSubs, setShowSubs] = useState(false);
+  const [selectedMomentIdx, setSelectedMomentIdx] = useState(null);
+  const [sceneImageBase64, setSceneImageBase64] = useState(null);
+  const [sceneLoading, setSceneLoading] = useState(false);
+  const [sceneError, setSceneError] = useState(null);
+  const [showImportantScenes, setShowImportantScenes] = useState(true);
+  const [gamePhases, setGamePhases] = useState([]);
+  const [gamePhaseLoading, setGamePhaseLoading] = useState(false);
+  const [gamePhaseError, setGamePhaseError] = useState(null);
+  const [gamePhaseTeams, setGamePhaseTeams] = useState({ home: "", away: "" });
+  const [gamePhaseMetrics, setGamePhaseMetrics] = useState([]);
+  const [phaseScenes, setPhaseScenes] = useState({}); // {phaseIdx: {selectedMomentIdx, imageBase64, loading, error}}
+  const [phaseShowScenes, setPhaseShowScenes] = useState({}); // {phaseIdx: boolean}
+  const [selectedPhaseIdx, setSelectedPhaseIdx] = useState(0);
 
   useEffect(() => {
     setGlobalError(matchesError || uploadError || vizError || "");
@@ -45,144 +68,624 @@ export default function MatchViz() {
     setVizError && setVizError("");
   }
 
-  // Team names come from the match stats, falling back to the dropdown label
+  // ====== FALLBACK TEAM NAME LOGIC ======
   const selectedLabel = matches.find(m => m.file === selectedMatch)?.label || "";
-  const labelTeams = /-\s(.*?)\svs\s(.*?)\s–/.exec(selectedLabel);
-  const homeName = stats?.home_team || labelTeams?.[1];
-  const awayName = stats?.away_team || labelTeams?.[2];
+  const m = /-\s(.*?)\svs\s(.*?)\s–/.exec(selectedLabel);
+  const fallbackHome = m?.[1];
+  const fallbackAway = m?.[2];
+  const homeName = stats?.home_team || fallbackHome;
+  const awayName = stats?.away_team || fallbackAway;
   const canShoot = Boolean(selectedMatch && homeName && awayName);
 
   useEffect(() => {
     if (selectedMatch) fetchImportantMoments(selectedMatch);
   }, [selectedMatch, fetchImportantMoments]);
 
-  // Auto-load the both-teams shot map when a match is selected
   useEffect(() => {
-    if (canShoot) {
-      loadBothShotmaps(selectedMatch, homeName, awayName).then(data => {
-        if (data) setShotMapFigData(data);
-      });
+    if (!showImportantScenes || selectedMomentIdx === null || importantMoments.length === 0 || !selectedMatch) {
+      setSceneImageBase64(null);
+      setSceneError(null);
+      setSceneLoading(false);
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMatch, homeName, awayName, canShoot]);
+    const m = importantMoments[selectedMomentIdx];
+    if (!m) return;
+    setSceneImageBase64(null);
+    setSceneLoading(true);
+    setSceneError(null);
+    fetch(`${BACKEND_URL}/match/${selectedMatch}/possession_scene?possession=${m.possession}`)
+      .then(res => res.json())
+      .then(res => {
+        if (res.image_base64) {
+          setSceneImageBase64(res.image_base64);
+        } else if (res.error) {
+          setSceneError(res.error);
+        } else {
+          setSceneError("No image returned");
+        }
+      })
+      .catch(() => setSceneError("Failed to fetch possession scene"))
+      .finally(() => setSceneLoading(false));
+  }, [selectedMomentIdx, selectedMatch, showImportantScenes, importantMoments]);
 
-  // Auto-load the home team passing network when a match is selected
   useEffect(() => {
-    if (canShoot) {
-      loadPassingNetwork(selectedMatch, homeName, 1, false).then(data => {
-        if (data) setPassNetFigData(data);
-      });
+    if (!selectedMatch) {
+      setGamePhases([]); setGamePhaseError(null); setGamePhaseTeams({ home: "", away: "" }); setGamePhaseMetrics([]);
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMatch, homeName, canShoot]);
+    setGamePhaseLoading(true);
+    setSelectedPhaseIdx(0);
+    setGamePhaseError(null);
+  fetch(`${BACKEND_URL}/match/${selectedMatch}/game_phases`)
+      .then(res => res.json())
+      .then(res => {
+        if (res.error) throw new Error(res.error);
+        setGamePhases(res.phases || []);
+        setGamePhaseTeams({ home: res.home_team || "", away: res.away_team || "" });
+        setGamePhaseMetrics(res.phase_metrics || []);
+      })
+      .catch(e => setGamePhaseError(e.message))
+      .finally(() => setGamePhaseLoading(false));
+  }, [selectedMatch]);
 
-  // Wrap a chart loader so it only runs once the teams are known
-  const load = (loader, setter) => async () => {
-    if (!canShoot) return;
-    setter(await loader());
+  // Each new match starts with Show Scenes on, so its first key moment is selected
+  useEffect(() => {
+    setShowImportantScenes(true);
+  }, [selectedMatch]);
+
+  useEffect(() => {
+    if (showImportantScenes && importantMoments.length > 0) {
+      setSelectedMomentIdx(0);
+    } else {
+      setSelectedMomentIdx(null);
+    }
+  }, [importantMoments, selectedMatch, showImportantScenes]);
+
+  // A new match starts on the default views
+  useEffect(() => {
+    setShotMapTeam("both");
+    setPassNetTeam("home");
+    setShowSubs(false);
+  }, [selectedMatch]);
+
+  // Shot map: reloads when the match or the team dropdown changes. The flag drops answers that
+  // arrive after the user has already moved on, so a slow reply never replaces a newer chart.
+  useEffect(() => {
+    if (!canShoot) return undefined;
+    let cancelled = false;
+    setShotMapFigData(null);
+    const request = shotMapTeam === "both"
+      ? loadBothShotmaps(selectedMatch, homeName, awayName)
+      : loadTeamShotmap(selectedMatch, shotMapTeam === "home" ? homeName : awayName);
+    Promise.resolve(request).then(data => {
+      if (!cancelled && data) setShotMapFigData(data);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMatch, homeName, awayName, canShoot, shotMapTeam]);
+
+  // Passing network: the away team is drawn flipped so both teams attack the same way
+  useEffect(() => {
+    if (!canShoot) return undefined;
+    let cancelled = false;
+    setPassNetFigData(null);
+    const team = passNetTeam === "home" ? homeName : awayName;
+    Promise.resolve(loadPassingNetwork(selectedMatch, team, 1, passNetTeam === "away", showSubs)).then(data => {
+      if (!cancelled && data) setPassNetFigData(data);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMatch, homeName, awayName, canShoot, passNetTeam, showSubs]);
+
+  const handleMomentClick = idx => {
+    setSelectedMomentIdx(idx);
+    setShowImportantScenes(true);
+  };
+  const handlePrev = () => setSelectedMomentIdx(idx => idx > 0 ? idx - 1 : 0);
+  const handleNext = () => setSelectedMomentIdx(idx => idx < importantMoments.length - 1 ? idx + 1 : idx);
+  const handleShowImportantScenesToggle = () => setShowImportantScenes(s => !s);
+  
+  // Handler for phase-specific key moments
+  const handlePhaseMomentClick = (phaseIdx, momentIdx, moment) => {
+    if (!moment || !moment.possession) return;
+    
+    setPhaseScenes(prev => ({
+      ...prev,
+      [phaseIdx]: {
+        ...prev[phaseIdx],
+        selectedMomentIdx: momentIdx,
+        loading: true,
+        error: null,
+        imageBase64: null
+      }
+    }));
+    
+    fetch(`${BACKEND_URL}/match/${selectedMatch}/possession_scene?possession=${moment.possession}`)
+      .then(res => res.json())
+      .then(res => {
+        if (res.image_base64) {
+          setPhaseScenes(prev => ({
+            ...prev,
+            [phaseIdx]: {
+              ...prev[phaseIdx],
+              imageBase64: res.image_base64,
+              loading: false
+            }
+          }));
+        } else if (res.error) {
+          setPhaseScenes(prev => ({
+            ...prev,
+            [phaseIdx]: {
+              ...prev[phaseIdx],
+              error: res.error,
+              loading: false
+            }
+          }));
+        }
+      })
+      .catch(() => {
+        setPhaseScenes(prev => ({
+          ...prev,
+          [phaseIdx]: {
+            ...prev[phaseIdx],
+            error: "Failed to fetch scene",
+            loading: false
+          }
+        }));
+      });
   };
 
+  // Goals, own goals and red cards in match order. Shown as "Key events" next to the score.
+  const keyEvents = importantMoments
+    .filter(moment => {
+      return (moment.event_type === 'Shot' && moment.outcome === 'Goal') ||
+                   moment.event_type === 'Own Goal For' ||
+                   moment.event_type === 'Own Goal Against' ||
+                   moment.event_type === 'Red Card';
+          })
+          .sort((a, b) => {
+            const [aMin] = a.when ? a.when.split(':').map(Number) : [0];
+            const [bMin] = b.when ? b.when.split(':').map(Number) : [0];
+            return aMin - bMin;
+          });
+
   return (
-    <div className={styles.container}>
+    <div className={styles.container} style={{ "--ui-scale": UI_SCALE }}>
       <ErrorBanner error={globalError} onClose={handleClearError} />
       <div className={styles.content}>
         {/* Top bar: tournament name and match picker, top left */}
         <div className={styles.topBar}>
           <h1 className={styles.tournamentTitle}>Euro 2020</h1>
           <div className={styles.matchSelectorWrapper}>
-            <MatchSelector
-              matches={matches}
-              selectedMatch={selectedMatch}
-              onChange={async (v) => {
-                setSelectedMatch(v);
-                try {
-                  await loadMatchViz(v, setStats);
-                } catch (e) {
-                  setVizError?.(e?.message || "Failed to load match");
-                }
-              }}
-              flipSides={flipSides}
-              onFlipChange={setFlipSides}
-              onReset={() => {
-                setSelectedMatch("");
-                setStats({});
-              }}
-              matchesLoading={matchesLoading}
-            />
+              <MatchSelector
+                matches={matches}
+                selectedMatch={selectedMatch}
+                onChange={async (v) => {
+                  setSelectedMatch(v);
+                  try {
+                    await loadMatchViz(v, setStats);
+                    // setFigData(null); // This line was commented out in the original file
+                  } catch (e) {
+                    setVizError?.(e?.message || "Failed to load match");
+                  }
+                }}
+                flipSides={flipSides}
+                onFlipChange={setFlipSides}
+                onReset={() => {
+                  setSelectedMatch("");
+                  setStats({});
+                  // setFigData(null); // This line was commented out in the original file
+                }}
+                matchesLoading={matchesLoading}
+              />
           </div>
         </div>
 
         {selectedMatch && (
           <>
             <div className={styles.sectionDivider}></div>
-
+            
             {/* Score card (left) and match facts (right) side by side */}
             <div className={styles.topRow}>
-              <ScoreCard stats={stats} matchLabel={selectedLabel} importantMoments={importantMoments} />
-              <MatchFacts stats={stats} />
+            <div className={styles.scoreCard}>
+            {/* Score/Round/Date Header */}
+            <div className={styles.visualizationHeader}>
+              <div className={styles.vizHeaderContent}>
+                <div className={styles.vizHeaderTeamSection}>
+                  <img 
+                    src={`${BACKEND_URL}/team-logo/${encodeURIComponent(stats.home_team)}`} 
+                    alt={stats.home_team}
+                    className={styles.teamLogo}
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                  <span className={styles.teamName}>{stats.home_team}</span>
+                </div>
+                <div className={styles.vizHeaderScoreSection}>
+                  <span className={styles.vizHeaderScore}>
+                    {Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "0 - 0"}
+              </span>
+                </div>
+                <div className={styles.vizHeaderTeamSection}>
+                  <img 
+                    src={`${BACKEND_URL}/team-logo/${encodeURIComponent(stats.away_team)}`} 
+                    alt={stats.away_team}
+                    className={styles.teamLogo}
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                  <span className={styles.teamName}>{stats.away_team}</span>
+                </div>
+              </div>
+              <div className={styles.vizHeaderMeta}>
+                {stats.competition_stage && <span className={styles.vizHeaderStage}>{stats.competition_stage}</span>}
+                {selectedLabel && stats.competition_stage && <span className={styles.vizHeaderSeparator}>|</span>}
+                {selectedLabel && <span className={styles.vizHeaderDate}>{selectedLabel.match(/\d{4}-\d{2}-\d{2}/)?.[0] || ""}</span>}
+              </div>
+            </div>
+
+            {/* ========================================
+                MATCH TIMELINE - Sequential list of Goals, Red Cards, Own Goals
+                ======================================== */}
+            {importantMoments.length > 0 && (
+              <div className={styles.keyEventsPanel}>
+              <h2 className={styles.keyEventsTitle}>Key events</h2>
+              <div className={styles.matchTimeline}>
+                {keyEvents.length === 0 && (<div className={styles.keyEventsEmpty}>No goals or red cards in this match.</div>)}
+                <div className={styles.timelineList}>
+                  {keyEvents
+                    .map((moment, idx) => {
+                      const [min] = moment.when ? moment.when.split(':').map(Number) : [0];
+                      
+                      // Determine which team scored (own goals benefit the other team)
+                      const isOwnGoal = moment.event_type === 'Own Goal For' || moment.event_type === 'Own Goal Against';
+                      const isRedCard = moment.event_type === 'Red Card';
+                      let displayTeam = moment.team;
+                      
+                      if (moment.event_type === 'Own Goal For') {
+                        displayTeam = moment.team;
+                      } else if (moment.event_type === 'Own Goal Against') {
+                        displayTeam = moment.team === stats.home_team ? stats.away_team : stats.home_team;
+                      }
+                      
+                      const isHomeTeam = displayTeam === stats.home_team;
+                      
+                      // Icon and color
+                      let icon = '⚽';
+                      let color = isOwnGoal ? '#FF9800' : '#4CAF50';
+                      if (isRedCard) {
+                        icon = '🟥';
+                        color = '#D32F2F';
+                      }
+                      
+                      // Get player last name
+                      const playerName = moment.who || '';
+                      const lastName = playerName.includes(' ') ? playerName.split(' ').pop() : playerName;
+                      
+                      return (
+                        <div key={idx} className={styles.timelineRow}>
+                          {/* Home team side */}
+                          <div className={styles.timelineHomeCell}>
+                            {isHomeTeam && (
+                              <div className={styles.timelineEventContent}>
+                                <span className={styles.timelinePlayerName}>{lastName}</span>
+                                <div className={styles.timelineIcon} style={{ backgroundColor: color, borderRadius: isRedCard ? '3px' : '50%' }}>
+                                  {icon}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Minute in center */}
+                          <div className={styles.timelineMinuteCell}>
+                            {min}'
+                          </div>
+                          
+                          {/* Away team side */}
+                          <div className={styles.timelineAwayCell}>
+                            {!isHomeTeam && (
+                              <div className={styles.timelineEventContent}>
+                                <div className={styles.timelineIcon} style={{ backgroundColor: color, borderRadius: isRedCard ? '3px' : '50%' }}>
+                                  {icon}
+                                </div>
+                                <span className={styles.timelinePlayerName}>{lastName}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+              </div>
+)}
+            </div>
+            
+            {/* Match facts: white numbers on a dark table */}
+            <div className={styles.matchFactsBlock}>
+              <div className={styles.matchFactsCard}>
+                <h2 className={styles.matchFactsTitle}>Match facts</h2>
+                  <Scoreboard
+                    stage={stats.competition_stage}
+                    home={stats.home_team}
+                    away={stats.away_team}
+                    score={Number.isFinite(stats.home_score) && Number.isFinite(stats.away_score) ? `${stats.home_score} - ${stats.away_score}` : "-"}
+                    shots={(stats.home_shots !== null && stats.away_shots !== null && stats.home_shots !== undefined && stats.away_shots !== undefined)
+                      ? `${stats.home_shots} - ${stats.away_shots}` : "-"}
+                    shotsOnTarget={(stats.home_shots_on_target !== null && stats.away_shots_on_target !== null && stats.home_shots_on_target !== undefined && stats.away_shots_on_target !== undefined)
+                      ? `${stats.home_shots_on_target} - ${stats.away_shots_on_target}` : "-"}
+                    xg={(stats.home_xg_sum && stats.away_xg_sum)
+                        ? `${stats.home_xg_sum} - ${stats.away_xg_sum}`
+                        : "-"}
+                    bigChances={(Number.isFinite(stats.home_big_chances) && Number.isFinite(stats.away_big_chances)) ? `${stats.home_big_chances} - ${stats.away_big_chances}` : "-"}
+                    okChances={(Number.isFinite(stats.home_ok_chances) && Number.isFinite(stats.away_ok_chances)) ? `${stats.home_ok_chances} - ${stats.away_ok_chances}` : "-"}
+                    fouls={(Number.isFinite(stats.home_fouls) && Number.isFinite(stats.away_fouls)) ? `${stats.home_fouls} - ${stats.away_fouls}` : "-"}
+                    cardsLeft={(Number.isFinite(stats.home_cards_total) && Number.isFinite(stats.home_cards_yellow) && Number.isFinite(stats.home_cards_red)) ? `${stats.home_cards_total} (${stats.home_cards_yellow}/${stats.home_cards_red})` : "-"}
+                    cardsRight={(Number.isFinite(stats.away_cards_total) && Number.isFinite(stats.away_cards_yellow) && Number.isFinite(stats.away_cards_red)) ? `${stats.away_cards_total} (${stats.away_cards_yellow}/${stats.away_cards_red})` : "-"}
+                    boxEntries={(Number.isFinite(stats.home_box_entries) && Number.isFinite(stats.away_box_entries)) ? `${stats.home_box_entries} - ${stats.away_box_entries}` : "-"}
+                  />
+              </div>
+            </div>
+
             </div>
 
             {/* Flip sides applies to both charts */}
-            <div className={styles.flipSidesContainerCentered}>
-              <label className={styles.flipSidesLabel}>
-                <input
-                  type="checkbox"
-                  checked={flipSides}
-                  onChange={(e) => setFlipSides(e.target.checked)}
-                  className={styles.flipSidesCheckbox}
-                />
-                Flip Sides (applies to both)
-              </label>
-            </div>
+              <div className={styles.flipSidesContainerCentered}>
+                  <label className={styles.flipSidesLabel}>
+                    <input
+                      type="checkbox"
+                      checked={flipSides}
+                      onChange={(e) => setFlipSides(e.target.checked)}
+                      className={styles.flipSidesCheckbox}
+                    />
+                  Flip Sides (applies to both)
+                  </label>
+                </div>
 
-            {/* Shot map and passing network, side by side */}
+            {/* Shot map and passing network, side by side. Boxes keep their size while loading. */}
             <div className={styles.chartsRow}>
-              <ChartPanel
-                title="Shot Map"
-                titleClass={styles.shotMapsTitle}
-                plotClass={styles.shotMapPlot}
-                buttonRowClass={styles.buttonGroup}
-                figData={shotMapFigData}
-                flipSides={flipSides}
-                plotLoading={plotLoading}
-                buttons={[
-                  { label: `Shot map – ${homeName}`, className: styles.button,
-                    onClick: load(() => loadTeamShotmap(selectedMatch, homeName), setShotMapFigData) },
-                  { label: `Shot map – ${awayName}`, className: styles.button,
-                    onClick: load(() => loadTeamShotmap(selectedMatch, awayName), setShotMapFigData) },
-                  { label: "Both Teams Shot Map", className: styles.buttonBoth,
-                    onClick: load(() => loadBothShotmaps(selectedMatch, homeName, awayName), setShotMapFigData) },
-                ]}
-                resetLabel="Reset Shot Map"
-                onReset={() => setShotMapFigData(null)}
-              />
-              <ChartPanel
-                title="Passing Network"
-                titleClass={styles.passingNetworkTitle}
-                plotClass={styles.passingNetworkPlot}
-                buttonRowClass={styles.passingNetworkButtons}
-                figData={passNetFigData}
-                flipSides={flipSides}
-                plotLoading={plotLoading}
-                buttons={[
-                  { label: `${homeName} Network`, className: styles.passingNetworkButton,
-                    onClick: load(() => loadPassingNetwork(selectedMatch, homeName, 1, false), setPassNetFigData) },
-                  { label: `${awayName} Network`, className: styles.passingNetworkButton,
-                    onClick: load(() => loadPassingNetwork(selectedMatch, awayName, 1, true), setPassNetFigData) },
-                ]}
-                resetLabel="Reset Passing Network"
-                onReset={() => setPassNetFigData(null)}
-              />
+              <div className={styles.chartColumn}>
+                <div className={styles.chartHeader}>
+                  <h2 className={styles.chartTitle}>Shot Map</h2>
+                  <select
+                    className={styles.chartSelect}
+                    value={shotMapTeam}
+                    onChange={(e) => setShotMapTeam(e.target.value)}
+                    disabled={!canShoot}
+                    aria-label="Team for shot map"
+                  >
+                    <option value="both">Both teams</option>
+                    <option value="home">{homeName}</option>
+                    <option value="away">{awayName}</option>
+                  </select>
+                </div>
+                <div className={styles.plotFrame}>
+                  {shotMapFigData ? (
+                    <Suspense fallback={<PlotSkeleton fill />}>
+                      <ShotMapPlot displayFig={shotMapFigData} flipSides={flipSides} plotLoading={plotLoading} fit />
+                    </Suspense>
+                  ) : (
+                    <PlotSkeleton fill />
+                  )}
+                </div>
+              </div>
+              <div className={styles.chartColumn}>
+                <div className={styles.chartHeader}>
+                  <h2 className={styles.chartTitle}>Passing Network</h2>
+                  <select
+                    className={styles.chartSelect}
+                    value={passNetTeam}
+                    onChange={(e) => setPassNetTeam(e.target.value)}
+                    disabled={!canShoot}
+                    aria-label="Team for passing network"
+                  >
+                    <option value="home">{homeName}</option>
+                    <option value="away">{awayName}</option>
+                  </select>
+                </div>
+                <div className={styles.plotFrame}>
+                  {passNetFigData ? (
+                    <Suspense fallback={<PlotSkeleton fill />}>
+                      <ShotMapPlot displayFig={passNetFigData} flipSides={flipSides} plotLoading={plotLoading} fit />
+                    </Suspense>
+                  ) : (
+                    <PlotSkeleton fill />
+                  )}
+                </div>
+                <label className={styles.chartCheckLabel} title="Show each substitute in place of the player they replaced">
+                  <input
+                    type="checkbox"
+                    checked={showSubs}
+                    onChange={(e) => setShowSubs(e.target.checked)}
+                    disabled={!canShoot}
+                  />
+                  Show substitutes in place of the players they replaced
+                </label>
+                <p className={styles.chartNote}>
+                  Bubble size = number of touches.{showSubs ? " Hollow circles are substitutes (▲ = minute they came on)." : ""}
+                </p>
+              </div>
             </div>
 
-            <KeyMomentsSection
-              matchFile={selectedMatch}
-              moments={importantMoments}
-              loading={importantMomentsLoading}
-              error={importantMomentsError}
-            />
+            <div className={styles.chartsDivider} />
 
-            <GamePhasesSection matchFile={selectedMatch} importantMoments={importantMoments} />
+            {/* Key Moments Section */}
+            <CollapsibleSection
+              title="Key Moments"
+              subtitle="Pick a moment in the table to see that possession."
+              headerExtra={(
+                <label className={styles.showScenesLabel}>
+                  <input type="checkbox" checked={showImportantScenes} onChange={handleShowImportantScenesToggle} className={styles.showScenesCheckbox} />
+                  Show Scenes
+                </label>
+              )}
+            >
+              <div className={styles.momentsContainer}>
+                {/* Moments Table */}
+                <div className={styles.momentsTable}>
+                  {importantMomentsLoading && <div className={`skeleton ${styles.momentsSkeleton}`} aria-label="Loading moments" />}
+                  {importantMomentsError && <div className={styles.errorText}>{importantMomentsError}</div>}
+                  {!importantMomentsLoading && !importantMomentsError && Array.isArray(importantMoments) && importantMoments.length === 0 && (
+                    <div className={styles.emptyText}>No important moments found for match.</div>
+                  )}
+                  {!importantMomentsLoading && !importantMomentsError && Array.isArray(importantMoments) && importantMoments.length > 0 && (
+                    <table className={styles.momentsTableElement}>
+                      <thead>
+                        <tr className={styles.tableHeader}>
+                          <th className={styles.tableHeaderCell}>#</th>
+                          <th className={styles.tableHeaderCell}>When</th>
+                          <th className={styles.tableHeaderCell}>Team</th>
+                          <th className={styles.tableHeaderCell}>Who</th>
+                          <th className={styles.tableHeaderCell}>Type</th>
+                          <th className={styles.tableHeaderCell}>xG</th>
+                          <th className={styles.tableHeaderCell}>Outcome</th>
+                          <th className={styles.tableHeaderCell}>Poss.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importantMoments.map((m, idx) => (
+                          <tr
+                            key={idx}
+                            onClick={() => handleMomentClick(idx)}
+                            className={selectedMomentIdx === idx && showImportantScenes ? styles.tableRowSelected : styles.tableRow}
+                          >
+                            <td className={styles.tableCell}>{idx + 1}</td>
+                            <td className={styles.tableCell}>{m.when}</td>
+                            <td className={styles.tableCell}>{m.team}</td>
+                            <td className={styles.tableCell}>{m.who}</td>
+                            <td className={styles.tableCell}>{m.event_type}</td>
+                            <td className={styles.tableCell}>{m.xg !== undefined && m.xg !== null ? m.xg : ''}</td>
+                            <td className={styles.tableCell}>{m.outcome}</td>
+                            <td className={styles.tableCell}>{m.possession}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+                {/* Scene Viewer */}
+                {showImportantScenes && importantMoments.length > 0 && selectedMomentIdx !== null && (
+                  <div className={styles.sceneViewer}>
+                    <div className={styles.sceneNav}>
+                      <button onClick={handlePrev} disabled={selectedMomentIdx <= 0} className={styles.sceneNavButton}>{'←'}</button>
+                      <span className={styles.sceneNavLabel}>
+                        Moment {selectedMomentIdx + 1} of {importantMoments.length} (Possession {importantMoments[selectedMomentIdx]?.possession})
+                      </span>
+                      <button onClick={handleNext} disabled={selectedMomentIdx >= importantMoments.length - 1} className={styles.sceneNavButton}>{'→'}</button>
+                    </div>
+                    <div className={styles.sceneStatus}>
+                      {sceneError && sceneError}
+                    </div>
+                    {sceneLoading && !sceneImageBase64 && (
+                      <div className={`skeleton ${styles.sceneSkeleton}`} aria-label="Loading scene" />
+                    )}
+                    {sceneImageBase64 && (
+                      <img
+                        src={`data:image/png;base64,${sceneImageBase64}`}
+                        alt="Possession Scene"
+                        className={styles.sceneImage}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </CollapsibleSection>
+            
+            
+            {/* Game Phases Section */}
+            <CollapsibleSection title="Game Phases" subtitle="One phase at a time. Pick a phase below.">
+              {!gamePhaseLoading && !gamePhaseError && gamePhases.length > 0 && (
+                <div className={styles.phasePicker}>
+                  <button
+                    type="button"
+                    className={styles.phaseNavButton}
+                    onClick={() => setSelectedPhaseIdx(i => Math.max(0, i - 1))}
+                    disabled={selectedPhaseIdx <= 0}
+                    aria-label="Previous phase"
+                  >{"←"}</button>
+                  <div className={styles.phaseTabs} role="tablist" aria-label="Game phases">
+                    {gamePhases.map((p, i) => (
+                      <button
+                        key={p.phase_idx}
+                        type="button"
+                        role="tab"
+                        aria-selected={i === selectedPhaseIdx}
+                        className={i === selectedPhaseIdx ? styles.phaseTabActive : styles.phaseTab}
+                        onClick={() => setSelectedPhaseIdx(i)}
+                      >
+                        <span className={styles.phaseTabName}>Phase {p.phase_idx}</span>
+                        <span className={styles.phaseTabTime}>{`${p.start_minute}:${String(p.start_second).padStart(2, "0")}`}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.phaseNavButton}
+                    onClick={() => setSelectedPhaseIdx(i => Math.min(gamePhases.length - 1, i + 1))}
+                    disabled={selectedPhaseIdx >= gamePhases.length - 1}
+                    aria-label="Next phase"
+                  >{"→"}</button>
+                </div>
+              )}
+              {gamePhaseLoading && <div className={`skeleton ${styles.gamePhasesSkeleton}`} aria-label="Loading phases" />}
+              {gamePhaseError && <div className={styles.gamePhasesError}>{gamePhaseError}</div>}
+              {!gamePhaseLoading && !gamePhaseError && gamePhases.length === 0 && (
+                <div className={styles.gamePhasesEmpty}>
+                  No phases detected for match.
+                </div>
+              )}
+              {!gamePhaseLoading && !gamePhaseError && gamePhases.length > 0 && (
+                <div className={styles.gamePhasesList}>
+                  {gamePhases.filter((_, i) => i === selectedPhaseIdx).map(ph => {
+                    const m = (gamePhaseMetrics || []).find(mm => mm.phase_idx === ph.phase_idx);
+                    
+                    // Filter key moments for this phase (check period AND time, exclude phase-starting goal)
+                    const phaseMoments = importantMoments.filter(moment => {
+                      if (!moment.when) return false;
+                      
+                      // Check period matches (handle null/undefined)
+                      const momentPeriod = moment.period;
+                      const phasePeriod = ph.start_period;
+                      
+                      // If both have period values, they must match
+                      if (momentPeriod !== null && momentPeriod !== undefined && 
+                          phasePeriod !== null && phasePeriod !== undefined) {
+                        if (momentPeriod !== phasePeriod) return false;
+                      }
+                      
+                      // Check time range within same period
+                      const [min, sec] = moment.when.split(':').map(Number);
+                      const startMin = ph.start_minute;
+                      const startSec = ph.start_second;
+                      const endMin = ph.end_minute !== null ? ph.end_minute : 999;
+                      const endSec = ph.end_minute !== null ? ph.end_second : 999;
+                      
+                      const momentTime = min * 60 + sec;
+                      const startTime = startMin * 60 + startSec;
+                      const endTime = endMin * 60 + endSec;
+                      
+                      // Strict range: start_time < moment_time <= end_time
+                      // This excludes any moment AT the start time (which ended the previous phase)
+                      if (momentTime <= startTime || momentTime > endTime) return false;
+                      
+                      return true;
+                    });
+                    
+                    return (
+                      <GamePhaseCard
+                        key={ph.phase_idx}
+                        ph={ph}
+                        m={m}
+                        teams={gamePhaseTeams}
+                        phaseMoments={phaseMoments}
+                        scene={phaseScenes[ph.phase_idx]}
+                        showScenes={phaseShowScenes[ph.phase_idx] ?? true}
+                        onToggleScenes={on => setPhaseShowScenes(prev => ({ ...prev, [ph.phase_idx]: on }))}
+                        onMomentClick={(momentIdx, moment) => handlePhaseMomentClick(ph.phase_idx, momentIdx, moment)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </CollapsibleSection>
           </>
         )}
       </div>
