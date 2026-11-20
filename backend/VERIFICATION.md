@@ -38,7 +38,7 @@ The server should start at `http://localhost:8000`
   - Parameter descriptions
   - Request/response schemas
   - "Try it out" button works
-- [ ] API title shows: "Columbia MSDS Soccer Analytics API"
+- [ ] API title shows: "Sincere FC Scouting UI API"
 - [ ] API version shows: "v1"
 - [ ] API description is visible with features list
 
@@ -88,7 +88,7 @@ curl http://localhost:8000/openapi.json | jq '.info'
 Expected output:
 ```json
 {
-  "title": "Columbia MSDS Soccer Analytics API",
+  "title": "Sincere FC Scouting UI API",
   "description": "## Soccer Analytics API...",
   "version": "v1",
   "contact": {...},

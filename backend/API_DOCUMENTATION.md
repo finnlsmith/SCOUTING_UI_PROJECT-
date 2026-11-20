@@ -1,4 +1,4 @@
-# Columbia MSDS Soccer Analytics API Documentation
+# Sincere FC Scouting UI API Documentation
 
 ## Overview
 

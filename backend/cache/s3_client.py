@@ -25,7 +25,7 @@ class S3Client:
     Sync S3 client with caching for DataFrames.
     """
     def __init__(self):
-        self.bucket = os.getenv("S3_BUCKET_NAME", "capstone-soccer-data")
+        self.bucket = os.getenv("S3_BUCKET_NAME", "soccer-data-605092603067")
         self.region = os.getenv("AWS_REGION", "us-east-2")
 
         self.client = boto3.client(

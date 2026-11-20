@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "columbia-soccer-api-v1",
-		"name": "Columbia MSDS Soccer Analytics API",
+		"_postman_id": "scouting-ui-api-v1",
+		"name": "Sincere FC Scouting UI API",
 		"description": "Complete API collection for testing Euro 2020 match analytics endpoints",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "columbia-msds"
+		"_exporter_id": "scouting-ui"
 	},
 	"item": [
 		{

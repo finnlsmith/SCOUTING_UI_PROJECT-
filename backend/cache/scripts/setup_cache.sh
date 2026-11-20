@@ -85,7 +85,7 @@ if [ ! -f "$BACKEND_DIR/.env" ]; then
     cat > "$BACKEND_DIR/.env.example" << 'ENVEXAMPLE'
 # AWS Configuration
 AWS_REGION=us-east-2
-S3_BUCKET_NAME=capstone-soccer-data
+S3_BUCKET_NAME=soccer-data-605092603067
 AWS_ACCESS_KEY_ID=your_access_key_here
 AWS_SECRET_ACCESS_KEY=your_secret_key_here
 

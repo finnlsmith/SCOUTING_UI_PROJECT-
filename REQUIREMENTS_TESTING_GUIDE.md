@@ -19,7 +19,7 @@ This guide helps you verify that the consolidated `requirements.txt` works corre
 
 1. **Remove old virtual environment:**
 ```bash
-cd /path/to/Columbia-MSDS-F25-Soccer
+cd /path/to/SCOUTING_UI_PROJECT-
 rm -rf .venv
 rm -rf backend/.venv  # if it exists
 ```
@@ -223,7 +223,7 @@ Note: `appnope` (macOS only) is safe to install on all platforms - it's simply i
 **Solution:**
 ```bash
 # Make sure you're using the root requirements.txt
-cd /path/to/Columbia-MSDS-F25-Soccer
+cd /path/to/SCOUTING_UI_PROJECT-
 pip install -r requirements.txt
 ```
 

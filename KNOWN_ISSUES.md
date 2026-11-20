@@ -1,6 +1,6 @@
 # Known issues
 
-## 1. Match page first shows charts from the wrong match (open)
+## 1. Match page first shows charts from the wrong match (not reproducing as of 2026-11-19)
 
 **Seen:** 2026-11-11 on the live site, `/euro-2020`, selecting Italy vs England (`events_3795506.csv`).
 

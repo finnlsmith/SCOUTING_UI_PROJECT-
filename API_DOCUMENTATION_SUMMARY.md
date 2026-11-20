@@ -53,7 +53,7 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
 
 **Changes:**
 - Configured FastAPI with comprehensive metadata:
-  - API title: "Columbia MSDS Soccer Analytics API"
+  - API title: "Sincere FC Scouting UI API"
   - Detailed description with features
   - Version: "v1"
   - Contact and license information
@@ -80,7 +80,7 @@ def get_match_viz(filename: str, team: str | None = Query(default=None)):
 **Variables Documented:**
 ```bash
 AWS_REGION=us-east-2
-S3_BUCKET_NAME=capstone-soccer-data
+S3_BUCKET_NAME=soccer-data-605092603067
 AWS_ACCESS_KEY_ID=your_access_key_here
 AWS_SECRET_ACCESS_KEY=your_secret_key_here
 ```

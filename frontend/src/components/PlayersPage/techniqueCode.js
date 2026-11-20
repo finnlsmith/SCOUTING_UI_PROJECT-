@@ -1,0 +1,22 @@
+// Copied verbatim from the Playing at Speed project on 2026-11-19 (see each file path).
+// Regenerate rather than edit by hand, so this always matches the code that built the cards.
+export const TECHNIQUE_CODE = {
+  "flag": {
+    "file": "notebooks/build_pff_receptions.py",
+    "fn": "build (reception flags)",
+    "note": "One row per pass received. Flags how the receiver dealt with it: failed or not, and whether he played it in one touch.",
+    "code": "FAILED_TOUCH = {\"F\": \"failed trap\", \"H\": \"heavy touch\"}   # PFF touchType on a touch event\n\n# inside build():\n    rec[\"miscontrol\"] = rec.first_touch.eq(\"M\")\n    rec[\"hard_to_control\"] = rec.first_touch.isin([\"M\", \"B\", \"G\"])\n    # failed reception: any way the receiver let the pass down\n    rec[\"failed_how\"] = np.select(\n        [rec.receiver_fault.notna(), rec.touch_type.isin(list(FAILED_TOUCH)), rec.first_touch.eq(\"M\"),\n         rec.first_touch.eq(\"B\")],\n        [rec.receiver_fault, rec.touch_type.map(FAILED_TOUCH), \"miscontrol\", \"hard to control, handled badly\"],\n        default=\"\")\n    rec[\"failed_reception\"] = rec.failed_how.ne(\"\")\n    rec[\"one_touch\"] = rec.touches.eq(1)\n    # camera, and a physically sensible speed\n    rec[\"usable\"] = (rec.set_piece.eq(\"O\") & rec.flight_s.ge(0.6) & rec.passer_visible & rec.receiver_visible\n                     & rec.avg_speed_kmh.between(3, 130))"
+  },
+  "count": {
+    "file": "notebooks/profiles_v3.py",
+    "fn": "build (technique counts)",
+    "note": "Counts per player, using only usable receptions, then turns the counts into rates.",
+    "code": "    rec = pd.read_parquet(loaders.PFF_CACHE / 'receptions.parquet')\n    rec = rec[rec.usable & rec.arrival_kmh.notna()]\n    gr = rec.groupby('receiver_id')\n    P['receptions'] = gr.size()\n    P['one_touch'] = gr.one_touch.sum()\n    P['failed'] = gr.failed_reception.sum()\n    ot = rec[rec.one_touch & rec.next_action.eq('pass') & rec.next_pass_complete.notna()]\n    P['ft_pass_n'] = ot.groupby('receiver_id').size()\n    P['ft_pass_ok'] = ot.groupby('receiver_id').next_pass_complete.apply(lambda s: s.astype(float).sum())\n\n# later in build():\n    P['one_touch_pct'] = P.one_touch / P.receptions.where(P.receptions > 0)\n    P['kept_pct'] = 1 - P.failed / P.receptions.where(P.receptions > 0)\n    P['ft_pass_pct'] = P.ft_pass_ok / P.ft_pass_n.where(P.ft_pass_n > 0)"
+  },
+  "rows": {
+    "file": "mockups/PLAYER SCOUTING CARDS/generator/build_cards_v3.py",
+    "fn": "the five card rows",
+    "note": "How each row gets its value, its percentile among peers, and its 90% range.",
+    "code": "def pct_rank(pool, v, invert=False):\n    pool = pool.dropna()\n    if pd.isna(v) or len(pool) < 15: return None\n    if invert: pool, v = -pool, -v\n    return int(round(100 * ((pool < v).sum() + 0.5 * (pool == v).sum()) / len(pool)))\n\ndef wilson(k, n, z=1.645):\n    if n <= 0: return None\n    p = k / n\n    d = 1 + z * z / n\n    c = (p + z * z / (2 * n)) / d\n    h = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d\n    return max(0, c - h), min(1, c + h)\n\n# inside build_real(), the three reception rows:\n    ok = me.receptions >= MIN_EVENTS['receptions']\n    r_ot = row('one_touch', 'Played first time (tempo)', f_pct(me.one_touch_pct), pct_rank(pool.one_touch_pct[pool.receptions >= 50], me.one_touch_pct) if ok else None,\n               GATE['one_touch'], me.receptions, rng_p(wilson(me.one_touch, me.receptions)), False)\n    r_kp = row('kept', 'First touch kept', f_pct(me.kept_pct, 1), pct_rank(pool.kept_pct[pool.receptions >= 50], me.kept_pct) if ok else None,\n               GATE['kept'], me.receptions, rng_p(wilson(me.receptions - me.failed, me.receptions), 1), True)\n    okf = me.ft_pass_n >= MIN_EVENTS['ft_pass']\n    r_fp = row('ft_pass', 'First-time pass completion', f_pct(me.ft_pass_pct) if me.ft_pass_n else '–',\n               pct_rank(pool.ft_pass_pct[pool.ft_pass_n >= 15], me.ft_pass_pct) if okf else None,\n               GATE['ft_pass'], me.ft_pass_n, rng_p(wilson(me.ft_pass_ok, me.ft_pass_n)) if me.ft_pass_n else '', True)\n\n# and the two pass rows (base_row is defined in build_real):\n    pass_row = base_row('Pass completion', mb.pass_ok, mb.pass_n, B.pass_ok, B.pass_n, 5, True, lambda v: f_pct(v, 1), 50)\n    passfast_row = base_row('Pass completion at 15+ km/h', mb.pf_ok, mb.pf_n, B.pf_ok, B.pf_n, 20, True, lambda v: f_pct(v, 1), 15)"
+  }
+};

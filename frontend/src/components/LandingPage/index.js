@@ -1,6 +1,5 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import logo from "../../assets/roarstats-logo.png";
 import styles from "./LandingPage.module.css";
 import sharedStyles from "../../styles/shared.module.css";
 
@@ -8,10 +7,8 @@ export default function LandingPage() {
   const navigate = useNavigate();
   return (
     <div className={styles.container}>
-      <img src={logo} alt="RoarStats Logo" className={styles.logo} />
       <h1 className={styles.title}>
-        RoarStats - Nov 2025 Beta
-        {/* Columbia MSDS 25 - Placeholder */}
+        Sincere FC Scouting UI
       </h1>
 
       <div className={styles.buttonContainer}>
@@ -23,10 +20,10 @@ export default function LandingPage() {
         </button>
 
         <button
-          className={sharedStyles.buttonSecondary}
-          disabled
+          className={sharedStyles.buttonPrimary}
+          onClick={() => navigate("/players")}
         >
-          Players (coming soon)
+          Players
         </button>
       </div>
     </div>
